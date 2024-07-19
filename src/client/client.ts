@@ -1,6 +1,11 @@
+import assert from "node:assert";
+import url from "node:url";
+
 import http from "http";
 import open from "open";
-import destroyer from "server-destroy";
+
+import chalk from "chalk";
+import ora from "ora";
 
 const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
 
@@ -89,16 +94,28 @@ export interface Permissions {
   whatsapp_business_messaging?: boolean;
 }
 
-export interface Config {
+export interface AuthConfig {
   appId: string;
   appSecret: string;
+  userToken?: string | null;
+  pageToken?: string | null;
+}
+
+export type writeAuthConfig = ({}: AuthConfig) => void;
+export type readAuthConfig = () => AuthConfig;
+
+export interface Config extends AuthConfig {
   scope?: Permissions;
+  writeAuthConfig?: writeAuthConfig;
+  readAuthConfig?: readAuthConfig;
 }
 
 export class Facebook {
   server = new API();
   appId: string;
   appSecret: string;
+  writeAuthConfig: writeAuthConfig = () => {};
+  readAuthConfig: readAuthConfig = () => ({ appId: "", appSecret: "" });
   scope: Permissions = {
     pages_manage_engagement: true,
     pages_manage_posts: true,
@@ -123,42 +140,78 @@ export class Facebook {
   }
 
   async getUserToken() {
+    const authConfig = this.readAuthConfig();
+    const userToken = authConfig.userToken;
+    if (userToken) {
+      return userToken;
+    } else {
+      return null;
+    }
+  }
+
+  async verifyUserToken() {
+    return true;
+  }
+
+  async refreshUserToken() {
+    const authConfig = this.readAuthConfig();
+    const userToken = authConfig.userToken;
+
+    const validation = await this.verifyUserToken();
+    if (validation) {
+      return userToken;
+    }
+
     const port = 2279;
     const host = "localhost";
-    const server = http
-      .createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
-        const url = req.url;
-        console.log(url);
-        if (url === "/login") {
-          const params = new URLSearchParams(url);
-          console.log(params);
+    const server = http.createServer(
+      async (req: http.IncomingMessage, res: http.ServerResponse) => {
+        assert(req.url, "This request doesn't have a URL");
+        const { pathname, query } = url.parse(req.url, true);
 
-          res.writeHead(200);
-          res.end("ok");
+        switch (pathname) {
+          case "/login":
+            const accessToken = query.access_token;
+            const expireTime = query.data_access_expiration_time;
 
-          server.close();
-        } else {
-          res.writeHead(404);
-          res.end("not found");
+            res.writeHead(200);
+            res.end("ok", () => server.close());
+
+            break;
+          default:
+            res.writeHead(404);
+            res.end("not found");
         }
+      }
+    );
 
-        destroyer(server);
-      })
-      .listen(port, host, async () => {
-        console.log("Attempting to login via OAuth...");
-        const redirect = new URL(`http://${host}:${port}/login`);
-        const oauth =
-          "https://facebook.com/v20.0/dialog/oauth?" +
-          new URLSearchParams({
-            client_id: this.appId,
-            response_type: "token",
-            auth_type: "rerequest",
-            scope: Object.keys(this.scope).join(","),
-            redirect_uri: redirect.href,
-          });
-        console.log("If OAuth not open, visit the link manually:", oauth);
-        await open(oauth);
+    const spinner = ora({
+      text: "Attempting OAuth in browser",
+      spinner: "dots",
+      color: "white",
+    }).start();
+
+    const redirect = new URL(`http://${host}:${port}/login`);
+    const oauth =
+      "https://facebook.com/v20.0/dialog/oauth?" +
+      new URLSearchParams({
+        client_id: this.appId,
+        response_type: "token",
+        auth_type: "rerequest",
+        scope: Object.keys(this.scope).join(","),
+        redirect_uri: redirect.href,
       });
+    server.listen(port, host);
+    await open(oauth);
+
+    setTimeout(() => {
+      spinner.stop();
+      console.log(
+        chalk.yellow("!"),
+        "If OAuth did not open, visit the link manually:",
+        chalk.blue(oauth)
+      );
+    }, 5000);
   }
 
   async pageToken() {
