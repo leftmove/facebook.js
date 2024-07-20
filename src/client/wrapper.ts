@@ -60,6 +60,7 @@ export interface Config extends AuthConfig {
   scope?: Permissions;
   writeAuthConfig?: writeAuthConfig;
   readAuthConfig?: readAuthConfig;
+  overrideLocal?: boolean;
 }
 
 class Credentials {
@@ -84,6 +85,7 @@ export class Facebook extends Credentials {
 
   writeAuthConfig: writeAuthConfig = writeToJSONConfig;
   readAuthConfig: readAuthConfig = readFromJSONConfig;
+  overrideLocal = false;
 
   scope: Permissions = {
     pages_manage_engagement: true,
@@ -126,9 +128,9 @@ export class Facebook extends Credentials {
     return authConfig.userToken;
   }
 
-  async verifyUserToken() {
+  async verifyUserToken(token: string) {
     try {
-      await this.client.get("me", { access_token: this.userToken });
+      await this.client.get("me", { access_token: token });
       return true;
     } catch (error: any) {
       if (error.status === 463 || error.status === 2500) {
@@ -144,7 +146,7 @@ export class Facebook extends Credentials {
 
   async refreshUserToken() {
     const authConfig = await this.readAuthConfig();
-    const userToken = authConfig.userToken;
+    const userToken = authConfig.userToken || null;
 
     const userTokenExpires = authConfig.userTokenExpires;
     const now = Date.now();
@@ -152,9 +154,11 @@ export class Facebook extends Credentials {
       return userToken;
     }
 
-    const validation = await this.verifyUserToken();
-    if (validation) {
-      return userToken;
+    if (userToken) {
+      const validation = await this.verifyUserToken(userToken);
+      if (validation) {
+        return userToken;
+      }
     }
 
     await this.refreshAppInfo();
@@ -185,7 +189,6 @@ export class Facebook extends Credentials {
                 );
                 throw error;
               });
-            console.log(data);
             const accessToken = data.access_token;
             const expireTime = data.expires_in;
 
