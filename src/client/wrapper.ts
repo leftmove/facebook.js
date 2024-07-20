@@ -9,8 +9,11 @@ import ora from "ora";
 
 import Client from "../api/client";
 import { CredentialError } from "../errors";
-import { writeToJSONConfig, readFromJSONConfig } from "../credentials";
-import type { AuthConfig } from "../credentials";
+import {
+  writeToJSONCredentials,
+  readFromJSONCredentials,
+} from "../credentials";
+import type { Credentials } from "../credentials";
 
 export interface Permissions {
   commerce_account_manage_orders?: boolean;
@@ -53,39 +56,40 @@ export interface Permissions {
   whatsapp_business_messaging?: boolean;
 }
 
-export type writeAuthConfig = (...args: any) => Promise<void>;
-export type readAuthConfig = (...args: any) => Promise<AuthConfig>;
+export type writeCredentials = (...args: any) => void;
+export type readCredentials = (...args: any) => Credentials;
 
-export interface Config extends AuthConfig {
-  scope?: Permissions;
-  writeAuthConfig?: writeAuthConfig;
-  readAuthConfig?: readAuthConfig;
-  overrideLocal?: boolean;
-}
-
-class Credentials {
-  appId: string;
-  appSecret: string;
-
-  constructor(appId: string, appSecret: string) {
-    this.appId = appId;
-    this.appSecret = appSecret;
-  }
+export interface Config {
+  appId?: string;
+  appSecret?: string;
 
   appToken?: string;
-  appTokenExpires?: number;
   userToken?: string;
   userTokenExpires?: number;
   pageToken?: string;
   pageTokenExpires?: number;
+
+  scope?: Permissions;
+  writeCredentials?: writeCredentials;
+  readCredentials?: readCredentials;
+  overrideLocal?: boolean;
 }
 
-export class Facebook extends Credentials {
+export class Facebook {
   client = new Client();
 
-  writeAuthConfig: writeAuthConfig = writeToJSONConfig;
-  readAuthConfig: readAuthConfig = readFromJSONConfig;
-  overrideLocal = false;
+  appId: string | null = null;
+  appSecret: string | null = null;
+
+  appToken: string | null = null;
+  userToken?: string | null = null;
+  userTokenExpires?: number | null = null;
+  pageToken?: string | null = null;
+  pageTokenExpires?: number | null = null;
+
+  writeCredentials: writeCredentials = writeToJSONCredentials;
+  readCredentials: readCredentials = readFromJSONCredentials;
+  overrideLocal = true;
 
   scope: Permissions = {
     pages_manage_engagement: true,
@@ -97,35 +101,146 @@ export class Facebook extends Credentials {
     business_management: true,
   };
 
-  constructor(config: Config) {
-    const { appId, appSecret } = config;
-    super(appId, appSecret);
+  constructor(config: Config = {}) {
+    const readCredentials = config.readCredentials || this.readCredentials;
+    const credentials = readCredentials();
+
+    const appId = config.appId || credentials.appId || this.appId;
+    const appSecret =
+      config.appSecret || credentials.appSecret || this.appSecret;
+
+    if (appId === null || appSecret === null) {
+      throw new CredentialError(
+        "Empty credentials provided. App ID and App Secret are required."
+      );
+    }
+
+    const appToken = config.appToken || credentials.appToken || this.appToken;
+    const userToken =
+      config.userToken || credentials.userToken || this.userToken;
+    const userTokenExpires =
+      config.userTokenExpires ||
+      credentials.userTokenExpires ||
+      this.userTokenExpires;
+    const pageToken =
+      config.pageToken || credentials.pageToken || this.pageToken;
+    const pageTokenExpires =
+      config.pageTokenExpires ||
+      credentials.pageTokenExpires ||
+      this.pageTokenExpires;
+
+    const scope = config.scope || credentials.scope || this.scope;
+    const writeCredentials = config.writeCredentials || this.writeCredentials;
+    const overrideLocal = config.overrideLocal || this.overrideLocal;
+
     this.appId = appId;
     this.appSecret = appSecret;
+    this.appToken = appToken;
+    this.userToken = userToken;
+    this.userTokenExpires = userTokenExpires;
+    this.pageToken = pageToken;
+    this.pageTokenExpires = pageTokenExpires;
+    this.scope = scope;
+    this.writeCredentials = writeCredentials;
+    this.readCredentials = readCredentials;
+    this.overrideLocal = overrideLocal;
+
+    if (overrideLocal) {
+      writeCredentials({
+        appId,
+        appSecret,
+        appToken,
+        userToken,
+        userTokenExpires,
+        pageToken,
+        pageTokenExpires,
+        scope,
+      });
+    }
   }
 
-  async config() {
-    return await this.readAuthConfig();
-  }
+  async updateCredentials(credentials: Credentials) {
+    const appId = credentials.appId || this.appId;
+    const appSecret = credentials.appSecret || this.appSecret;
+    const appToken = credentials.appToken || this.appToken;
+    const userToken = credentials.userToken || this.userToken;
+    const userTokenExpires =
+      credentials.userTokenExpires || this.userTokenExpires;
+    const pageToken = credentials.pageToken || this.pageToken;
+    const pageTokenExpires =
+      credentials.pageTokenExpires || this.pageTokenExpires;
+    const scope = credentials.scope || this.scope;
 
-  async refreshAppInfo() {
-    const authConfig = await this.readAuthConfig();
-    this.appId = this.appId || authConfig.appId;
-    this.appSecret = this.appSecret || authConfig.appSecret;
+    this.appId = appId;
+    this.appSecret = appSecret;
+    this.appToken = appToken;
+    this.userToken = userToken;
+    this.userTokenExpires = userTokenExpires;
+    this.pageToken = pageToken;
+    this.pageTokenExpires = pageTokenExpires;
+    this.scope = scope;
+
+    this.writeCredentials({
+      appId,
+      appSecret,
+      appToken,
+      userToken,
+      userTokenExpires,
+      pageToken,
+      pageTokenExpires,
+      scope,
+    });
   }
 
   async getAppToken() {
-    return await this.client.get("oauth/access_token", {
+    // await this.refreshAppToken();
+    return this.appToken;
+  }
+
+  async verifyAppToken(token: string) {
+    try {
+      await this.client.get("debug_token", {
+        input_token: token,
+        access_token: token,
+      });
+      return true;
+    } catch (error: any) {
+      if (error.status === 190 || error.data.is_valid === false) {
+        return false;
+      } else {
+        throw new CredentialError(
+          "Bad credentials. Please make an issue on GitHub if this problem persists.",
+          error
+        );
+      }
+    }
+  }
+
+  async refreshAppToken() {
+    const appToken = this.appToken;
+
+    if (appToken) {
+      const validation = await this.verifyAppToken(appToken);
+      if (validation) {
+        return appToken;
+      }
+    }
+
+    const data = await this.client.get("oauth/access_token", {
       client_id: this.appId,
       client_secret: this.appSecret,
       grant_type: "client_credentials",
+    });
+    const accessToken = data.access_token;
+
+    this.writeCredentials({
+      appToken: accessToken,
     });
   }
 
   async getUserToken() {
     await this.refreshUserToken();
-    const authConfig = await this.readAuthConfig();
-    return authConfig.userToken;
+    return this.userToken;
   }
 
   async verifyUserToken(token: string) {
@@ -145,10 +260,9 @@ export class Facebook extends Credentials {
   }
 
   async refreshUserToken() {
-    const authConfig = await this.readAuthConfig();
-    const userToken = authConfig.userToken || null;
+    const userToken = this.userToken;
+    const userTokenExpires = this.userTokenExpires;
 
-    const userTokenExpires = authConfig.userTokenExpires;
     const now = Date.now();
     if (userTokenExpires && now - userTokenExpires <= 60 * 10) {
       return userToken;
@@ -161,7 +275,13 @@ export class Facebook extends Credentials {
       }
     }
 
-    await this.refreshAppInfo();
+    const appId = this.appId;
+    const appSecret = this.appSecret;
+    if (appId === null || appSecret === null) {
+      throw new CredentialError(
+        "App ID and App Secret are required to generate user tokens."
+      );
+    }
 
     const port = 2279;
     const host = "localhost";
@@ -178,8 +298,8 @@ export class Facebook extends Credentials {
             const data = await this.client
               .get("oauth/access_token", {
                 code,
-                client_id: this.appId,
-                client_secret: this.appSecret,
+                client_id: appId,
+                client_secret: appSecret,
                 redirect_uri: redirect.href,
               })
               .catch((e: any) => {
@@ -192,7 +312,7 @@ export class Facebook extends Credentials {
             const accessToken = data.access_token;
             const expireTime = data.expires_in;
 
-            await this.writeAuthConfig({
+            this.writeCredentials({
               userToken: accessToken,
               userTokenExpires: expireTime,
             });
@@ -214,7 +334,7 @@ export class Facebook extends Credentials {
     const oauth =
       "https://facebook.com/v20.0/dialog/oauth?" +
       new URLSearchParams({
-        client_id: this.appId,
+        client_id: appId,
         response_type: "code",
         auth_type: "rerequest",
         scope: Object.keys(this.scope).join(","),
@@ -236,6 +356,27 @@ export class Facebook extends Credentials {
         chalk.blue(oauth)
       );
     }, 1000);
+  }
+
+  async getPageToken() {
+    await this.refreshPageToken();
+    return this.pageToken;
+  }
+
+  async verifyPageToken(token: string) {
+    try {
+      await this.client.get("me", { access_token: token });
+      return true;
+    } catch (error: any) {
+      if (error.status === 190) {
+        return false;
+      } else {
+        throw new CredentialError(
+          "Bad credentials. Please make an issue on GitHub if this problem persists.",
+          error
+        );
+      }
+    }
   }
 
   async refreshPageToken() {
