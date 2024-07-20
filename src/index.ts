@@ -1,3 +1,1 @@
-import { Facebook } from "./client/client";
-
-export { Facebook };
+export { Facebook } from "./client/wrapper";

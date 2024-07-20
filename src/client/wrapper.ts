@@ -7,51 +7,10 @@ import open from "open";
 import chalk from "chalk";
 import ora from "ora";
 
-const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
-
-class FacebookGraphError extends Error {
-  status: number = 400;
-  constructor(response: Object, status: any = 400) {
-    super(JSON.stringify(response));
-    this.name = "FacebookGraphError";
-    this.status = status;
-  }
-}
-
-export class API {
-  url: string = FACEBOOK_GRAPH_API;
-  constructor(url: string = this.url) {
-    this.url = url;
-  }
-
-  async get(path: string, params: Object = {}) {
-    return fetch(
-      `${this.url}/${path}${params ? "" : "?" + new URLSearchParams(params)}`
-    )
-      .then((r) => {
-        return [r.json(), r.ok, r.status];
-      })
-      .then(([data, ok, status]) => {
-        if (ok) {
-          return data;
-        } else {
-          throw new FacebookGraphError(data, status);
-        }
-      });
-  }
-
-  async post(path: string, body: any) {
-    return fetch(`${this.url}/${path}`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    })
-      .then((r) => r.json())
-      .catch((e) => {
-        const error = new FacebookGraphError(e);
-        throw error;
-      });
-  }
-}
+import Client from "../api/client";
+import { CredentialError } from "../errors";
+import { writeToJSONConfig, readFromJSONConfig } from "../credentials";
+import type { AuthConfig } from "../credentials";
 
 export interface Permissions {
   commerce_account_manage_orders?: boolean;
@@ -94,15 +53,8 @@ export interface Permissions {
   whatsapp_business_messaging?: boolean;
 }
 
-export interface AuthConfig {
-  appId: string;
-  appSecret: string;
-  userToken?: string | null;
-  pageToken?: string | null;
-}
-
-export type writeAuthConfig = ({}: AuthConfig) => void;
-export type readAuthConfig = () => AuthConfig;
+export type writeAuthConfig = (...args: any) => Promise<void>;
+export type readAuthConfig = (...args: any) => Promise<AuthConfig>;
 
 export interface Config extends AuthConfig {
   scope?: Permissions;
@@ -110,12 +62,29 @@ export interface Config extends AuthConfig {
   readAuthConfig?: readAuthConfig;
 }
 
-export class Facebook {
-  server = new API();
+class Credentials {
   appId: string;
   appSecret: string;
-  writeAuthConfig: writeAuthConfig = () => {};
-  readAuthConfig: readAuthConfig = () => ({ appId: "", appSecret: "" });
+
+  constructor(appId: string, appSecret: string) {
+    this.appId = appId;
+    this.appSecret = appSecret;
+  }
+
+  appToken?: string;
+  appTokenExpires?: number;
+  userToken?: string;
+  userTokenExpires?: number;
+  pageToken?: string;
+  pageTokenExpires?: number;
+}
+
+export class Facebook extends Credentials {
+  client = new Client();
+
+  writeAuthConfig: writeAuthConfig = writeToJSONConfig;
+  readAuthConfig: readAuthConfig = readFromJSONConfig;
+
   scope: Permissions = {
     pages_manage_engagement: true,
     pages_manage_posts: true,
@@ -125,14 +94,26 @@ export class Facebook {
     read_insights: true,
     business_management: true,
   };
+
   constructor(config: Config) {
     const { appId, appSecret } = config;
+    super(appId, appSecret);
     this.appId = appId;
     this.appSecret = appSecret;
   }
 
+  async config() {
+    return await this.readAuthConfig();
+  }
+
+  async refreshAppInfo() {
+    const authConfig = await this.readAuthConfig();
+    this.appId = this.appId || authConfig.appId;
+    this.appSecret = this.appSecret || authConfig.appSecret;
+  }
+
   async getAppToken() {
-    return await this.server.get("oauth/access_token", {
+    return await this.client.get("oauth/access_token", {
       client_id: this.appId,
       client_secret: this.appSecret,
       grant_type: "client_credentials",
@@ -140,30 +121,48 @@ export class Facebook {
   }
 
   async getUserToken() {
-    const authConfig = this.readAuthConfig();
-    const userToken = authConfig.userToken;
-    if (userToken) {
-      return userToken;
-    } else {
-      return null;
-    }
+    await this.refreshUserToken();
+    const authConfig = await this.readAuthConfig();
+    return authConfig.userToken;
   }
 
   async verifyUserToken() {
-    return true;
+    try {
+      await this.client.get("me", { access_token: this.userToken });
+      return true;
+    } catch (error: any) {
+      if (error.status === 463 || error.status === 2500) {
+        return false;
+      } else {
+        throw new CredentialError(
+          "Bad credentials. Please make an issue on GitHub if this problem persists.",
+          error
+        );
+      }
+    }
   }
 
   async refreshUserToken() {
-    const authConfig = this.readAuthConfig();
+    const authConfig = await this.readAuthConfig();
     const userToken = authConfig.userToken;
+
+    const userTokenExpires = authConfig.userTokenExpires;
+    const now = Date.now();
+    if (userTokenExpires && now - userTokenExpires <= 60 * 10) {
+      return userToken;
+    }
 
     const validation = await this.verifyUserToken();
     if (validation) {
       return userToken;
     }
 
+    await this.refreshAppInfo();
+
     const port = 2279;
     const host = "localhost";
+    const redirect = new URL(`http://${host}:${port}/login`);
+
     const server = http.createServer(
       async (req: http.IncomingMessage, res: http.ServerResponse) => {
         assert(req.url, "This request doesn't have a URL");
@@ -171,12 +170,36 @@ export class Facebook {
 
         switch (pathname) {
           case "/login":
-            const accessToken = query.access_token;
-            const expireTime = query.data_access_expiration_time;
+            const code = query.code;
+            const data = await this.client
+              .get("oauth/access_token", {
+                code,
+                client_id: this.appId,
+                client_secret: this.appSecret,
+                redirect_uri: redirect.href,
+              })
+              .catch((e: any) => {
+                const error = new CredentialError(
+                  "Error getting user token.",
+                  e
+                );
+                throw error;
+              });
+            console.log(data);
+            const accessToken = data.access_token;
+            const expireTime = data.expires_in;
+
+            await this.writeAuthConfig({
+              userToken: accessToken,
+              userTokenExpires: expireTime,
+            });
+            console.log(chalk.green("✓"), "Successfully authenticated!");
 
             res.writeHead(200);
-            res.end("ok", () => server.close());
-
+            res.end(
+              "Success! Your Facebook instance has been authenticated, you may now close this tab.",
+              () => server.close()
+            );
             break;
           default:
             res.writeHead(404);
@@ -185,25 +208,23 @@ export class Facebook {
       }
     );
 
-    const spinner = ora({
-      text: "Attempting OAuth in browser",
-      spinner: "dots",
-      color: "white",
-    }).start();
-
-    const redirect = new URL(`http://${host}:${port}/login`);
     const oauth =
       "https://facebook.com/v20.0/dialog/oauth?" +
       new URLSearchParams({
         client_id: this.appId,
-        response_type: "token",
+        response_type: "code",
         auth_type: "rerequest",
         scope: Object.keys(this.scope).join(","),
         redirect_uri: redirect.href,
       });
     server.listen(port, host);
-    await open(oauth);
 
+    const spinner = ora({
+      text: "Attempting OAuth in default browser",
+      spinner: "dots",
+      color: "white",
+    }).start();
+    await open(oauth);
     setTimeout(() => {
       spinner.stop();
       console.log(
@@ -211,11 +232,10 @@ export class Facebook {
         "If OAuth did not open, visit the link manually:",
         chalk.blue(oauth)
       );
-    }, 5000);
+    }, 1000);
   }
 
-  async pageToken() {
-    const userToken = this.getUserToken();
-    this.server.get("me/accounts");
+  async refreshPageToken() {
+    const userToken = await this.getUserToken();
   }
 }
