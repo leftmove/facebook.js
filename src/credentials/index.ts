@@ -22,7 +22,7 @@ export async function createJSONFileIfNotExists(filePath: string) {
     try {
       await fs.writeFile(
         filePath,
-        JSON.stringify({ ...DEFAULT_CONFIG }, null, 2),
+        JSON.stringify(DEFAULT_CONFIG, null, 2),
         "utf8"
       );
     } catch {
