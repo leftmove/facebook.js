@@ -14,8 +14,10 @@ export interface Credentials {
   appToken?: string | null;
   appTokenExpires?: number | null;
   userToken?: string | null;
+  userId?: string | null;
   userTokenExpires?: number | null;
   pageToken?: string | null;
+  pageId?: string | null;
   pageTokenExpires?: number | null;
   scope?: Object | null;
 }
