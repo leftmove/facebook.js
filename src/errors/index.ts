@@ -6,12 +6,14 @@ export class GraphError extends Error {
   response: Response;
   data: any;
   constructor(response: Response, data: any, error: any = null) {
-    const message = response.statusText;
-    super(message);
+    const message = response?.statusText || "Graph API Error";
     const e = new Error(message);
+    super(message);
 
-    data.url = response.url;
-    data.status = response.status;
+    if (data) {
+      data.url = response.url;
+      data.status = response.status;
+    }
 
     this.data = data;
     this.cause = error ? error.cause : e.cause;
@@ -26,8 +28,8 @@ export class GraphError extends Error {
 }
 
 export class CredentialError extends GraphError {
-  constructor(message: string, error: any = null) {
-    super(error.response, error.data, error);
+  constructor(message: string, error: any = null, response: any = null) {
+    super(response.response, response.data, error);
     this.message = `${error.message}\n${message}`;
     this.name = "CredentialError";
   }

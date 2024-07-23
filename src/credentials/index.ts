@@ -4,22 +4,22 @@ import { CredentialError } from "../errors";
 
 export const DEFAULT_FILE_PATH = "./credentials.json";
 export const DEFAULT_CONFIG: Credentials = {
-  appId: null,
-  appSecret: null,
+  appId: "",
+  appSecret: "",
 };
 
 export interface Credentials {
-  appId: string | null;
-  appSecret: string | null;
-  appToken?: string | null;
-  appTokenExpires?: number | null;
-  userToken?: string | null;
-  userId?: string | null;
-  userTokenExpires?: number | null;
-  pageToken?: string | null;
-  pageId?: string | null;
-  pageTokenExpires?: number | null;
-  scope?: Object | null;
+  appId: string;
+  appSecret: string;
+  appToken?: string;
+  appTokenExpires?: number;
+  userToken?: string;
+  userId?: string;
+  userTokenExpires?: number;
+  pageToken?: string;
+  pageId?: string;
+  pageTokenExpires?: number;
+  scope?: Object;
 }
 
 export type writeCredentials = (credentials: Credentials) => void;
