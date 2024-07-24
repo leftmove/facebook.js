@@ -16,6 +16,7 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
+    "check:main": "bun run test/index.ts",
     "check:all": "mocha test/**/*.ts",
     "check:client": "mocha test/client/**/*.ts"
   },
