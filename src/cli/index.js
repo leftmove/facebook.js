@@ -3,8 +3,7 @@
 import { Command } from "commander";
 import inquirer from "inquirer";
 
-import { DEFAULT_FILE_PATH, readFromJSONCredentials } from "../credentials";
-import { CredentialError } from "../errors";
+import Facebook from "../index.ts";
 
 const program = new Command();
 const credentialOptions = [
@@ -25,27 +24,15 @@ program
 program
   .command("login")
   .description("Authenticate Facebook credentials.")
-  .argument("<string>", "Facebook App ID.")
-  .argument("<string>", "Facebook App Secret.")
+  .option("--appId", "Facebook App ID.")
+  .option("--appSecret", "Facebook App Secret.")
   .option("--credentials", "Facebook credentials.")
   .option("--path", "Path to the credentials file.")
-  .action((appId, appSecret, options) => {
-    const credentials =
-      options.credentials ||
-      readFromJSONCredentials(options.path || DEFAULT_FILE_PATH);
+  .action((options) => {
+    const appId = options.appId || null;
+    const appSecret = options.appSecret || null;
 
-    const emptyCredentials = credentialOptions.filter(
-      (option) => !credentials[option]
-    );
-    emptyCredentials.forEach((option) => {
-      switch (option) {
-        case "appId":
-          credentials.appId = appId;
-        case "appSecret":
-          credentials.appSecret = appSecret;
-        case "appToken":
-        default:
-          break;
-      }
-    });
+    if (appId === null || appSecret === null) {
+      const questions = [""];
+    }
   });
