@@ -138,8 +138,10 @@ export class Login {
     const appSecret = config.appSecret || credentials.appSecret || undefined;
 
     if (appId === undefined || appSecret === undefined) {
+      const error = new Error();
       throw new CredentialError(
         "Empty credentials provided. App ID and App Secret are required."
+        // error
       );
     }
 
