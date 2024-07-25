@@ -65,22 +65,25 @@ export default class Client extends Queue {
     return true;
   }
 
-  get(path: string, params: any = {}) {
-    return this.enqueue(() =>
-      fetch(
-        `${this.url}/${path}${
-          params ? "?" + new URLSearchParams(params).toString() : ""
-        }`
-      ).then(async (r) => {
-        const data = await r.json();
-        if (r.ok) {
-          return data;
-        } else {
-          const error = new Error(r.statusText);
-          throw new GraphError(error, r, data);
-        }
-      })
-    );
+  get(path: string, params: any = {}): any {
+    const helper = () =>
+      new Promise(async (resolve) => {
+        const response = await fetch(
+          `${this.url}/${path}${
+            params ? "?" + new URLSearchParams(params).toString() : ""
+          }`
+        ).then(async (r: any) => {
+          const data = await r.json();
+          if (r.ok) {
+            return data;
+          } else {
+            const error = new Error(r.statusText);
+            throw new GraphError(error, r, data);
+          }
+        });
+        resolve(response);
+      });
+    return this.enqueue(helper);
   }
 
   post(path: string, body: any) {

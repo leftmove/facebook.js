@@ -12,7 +12,7 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
-import { CredentialError } from "../errors";
+import { CredentialError, GraphError } from "../errors";
 import type { Config } from "../client/client";
 import type {
   Credentials,
@@ -88,12 +88,39 @@ export const DEFAULT_CONFIG: Authentication = {
   readCredentials: readFromJSONCredentials,
 };
 
-const credentialOptions = [
+export interface Debug {
+  data: Data;
+}
+
+export interface Data {
+  app_id: string;
+  type: string;
+  application: string;
+  is_valid: boolean;
+  scopes: any[];
+}
+
+export interface DebugError {
+  data: DataError;
+}
+
+export interface DataError {
+  error: Error;
+  is_valid: boolean;
+  scopes: any[];
+}
+
+export interface Error {
+  code: number;
+  message: string;
+}
+
+export const credentialOptions = [
   "appId",
   "appSecret",
   "appToken",
-  "userId",
   "userToken",
+  "userId",
   "pageId",
   "pageToken",
 ];
@@ -102,7 +129,7 @@ export class Login {
   appId: string;
   appSecret: string;
 
-  stale: Array<string> = [];
+  stale: Array<string> = credentialOptions;
   client = new Client();
 
   writeCredentials: writeCredentials = writeToJSONCredentials;
@@ -140,8 +167,8 @@ export class Login {
     if (appId === undefined || appSecret === undefined) {
       const error = new Error();
       throw new CredentialError(
-        "Empty credentials provided. App ID and App Secret are required."
-        // error
+        "Empty credentials provided. App ID and App Secret are required.",
+        error
       );
     }
 
@@ -192,174 +219,233 @@ export class Login {
     }
   }
 
-  async verifyAppCredentials(appId: string, appSecret: string) {
+  verifyAppCredentials(appId: string, appSecret: string) {
+    const token = ["appId", "appSecret"];
     const appAccessToken = `${appId}|${appSecret}`;
-    const data = await this.client
+    console.log(token);
+    this.client
       .get("debug_token", {
         input_token: appAccessToken,
         access_token: appAccessToken,
       })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Error verifying app credentials.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, ...token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, ...token];
+        } else {
+          const error = new Error();
+          throw new CredentialError(
+            "Error verifying app credentials.",
+            error,
+            e
+          );
+        }
       });
-    if (data?.is_valid) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
-  async verifyAppToken(appToken: string) {
-    const data = await this.client
+  verifyAppToken(appToken: string) {
+    const token = "appToken";
+    console.log(token);
+    this.client
       .get("debug_token", {
         input_token: appToken,
         access_token: `${this.appId}|${this.appSecret}`,
       })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Error verifying app token.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying app token.", error, e);
+        }
       });
-    if (data?.is_valid) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
-  async verifyUserId(userId: string, userToken: string) {
-    await this.client
+  verifyUserId(userId: string, userToken: string) {
+    const token = "userId";
+    console.log(token);
+    this.client
       .get(userId, { access_token: userToken })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Bad user ID credentials.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying user ID.", error, e);
+        }
       });
-    return true;
   }
 
-  async verifyPageId(pageId: string, pageToken: string) {
-    await this.client
+  verifyPageId(pageId: string, pageToken: string) {
+    const token = "pageId";
+    console.log(token);
+    this.client
       .get(pageId, { access_token: pageToken })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Error verifying app token.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying page ID.", error, e);
+        }
       });
     return true;
   }
 
-  async verifyUserCredentials(userToken: string, userTokenExpires: number) {
+  verifyUserCredentials(userToken: string, userTokenExpires: number) {
+    const token = "userToken";
+    console.log(token);
     const now = Date.now();
     if (now - userTokenExpires <= this.expireTime) {
-      return true;
+      return;
     }
 
-    const data = await this.client
+    this.client
       .get("debug_token", { input_token: userToken, access_token: userToken })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Error verifying user token.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying user token.", error, e);
+        }
       });
-    if (data?.is_valid) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
-  async verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
+  verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
+    const token = "pageToken";
     const now = Date.now();
     if (now - pageTokenExpires <= this.expireTime) {
-      return true;
+      return;
     }
 
-    const data = await this.client
+    this.client
       .get("debug_token", { input_token: pageToken, access_token: pageToken })
-      .catch((e: any) => {
-        const error = new Error();
-        throw new CredentialError("Error verifying page token.", error, e);
+      .then((data: Debug) => {
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying page token.", error, e);
+        }
       });
-    if (data?.is_valid) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
-  async verifyCredentials(
-    readCredentials: readCredentials,
-    writeCredentials: writeCredentials,
-    expireTime: number
+  verify(
+    options: Array<string> = this.stale,
+    readCredentials: readCredentials = this.readCredentials,
+    writeCredentials: writeCredentials = this.writeCredentials,
+    expireTime: number = this.expireTime
   ) {
     const credentials = readCredentials();
     this.readCredentials = readCredentials;
     this.writeCredentials = writeCredentials;
     this.expireTime = expireTime;
 
-    const emptyCredentials = credentialOptions.filter(
+    const emptyCredentials = options.filter(
       (option) => !credentials[option as keyof Credentials]
     );
-    const invalidCredentials = emptyCredentials;
+    this.stale = emptyCredentials;
 
-    if ("appToken" in emptyCredentials === true) {
-      const appValid = await this.verifyAppToken(
-        credentials.appToken as string
-      );
-      if (appValid === false) {
-        invalidCredentials.push("appToken");
-      }
+    if ("appToken" in emptyCredentials === false) {
+      this.verifyAppToken(credentials.appToken as string);
     }
 
-    if ("userToken" in emptyCredentials === true) {
-      const userValid = await this.verifyUserCredentials(
+    if ("userToken" in emptyCredentials === false) {
+      this.verifyUserCredentials(
         credentials.userToken as string,
         credentials.userTokenExpires as number
       );
-      if (userValid === false) {
-        invalidCredentials.push("userToken");
-      }
     }
 
-    if ("userId" in emptyCredentials === true) {
-      const userValid = await this.verifyUserId(
+    if ("userId" in emptyCredentials === false) {
+      this.verifyUserId(
         credentials.userId as string,
         credentials.userToken as string
       );
-      if (userValid === false) {
-        invalidCredentials.push("userId");
-      }
     }
 
-    if ("pageToken" in emptyCredentials === true) {
-      const pageValid = await this.verifyUserCredentials(
+    if ("pageToken" in emptyCredentials === false) {
+      this.verifyUserCredentials(
         credentials.pageToken as string,
         credentials.pageTokenExpires as number
       );
-      if (pageValid === false) {
-        invalidCredentials.push("pageToken");
-      }
-
-      if ("pageId" in emptyCredentials === true) {
-        const pageValid = await this.verifyPageId(
-          credentials.pageId as string,
-          credentials.pageToken as string
-        );
-        if (pageValid === false) {
-          invalidCredentials.push("pageId");
-        }
-      }
     }
 
-    this.stale = invalidCredentials.sort((a, b) => {
+    if ("pageId" in emptyCredentials === false) {
+      this.verifyPageId(
+        credentials.pageId as string,
+        credentials.pageToken as string
+      );
+    }
+
+    if (new Set(this.stale).size !== this.stale.length) {
+      throw new Error("this.stale contains duplicates");
+    }
+
+    this.stale = this.stale.sort((a, b) => {
       const indexA = credentialOptions.indexOf(a);
       const indexB = credentialOptions.indexOf(b);
       return indexA - indexB;
     });
-    console.log("stale", this.stale);
     return this;
   }
 
-  async refreshAppToken(appId: string, appSecret: string) {
-    const data = await this.client.get("oauth/access_token", {
+  refreshAppToken(appId: string, appSecret: string) {
+    const data = this.client.get("oauth/access_token", {
       client_id: appId,
       client_secret: appSecret,
       grant_type: "client_credentials",
@@ -385,14 +471,14 @@ export class Login {
     const redirect = new URL(`http://${host}:${port}/login`);
 
     const server = http.createServer(
-      async (req: http.IncomingMessage, res: http.ServerResponse) => {
+      (req: http.IncomingMessage, res: http.ServerResponse) => {
         assert(req.url, "This request doesn't have a URL");
         const { pathname, query } = url.parse(req.url, true);
 
         switch (pathname) {
           case "/login":
             const code = query.code;
-            const data = await this.client
+            const data = this.client
               .get("oauth/access_token", {
                 code,
                 client_id: appId,
@@ -450,7 +536,7 @@ export class Login {
       spinner: "dots",
       color: "white",
     }).start();
-    await open(oauth);
+    open(oauth);
     setTimeout(() => {
       spinner.stop();
       console.log(
@@ -461,8 +547,8 @@ export class Login {
     }, 1000);
   }
 
-  async refreshUserId(appId: string, appSecret: string, userToken: string) {
-    const data = await this.client.get("me", {
+  refreshUserId(appId: string, appSecret: string, userToken: string) {
+    const data = this.client.get("me", {
       access_token: userToken,
     });
     const userId = data.id;
@@ -474,14 +560,14 @@ export class Login {
     });
   }
 
-  async refreshPageId(
+  refreshPageId(
     appId: string,
     appSecret: string,
     userId: string,
     userToken: string,
     pageIndex: number = 0
   ) {
-    const data = await this.client.get(`${userId}/accounts`, {
+    const data = this.client.get(`${userId}/accounts`, {
       access_token: userToken,
     });
     const pageId = data.data[pageIndex].id;
@@ -493,13 +579,13 @@ export class Login {
     });
   }
 
-  async refreshPageToken(
+  refreshPageToken(
     appId: string,
     appSecret: string,
     pageId: string,
     userToken: string
   ) {
-    const data = await this.client.get(`${pageId}`, {
+    const data = this.client.get(`${pageId}`, {
       access_token: userToken,
       fields: "access_token",
     });
@@ -512,14 +598,17 @@ export class Login {
     });
   }
 
-  async refreshCredentials(scope: Permissions) {
-    this.stale.map(async (stale) => {
-      switch (stale) {
+  refresh(
+    credentials: Array<string> = this.stale,
+    scope: Permissions = DEFAULT_SCOPE
+  ) {
+    credentials.map((c) => {
+      switch (c) {
         case "appToken":
-          await this.refreshAppToken(this.appId, this.appSecret);
+          this.refreshAppToken(this.appId, this.appSecret);
           break;
         case "userToken":
-          await this.refreshUserToken(this.appId, this.appSecret, scope);
+          this.refreshUserToken(this.appId, this.appSecret, scope);
           break;
         case "userId":
           if (this.userToken === undefined) {
@@ -529,7 +618,7 @@ export class Login {
               error
             );
           }
-          await this.refreshUserId(this.appId, this.appSecret, this.userToken);
+          this.refreshUserId(this.appId, this.appSecret, this.userToken);
           break;
         case "pageId":
           if (this.userId === undefined || this.userToken === undefined) {
@@ -539,7 +628,7 @@ export class Login {
               error
             );
           }
-          await this.refreshPageId(
+          this.refreshPageId(
             this.appId,
             this.appSecret,
             this.userId,
@@ -554,7 +643,7 @@ export class Login {
               error
             );
           }
-          await this.refreshPageToken(
+          this.refreshPageToken(
             this.appId,
             this.appSecret,
             this.pageId,
@@ -567,15 +656,15 @@ export class Login {
     });
   }
 
-  async authenticate(config: Authentication) {
+  authenticate(config: Authentication = DEFAULT_CONFIG) {
     const scope = config.scope || this.scope;
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const readCredentials = config.readCredentials || readFromJSONCredentials;
     const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
 
-    await this.verifyCredentials(readCredentials, writeCredentials, expireTime);
-    await this.refreshCredentials(scope);
-    await this.verifyCredentials(readCredentials, writeCredentials, expireTime);
+    this.verify(this.stale, readCredentials, writeCredentials, expireTime);
+    this.refresh(this.stale, scope);
+    this.verify(this.stale, readCredentials, writeCredentials, expireTime);
 
     if (this.stale.length > 0) {
       console.warn(
