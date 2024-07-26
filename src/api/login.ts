@@ -101,10 +101,6 @@ export interface Data {
 }
 
 export interface DebugError {
-  data: DataError;
-}
-
-export interface DataError {
   error: Error;
   is_valid: boolean;
   scopes: any[];
@@ -222,7 +218,12 @@ export class Login {
   verifyAppCredentials(appId: string, appSecret: string) {
     const token = ["appId", "appSecret"];
     const appAccessToken = `${appId}|${appSecret}`;
-    console.log(token);
+
+    if (appId === undefined || appSecret === undefined) {
+      const error = new Error();
+      throw new CredentialError("App ID and App Secret are required.", error);
+    }
+
     this.client
       .get("debug_token", {
         input_token: appAccessToken,
@@ -237,7 +238,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
+        const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, ...token];
         } else {
@@ -253,13 +254,19 @@ export class Login {
 
   verifyAppToken(appToken: string) {
     const token = "appToken";
-    console.log(token);
+
+    if (appToken === undefined) {
+      this.stale = [...this.stale, token];
+      return;
+    }
+
     this.client
       .get("debug_token", {
         input_token: appToken,
         access_token: `${this.appId}|${this.appSecret}`,
       })
       .then((data: Debug) => {
+        console.log("data", data);
         if (data?.data?.is_valid) {
           return true;
         } else {
@@ -268,7 +275,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
+        const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
         } else {
@@ -278,9 +285,49 @@ export class Login {
       });
   }
 
+  verifyUserCredentials(userToken: string, userTokenExpires: number) {
+    const token = "userToken";
+
+    if (userTokenExpires === undefined) {
+      this.stale = [...this.stale, token];
+      return;
+    }
+
+    const now = Date.now();
+    if (now - userTokenExpires <= this.expireTime) {
+      return;
+    }
+
+    this.client
+      .get("debug_token", { input_token: userToken, access_token: userToken })
+      .then((data: Debug) => {
+        console.log("data", data);
+        if (data?.data?.is_valid) {
+          return true;
+        } else {
+          this.stale = [...this.stale, token];
+        }
+      })
+      .catch((e: GraphError) => {
+        const data: DebugError = e.data;
+        const code = data?.error?.code || 400;
+        if (code === 190) {
+          this.stale = [...this.stale, token];
+        } else {
+          const error = new Error();
+          throw new CredentialError("Error verifying user token.", error, e);
+        }
+      });
+  }
+
   verifyUserId(userId: string, userToken: string) {
     const token = "userId";
-    console.log(token);
+
+    if (userToken === undefined || userId === undefined) {
+      this.stale = [...this.stale, token];
+      return;
+    }
+
     this.client
       .get(userId, { access_token: userToken })
       .then((data: Debug) => {
@@ -292,7 +339,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
+        const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
         } else {
@@ -304,7 +351,12 @@ export class Login {
 
   verifyPageId(pageId: string, pageToken: string) {
     const token = "pageId";
-    console.log(token);
+
+    if (pageToken === undefined || pageId === undefined) {
+      this.stale = [...this.stale, token];
+      return;
+    }
+
     this.client
       .get(pageId, { access_token: pageToken })
       .then((data: Debug) => {
@@ -316,7 +368,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
+        const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
         } else {
@@ -327,37 +379,14 @@ export class Login {
     return true;
   }
 
-  verifyUserCredentials(userToken: string, userTokenExpires: number) {
-    const token = "userToken";
-    console.log(token);
-    const now = Date.now();
-    if (now - userTokenExpires <= this.expireTime) {
+  verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
+    const token = "pageToken";
+
+    if (pageToken === undefined) {
+      this.stale = [...this.stale, token];
       return;
     }
 
-    this.client
-      .get("debug_token", { input_token: userToken, access_token: userToken })
-      .then((data: Debug) => {
-        if (data?.data?.is_valid) {
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-        }
-      })
-      .catch((e: GraphError) => {
-        const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-        } else {
-          const error = new Error();
-          throw new CredentialError("Error verifying user token.", error, e);
-        }
-      });
-  }
-
-  verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
-    const token = "pageToken";
     const now = Date.now();
     if (now - pageTokenExpires <= this.expireTime) {
       return;
@@ -374,7 +403,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const data: DebugError = e.data;
-        const code = data?.data?.error?.code || 400;
+        const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
         } else {
@@ -400,32 +429,32 @@ export class Login {
     );
     this.stale = emptyCredentials;
 
-    if ("appToken" in emptyCredentials === false) {
+    if ("appToken" in emptyCredentials === true) {
       this.verifyAppToken(credentials.appToken as string);
     }
 
-    if ("userToken" in emptyCredentials === false) {
+    if ("userToken" in emptyCredentials === true) {
       this.verifyUserCredentials(
         credentials.userToken as string,
         credentials.userTokenExpires as number
       );
     }
 
-    if ("userId" in emptyCredentials === false) {
+    if ("userId" in emptyCredentials === true) {
       this.verifyUserId(
         credentials.userId as string,
         credentials.userToken as string
       );
     }
 
-    if ("pageToken" in emptyCredentials === false) {
-      this.verifyUserCredentials(
+    if ("pageToken" in emptyCredentials === true) {
+      this.verifyPageCredentials(
         credentials.pageToken as string,
         credentials.pageTokenExpires as number
       );
     }
 
-    if ("pageId" in emptyCredentials === false) {
+    if ("pageId" in emptyCredentials === true) {
       this.verifyPageId(
         credentials.pageId as string,
         credentials.pageToken as string
@@ -433,7 +462,7 @@ export class Login {
     }
 
     if (new Set(this.stale).size !== this.stale.length) {
-      throw new Error("this.stale contains duplicates");
+      throw new CredentialError("Stale credentials contain duplicates.");
     }
 
     this.stale = this.stale.sort((a, b) => {
@@ -459,12 +488,50 @@ export class Login {
     });
   }
 
-  async refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
+  refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
     if (appId == "" || appSecret === "") {
       throw new CredentialError(
         "App ID and App Secret are required to generate user tokens."
       );
     }
+
+    let code: any = null;
+    const timeout = setTimeout(() => {
+      if (code === null) {
+        const error = new CredentialError(
+          "OAuth timed out. Please try again.",
+          new Error()
+        );
+        throw error;
+      }
+
+      this.client
+        .get("oauth/access_token", {
+          code,
+          client_id: appId,
+          client_secret: appSecret,
+          redirect_uri: redirect.href,
+        })
+        .then((data: any) => {
+          spinner.stop();
+          console.log(chalk.green("✓"), "Successfully authenticated!");
+
+          const userToken = data.access_token;
+          const userTokenExpires = data.expires_in;
+          this.userToken = userToken;
+          this.userTokenExpires = userTokenExpires;
+          this.writeCredentials({
+            appId,
+            appSecret,
+            userToken,
+            userTokenExpires,
+          });
+        })
+        .catch((e: any) => {
+          const error = new CredentialError("Error getting user token.", e);
+          throw error;
+        });
+    }, 60000);
 
     const port = 2279;
     const host = "localhost";
@@ -477,34 +544,8 @@ export class Login {
 
         switch (pathname) {
           case "/login":
-            const code = query.code;
-            const data = this.client
-              .get("oauth/access_token", {
-                code,
-                client_id: appId,
-                client_secret: appSecret,
-                redirect_uri: redirect.href,
-              })
-              .catch((e: any) => {
-                const error = new CredentialError(
-                  "Error getting user token.",
-                  e
-                );
-                throw error;
-              });
-
-            console.log(chalk.green("✓"), "Successfully authenticated!");
-
-            const userToken = data.access_token;
-            const userTokenExpires = data.expires_in;
-            this.userToken = userToken;
-            this.userTokenExpires = userTokenExpires;
-            this.writeCredentials({
-              appId,
-              appSecret,
-              userToken,
-              userTokenExpires,
-            });
+            code = query.code;
+            clearTimeout(timeout);
 
             res.writeHead(200);
             res.end(
@@ -536,6 +577,7 @@ export class Login {
       spinner: "dots",
       color: "white",
     }).start();
+
     open(oauth);
     setTimeout(() => {
       spinner.stop();
@@ -544,7 +586,7 @@ export class Login {
         "If OAuth did not open, visit the link manually:",
         chalk.blue(oauth)
       );
-    }, 1000);
+    }, 5000);
   }
 
   refreshUserId(appId: string, appSecret: string, userToken: string) {
