@@ -16,8 +16,9 @@ export interface Config {
   userToken?: string;
   userId?: string;
   userTokenExpires?: number;
-  pageToken?: string;
   pageId?: string;
+  pageIndex?: number;
+  pageToken?: string;
   pageTokenExpires?: number;
 
   scope?: Permissions;

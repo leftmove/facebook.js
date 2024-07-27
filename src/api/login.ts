@@ -1,10 +1,6 @@
-import http from "http";
-import assert from "node:assert";
-import url from "node:url";
-
 import open from "open";
-import chalk from "chalk";
 import ora from "ora";
+import inquirer from "inquirer";
 
 import Client from "./wrapper";
 import {
@@ -12,6 +8,7 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
+import { log, yellow, green } from "../cli/utils";
 import { CredentialError, GraphError } from "../errors";
 import type { Config } from "../client/client";
 import type {
@@ -89,26 +86,22 @@ export const DEFAULT_CONFIG: Authentication = {
 };
 
 export interface Debug {
-  data: Data;
-}
-
-export interface Data {
-  app_id: string;
-  type: string;
-  application: string;
-  is_valid: boolean;
-  scopes: any[];
+  data: {
+    app_id: string;
+    type: string;
+    application: string;
+    is_valid: boolean;
+    scopes: any[];
+  };
 }
 
 export interface DebugError {
-  error: Error;
+  error: {
+    code: number;
+    message: string;
+  };
   is_valid: boolean;
   scopes: any[];
-}
-
-export interface Error {
-  code: number;
-  message: string;
 }
 
 export const credentialOptions = [
@@ -136,8 +129,9 @@ export class Login {
   userToken?: string;
   userId?: string;
   userTokenExpires?: number;
-  pageToken?: string;
   pageId?: string;
+  pageIndex?: number;
+  pageToken?: string;
   pageTokenExpires?: number;
 
   overrideLocal = true;
@@ -179,6 +173,8 @@ export class Login {
     const pageToken =
       config.pageToken || credentials.pageToken || this.pageToken;
     const pageId = config.pageId || credentials.pageId || this.pageId;
+    const pageIndex =
+      config.pageIndex || credentials.pageIndex || this.pageIndex;
     const pageTokenExpires =
       config.pageTokenExpires ||
       credentials.pageTokenExpires ||
@@ -193,8 +189,9 @@ export class Login {
     this.userToken = userToken;
     this.userId = userId;
     this.userTokenExpires = userTokenExpires;
-    this.pageToken = pageToken;
     this.pageId = pageId;
+    this.pageIndex = pageIndex;
+    this.pageToken = pageToken;
     this.pageTokenExpires = pageTokenExpires;
     this.scope = scope;
     this.writeCredentials = writeCredentials;
@@ -207,7 +204,10 @@ export class Login {
         appSecret,
         appToken,
         userToken,
+        userId,
         userTokenExpires,
+        pageIndex,
+        pageId,
         pageToken,
         pageTokenExpires,
         scope,
@@ -266,7 +266,6 @@ export class Login {
         access_token: `${this.appId}|${this.appSecret}`,
       })
       .then((data: Debug) => {
-        console.log("data", data);
         if (data?.data?.is_valid) {
           return true;
         } else {
@@ -288,7 +287,7 @@ export class Login {
   verifyUserCredentials(userToken: string, userTokenExpires: number) {
     const token = "userToken";
 
-    if (userTokenExpires === undefined) {
+    if (userToken === undefined) {
       this.stale = [...this.stale, token];
       return;
     }
@@ -301,7 +300,6 @@ export class Login {
     this.client
       .get("debug_token", { input_token: userToken, access_token: userToken })
       .then((data: Debug) => {
-        console.log("data", data);
         if (data?.data?.is_valid) {
           return true;
         } else {
@@ -474,18 +472,29 @@ export class Login {
   }
 
   refreshAppToken(appId: string, appSecret: string) {
-    const data = this.client.get("oauth/access_token", {
-      client_id: appId,
-      client_secret: appSecret,
-      grant_type: "client_credentials",
-    });
-    const accessToken = data.access_token;
-    this.appToken = accessToken;
-    this.writeCredentials({
-      appId: appId,
-      appSecret: appSecret,
-      appToken: accessToken,
-    });
+    interface Data {
+      access_token: string;
+      token_type: string;
+    }
+    this.client
+      .get("oauth/access_token", {
+        client_id: appId,
+        client_secret: appSecret,
+        grant_type: "client_credentials",
+      })
+      .then((data: Data) => {
+        const accessToken = data.access_token;
+        this.appToken = accessToken;
+        this.writeCredentials({
+          appId: appId,
+          appSecret: appSecret,
+          appToken: accessToken,
+        });
+      })
+      .catch((e: GraphError) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying page token.", error, e);
+      });
   }
 
   refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
@@ -495,71 +504,9 @@ export class Login {
       );
     }
 
-    let code: any = null;
-    const timeout = setTimeout(() => {
-      if (code === null) {
-        const error = new CredentialError(
-          "OAuth timed out. Please try again.",
-          new Error()
-        );
-        throw error;
-      }
-
-      this.client
-        .get("oauth/access_token", {
-          code,
-          client_id: appId,
-          client_secret: appSecret,
-          redirect_uri: redirect.href,
-        })
-        .then((data: any) => {
-          spinner.stop();
-          console.log(chalk.green("✓"), "Successfully authenticated!");
-
-          const userToken = data.access_token;
-          const userTokenExpires = data.expires_in;
-          this.userToken = userToken;
-          this.userTokenExpires = userTokenExpires;
-          this.writeCredentials({
-            appId,
-            appSecret,
-            userToken,
-            userTokenExpires,
-          });
-        })
-        .catch((e: any) => {
-          const error = new CredentialError("Error getting user token.", e);
-          throw error;
-        });
-    }, 60000);
-
     const port = 2279;
     const host = "localhost";
     const redirect = new URL(`http://${host}:${port}/login`);
-
-    const server = http.createServer(
-      (req: http.IncomingMessage, res: http.ServerResponse) => {
-        assert(req.url, "This request doesn't have a URL");
-        const { pathname, query } = url.parse(req.url, true);
-
-        switch (pathname) {
-          case "/login":
-            code = query.code;
-            clearTimeout(timeout);
-
-            res.writeHead(200);
-            res.end(
-              "Success! Your Facebook instance has been authenticated, you may now close this tab.",
-              () => server.close()
-            );
-
-            break;
-          default:
-            res.writeHead(404);
-            res.end("not found");
-        }
-      }
-    );
 
     const oauth =
       "https://facebook.com/v20.0/dialog/oauth?" +
@@ -570,36 +517,100 @@ export class Login {
         scope: Object.keys(scope).join(","),
         redirect_uri: redirect.href,
       });
-    server.listen(port, host);
 
-    const spinner = ora({
-      text: "Attempting OAuth in default browser",
-      spinner: "dots",
-      color: "white",
-    }).start();
+    const handleOAuth = () => {
+      const spinner = ora({
+        text: "Attempting OAuth in default browser ...",
+        spinner: "dots",
+        color: "white",
+      }).start();
 
-    open(oauth);
-    setTimeout(() => {
-      spinner.stop();
-      console.log(
-        chalk.yellow("!"),
-        "If OAuth did not open, visit the link manually:",
-        chalk.blue(oauth)
-      );
-    }, 5000);
+      open(oauth);
+      const client = new Client();
+
+      client.wait(2500).then(() => {
+        spinner.stop();
+        log("-", "Attempted to open OAuth in default browser.", yellow);
+        log(
+          "!",
+          `If OAuth did not open, you can visit the link manually:\n${oauth}`,
+          yellow
+        );
+      });
+    };
+
+    this.client
+      .server("/login", handleOAuth, { host, port })
+      .then((query: any) => {
+        const client = new Client();
+        const code = query.code;
+
+        const spinner = ora({
+          text: "Authenticating user token ...",
+          spinner: "dots",
+          color: "white",
+        }).start();
+        interface Data {
+          access_token: string;
+          token_type: string;
+          expires_in: number;
+        }
+
+        client
+          .get("oauth/access_token", {
+            code,
+            client_id: appId,
+            client_secret: appSecret,
+            redirect_uri: redirect.href,
+          })
+          .then((data: Data) => {
+            spinner.stop();
+            log("✓", "Successfully authenticated user token.", green);
+
+            const userToken = data.access_token;
+            const userTokenExpires = data.expires_in;
+            this.userToken = userToken;
+            this.userTokenExpires = userTokenExpires;
+            this.writeCredentials({
+              appId,
+              appSecret,
+              userToken,
+              userTokenExpires,
+            });
+          })
+          .catch((e: GraphError) => {
+            const error = new Error();
+            throw new CredentialError("Error getting user token.", error, e);
+          });
+      })
+      .catch((e: GraphError) => {
+        const error = new Error();
+        throw new CredentialError("Error getting user token.", error, e);
+      });
   }
 
   refreshUserId(appId: string, appSecret: string, userToken: string) {
-    const data = this.client.get("me", {
-      access_token: userToken,
-    });
-    const userId = data.id;
-    this.userId = userId;
-    this.writeCredentials({
-      appId,
-      appSecret,
-      userId,
-    });
+    interface Data {
+      name: string;
+      id: string;
+    }
+    this.client
+      .get("me", {
+        access_token: userToken,
+      })
+      .then((data: Data) => {
+        const userId = data.id;
+        this.userId = userId;
+        this.writeCredentials({
+          appId,
+          appSecret,
+          userId,
+        });
+      })
+      .catch((e: GraphError) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying page token.", error, e);
+      });
   }
 
   refreshPageId(
@@ -607,18 +618,60 @@ export class Login {
     appSecret: string,
     userId: string,
     userToken: string,
-    pageIndex: number = 0
+    pageIndex: number | null = null
   ) {
-    const data = this.client.get(`${userId}/accounts`, {
-      access_token: userToken,
-    });
-    const pageId = data.data[pageIndex].id;
-    this.pageId = pageId;
-    this.writeCredentials({
-      appId,
-      appSecret,
-      pageId,
-    });
+    interface Data {
+      data: {
+        access_token: string;
+        category: string;
+        category_list: {
+          id: string;
+          name: string;
+        }[];
+        name: string;
+        id: string;
+        tasks: string[];
+      }[];
+      paging: {
+        cursors: {
+          before: string;
+          after: string;
+        };
+      };
+    }
+    this.client
+      .get(`${userId}/accounts`, {
+        access_token: userToken,
+      })
+      .then((data: Data) => {
+        const pageCount = data.data.length;
+        if (pageCount === 0) {
+          throw new Error("No pages found.");
+        }
+        if (pageCount === 1 || pageIndex === null) {
+          pageIndex = 0;
+        }
+
+        if (pageIndex === null) {
+          throw new Error("Invalid page index selected.");
+        }
+
+        const pageId = data.data[pageIndex].id;
+        this.pageId = pageId;
+        this.writeCredentials({
+          appId,
+          appSecret,
+          pageId,
+        });
+      })
+      .catch((e: any) => {
+        if (e instanceof GraphError) {
+          const error = new Error();
+          throw new CredentialError("Error verifying page token.", error, e);
+        } else {
+          throw new CredentialError("Error verifying page token.", e);
+        }
+      });
   }
 
   refreshPageToken(
@@ -627,17 +680,28 @@ export class Login {
     pageId: string,
     userToken: string
   ) {
-    const data = this.client.get(`${pageId}`, {
-      access_token: userToken,
-      fields: "access_token",
-    });
-    const accessToken = data.access_token;
-    this.pageToken = accessToken;
-    this.writeCredentials({
-      appId,
-      appSecret,
-      pageToken: accessToken,
-    });
+    interface Data {
+      access_token: string;
+      id: string;
+    }
+    this.client
+      .get(`${pageId}`, {
+        access_token: userToken,
+        fields: "access_token",
+      })
+      .then((data: Data) => {
+        const accessToken = data.access_token;
+        this.pageToken = accessToken;
+        this.writeCredentials({
+          appId,
+          appSecret,
+          pageToken: accessToken,
+        });
+      })
+      .catch((e: GraphError) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying page token.", error, e);
+      });
   }
 
   refresh(
@@ -666,7 +730,7 @@ export class Login {
           if (this.userId === undefined || this.userToken === undefined) {
             const error = new Error();
             throw new CredentialError(
-              "Error getting page ID, user ID and user token are required first.",
+              "Error getting page ID, user ID, and user token are required first.",
               error
             );
           }
@@ -714,5 +778,7 @@ export class Login {
         this.stale
       );
     }
+
+    return this;
   }
 }
