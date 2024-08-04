@@ -1,19 +1,15 @@
-import ora from "ora";
 import inquirer from "inquirer";
 
 import Facebook from "../index";
 import { CredentialError } from "../index";
+import { spin } from "./components";
 
 export async function userIdCredential(
   facebook: Facebook,
   userId: string | undefined
 ) {
   if (userId === undefined) {
-    const spinner = ora({
-      text: "Authenticating User ID ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
+    const spinner = spin("Authenticating User ID ...");
 
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
@@ -41,11 +37,7 @@ export async function pageIdCredential(
   pageIndex: string | undefined
 ) {
   if (pageId === undefined) {
-    const spinner = ora({
-      text: "Authenticating Page ID ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
+    const spinner = spin("Authenticating Page ID ...");
 
     const userId = facebook.userId;
     const userToken = facebook.userToken;

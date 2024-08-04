@@ -1,9 +1,7 @@
 #!/usr/bin/env tsx
 
 import { Command } from "commander";
-import inquirer from "inquirer";
-import chalk from "chalk";
-import ora from "ora";
+import { render } from "ink";
 
 import Facebook from "../index";
 import {
@@ -19,18 +17,10 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { centerText, log, reset } from "./utils";
+import { initial, loginStart, loginSuccess } from "./components";
 
 const program = new Command();
-
-console.log("\n");
-const initalization = centerText(
-  chalk.blue("--------------") +
-    chalk.bold(" facebook.js ") +
-    chalk.blue("--------------")
-);
-console.log(initalization);
-console.log("\n");
+initial();
 
 program
   .name("cli-facebook.js")
@@ -59,12 +49,7 @@ program
     const scope =
       credentials.scope || JSON.parse(options.scope || "{}") || undefined;
 
-    log("-", "Logging In ...", reset);
-    log(
-      "-",
-      "To View Your App Credentials, visit https://developers.facebook.com/apps and select/create your app. Then, copy the app ID and secret from App Settings > Basic.",
-      reset
-    );
+    loginStart();
 
     const { appId, appSecret } = await appCredentials(
       options.appId || credentials.appId || undefined,
@@ -96,7 +81,8 @@ program
       { appId, appSecret, appToken, userToken, userId, pageId },
       path
     );
-    log("-", "Logged In Successfully", reset);
+
+    loginSuccess();
   });
 
 program.parse();

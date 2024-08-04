@@ -1,5 +1,4 @@
 import open from "open";
-import ora from "ora";
 import inquirer from "inquirer";
 
 import Client from "./wrapper";
@@ -8,7 +7,7 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
-import { log, yellow, green } from "../cli/utils";
+import { log, yellow, green, spin } from "../cli/components";
 import { CredentialError, GraphError } from "../errors";
 import type { Config } from "../client/client";
 import type {
@@ -547,11 +546,7 @@ export class Login {
       });
 
     const handleOAuth = () => {
-      const spinner = ora({
-        text: "Attempting OAuth in default browser ...",
-        spinner: "dots",
-        color: "white",
-      }).start();
+      const spinner = spin("Attempting OAuth in default browser ...");
 
       open(oauth);
       const client = new Client();
@@ -573,11 +568,7 @@ export class Login {
         const client = new Client();
         const code = query.code;
 
-        const spinner = ora({
-          text: "Authenticating user token ...",
-          spinner: "dots",
-          color: "white",
-        }).start();
+        const spinner = spin("Authenticating user token ...");
         interface Data {
           access_token: string;
           token_type: string;
