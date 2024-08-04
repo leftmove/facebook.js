@@ -142,7 +142,16 @@ program
 
     const path = options.path || DEFAULT_FILE_PATH;
     writeToJSONCredentials(
-      { appId, appSecret, appToken, userToken, userId, pageId, pageToken },
+      {
+        appId,
+        appSecret,
+        appToken,
+        userToken,
+        userId,
+        pageIndex,
+        pageId,
+        pageToken,
+      },
       path
     );
 

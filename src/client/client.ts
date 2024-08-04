@@ -1,12 +1,7 @@
 import { Client, Login } from "../api";
-import { CredentialError, GraphError, PostError } from "../errors";
-import {
-  writeToJSONCredentials,
-  readFromJSONCredentials,
-} from "../credentials";
+import { CredentialError, PostError } from "../errors";
 import type { writeCredentials, readCredentials } from "../credentials";
 import type { Permissions } from "../api";
-import type { Credentials } from "../credentials";
 
 export interface Config {
   appId?: string;
@@ -32,9 +27,10 @@ export interface Config {
 
 interface PostRegular {
   message: string;
+  type?: "user" | "page";
   link?: string;
   published?: boolean;
-  targeting: {
+  targeting?: {
     countries: string[];
     cities: string[];
   };
@@ -62,7 +58,7 @@ export class Facebook extends Login {
     super(config);
   }
 
-  getPost(postId: string) {
+  post(postId: string) {
     try {
       return this.client.get(postId);
     } catch (error) {
@@ -70,13 +66,35 @@ export class Facebook extends Login {
     }
   }
 
-  publishPost(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
-    const post = () =>
-      this.client.post(`${this.pageId}/feed}`, {
-        ...config,
-      });
+  publish(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
+    if (this.userId === undefined) {
+      throw new CredentialError("User ID is not defined.");
+    }
+
+    if (this.userToken === undefined) {
+      throw new CredentialError("User token is not defined.");
+    }
+
+    if (this.pageToken === undefined) {
+      throw new CredentialError("Page token is not defined.");
+    }
+
+    const type = config.type || "page";
+    this.refreshPageId(
+      this.appId,
+      this.appSecret,
+      this.userId,
+      this.userToken,
+      this.pageIndex
+    );
+
     try {
-      return post();
-    } catch {}
+      return this.client.post(`${this.pageId}/feed`, {
+        ...config,
+        access_token: type === "user" ? this.userToken : this.pageToken,
+      });
+    } catch (error) {
+      throw new PostError("Error publishing post.", error);
+    }
   }
 }

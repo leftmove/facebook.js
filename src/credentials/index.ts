@@ -60,7 +60,6 @@ export function writeToJSONCredentials(
 
 export function readFromJSONCredentials(filePath: string = DEFAULT_FILE_PATH) {
   createJSONFileIfNotExists(filePath);
-
   try {
     const data = fs.readFileSync(filePath, "utf8");
     const credentials: Credentials = JSON.parse(data);

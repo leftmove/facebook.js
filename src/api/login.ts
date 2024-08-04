@@ -1,6 +1,3 @@
-import open from "open";
-import inquirer from "inquirer";
-
 import Client from "./wrapper";
 import {
   writeToJSONCredentials,
@@ -164,6 +161,11 @@ export class Login {
         "Empty credentials provided. App ID and App Secret are required."
       );
     }
+
+    // If the credentials object doesn't have all the correct properties (a likely
+    // problem), the following variables will still be filled because of the fallbacks.
+    // This would normally cause an error in TS, but the Credentials type fixes
+    // this, even though the values may possibly be undefined.
 
     const appToken = config.appToken || credentials.appToken || this.appToken;
     const appTokenExpires =
@@ -770,6 +772,7 @@ export class Login {
         this.writeCredentials({
           appId,
           appSecret,
+          pageIndex,
           pageId,
           pageIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
         });
@@ -868,7 +871,7 @@ export class Login {
     });
   }
 
-  authenticate(config: Authentication = DEFAULT_CONFIG) {
+  login(config: Authentication = DEFAULT_CONFIG) {
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const readCredentials = config.readCredentials || readFromJSONCredentials;
     const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
@@ -885,5 +888,108 @@ export class Login {
     }
 
     return this;
+  }
+
+  credentials(
+    options: { error: boolean; expirations: boolean; index: boolean } = {
+      error: true,
+      expirations: true,
+      index: true,
+    }
+  ) {
+    return new Promise((resolve) => {
+      const {
+        appId,
+        appSecret,
+        appToken,
+        appTokenExpires,
+        userToken,
+        userTokenExpires,
+        userId,
+        userIdExpires,
+        pageId,
+        pageIdExpires,
+        pageIndex,
+        pageToken,
+        pageTokenExpires,
+      } = this;
+
+      const warn = (message: string) => {
+        if (options.error) {
+          const error = new Error();
+          throw new CredentialError(message, error);
+        } else {
+          console.warn(message);
+        }
+      };
+
+      if (appId === undefined) {
+        warn("App ID is required.");
+      }
+
+      if (appSecret === undefined) {
+        warn("App secret is required.");
+      }
+
+      if (appToken === undefined) {
+        warn("App token is required.");
+      }
+
+      if (options.expirations && appTokenExpires === undefined) {
+        warn("App token expiration is required.");
+      }
+
+      if (userToken === undefined) {
+        warn("User token is required.");
+      }
+
+      if (options.expirations && userTokenExpires === undefined) {
+        warn("User token expiration is required.");
+      }
+
+      if (userId === undefined) {
+        warn("User ID is required.");
+      }
+
+      if (options.expirations && userIdExpires === undefined) {
+        warn("User ID expiration is required.");
+      }
+
+      if (pageId === undefined) {
+        warn("Page ID is required.");
+      }
+
+      if (options.expirations && pageIdExpires === undefined) {
+        warn("Page ID expiration is required.");
+      }
+
+      if (pageIndex === undefined) {
+        warn("Page index is required.");
+      }
+
+      if (pageToken === undefined) {
+        warn("Page token is required.");
+      }
+
+      if (options.index && pageTokenExpires === undefined) {
+        warn("Page token expiration is required.");
+      }
+
+      resolve({
+        appId,
+        appSecret,
+        appToken,
+        appTokenExpires,
+        userToken,
+        userTokenExpires,
+        userId,
+        userIdExpires,
+        pageId,
+        pageIdExpires,
+        pageIndex,
+        pageToken,
+        pageTokenExpires,
+      });
+    });
   }
 }

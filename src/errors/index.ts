@@ -13,6 +13,9 @@ export class GraphError extends Error {
     if (data) {
       data.url = response?.url;
       data.status = response?.status;
+      if (response.body) {
+        data.body = response.body;
+      }
     }
 
     this.data = data;
@@ -23,7 +26,8 @@ export class GraphError extends Error {
     this.status = data?.error?.code || response?.status;
 
     this.name = "GraphError";
-    this.message = `${message || ""} ${JSON.stringify(data, null, 2) || ""}`;
+    this.message = `${message || ""} ${JSON.stringify(data, null, 2) || ""}
+    }`;
   }
 }
 

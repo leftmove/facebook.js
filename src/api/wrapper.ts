@@ -76,7 +76,6 @@ export default class Client extends Queue {
         const url = `${this.url}/${path}${
           params ? "?" + new URLSearchParams(params).toString() : ""
         }`;
-        // console.log(url, new Error().stack);
         const response = await fetch(url).then(async (r: any) => {
           const data = await r.json();
           if (r.ok) {
@@ -92,11 +91,14 @@ export default class Client extends Queue {
     return this.enqueue(helper);
   }
 
-  post(path: string, body: any) {
+  post(path: string, body: Object) {
     const helper = () =>
       new Promise(async (resolve, reject) => {
         const response = await fetch(`${this.url}/${path}`, {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(body),
         }).then(async (r) => {
           const data = await r.json();

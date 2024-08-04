@@ -1,13 +1,12 @@
-import Facebook from "../src";
+// import Facebook from "../src";
 
-const facebook = new Facebook();
+// const facebook = new Facebook();
 
-if (facebook.userToken && facebook.userId) {
-  facebook.refreshPageId(
-    facebook.appId,
-    facebook.appSecret,
-    facebook.userId,
-    facebook.userToken,
-    null
-  );
-}
+// facebook
+//   .login()
+//   .credentials()
+//   .then((credentials) => {
+//     console.log(credentials);
+//   });
+
+// facebook.publish({ message: "Hello, World!" });
