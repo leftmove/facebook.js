@@ -10,6 +10,7 @@ import Client from "./client";
 import {
   writeToJSONCredentials,
   readFromJSONCredentials,
+  DEFAULT_FILE_PATH,
 } from "../credentials";
 import { CredentialError } from "../errors";
 import type {
@@ -58,7 +59,7 @@ export interface Permissions {
   whatsapp_business_management?: boolean;
   whatsapp_business_messaging?: boolean;
 }
-const DEFAULT_SCOPE: Permissions = {
+export const DEFAULT_SCOPE: Permissions = {
   pages_manage_engagement: true,
   pages_manage_posts: true,
   pages_read_engagement: true,
@@ -68,6 +69,8 @@ const DEFAULT_SCOPE: Permissions = {
   business_management: true,
 };
 
+export const DEFAULT_EXPIRE_TIME = 60;
+
 export interface Config {
   path?: string;
   expireTime?: number;
@@ -75,15 +78,21 @@ export interface Config {
   readCredentials?: readCredentials;
 }
 
+export const DEFAULT_CONFIG: Config = {
+  path: DEFAULT_FILE_PATH,
+  expireTime: DEFAULT_EXPIRE_TIME,
+  writeCredentials: writeToJSONCredentials,
+  readCredentials: readFromJSONCredentials,
+};
+
 const credentialOptions = [
   "appId",
   "appSecret",
   "appToken",
   "userToken",
-  "userTokenExpires",
+  "userId",
   "pageToken",
-  "pageTokenExpires",
-  "scope",
+  "pageId",
 ];
 
 export class Login {
@@ -93,15 +102,46 @@ export class Login {
   staleCredentials: Array<string> = [];
   client = new Client();
 
-  readCredentials: readCredentials = readFromJSONCredentials;
   writeCredentials: writeCredentials = writeToJSONCredentials;
+  readCredentials: readCredentials = readFromJSONCredentials;
+  expireTime: number = DEFAULT_EXPIRE_TIME;
 
-  constructor(appId: string = "", appSecret: string = "") {
+  constructor(appId: string, appSecret: string) {
     this.appId = appId;
     this.appSecret = appSecret;
   }
 
-  async verifyAppCredentials(appToken: string) {
+  // Verification methods for various credentials, including app, user, and page tokens.
+  // While different methods are used, the "/debug_token" endpoint can be used to verify all tokens.
+  // The only reason it's not used universally, is because it would take a while to refactor and all the code, and in the end it doesn't really make a difference.
+
+  async verifyAppCredentials(appId: string, appSecret: string) {
+    try {
+      const appAccessToken = `${appId}|${appSecret}`;
+      const data = await this.client.get("debug_token", {
+        input_token: appAccessToken,
+        access_token: appAccessToken,
+      });
+      if (data.is_valid) {
+        return true;
+      } else {
+        throw new CredentialError(
+          "Credentials not valid, provide a valid App ID and App Secret."
+        );
+      }
+    } catch (error: any) {
+      if (error.status === 190 || error.data.is_valid === false) {
+        return false;
+      } else {
+        throw new CredentialError(
+          "Bad credentials. Please make an issue on GitHub if this problem persists.",
+          error
+        );
+      }
+    }
+  }
+
+  async verifyAppToken(appToken: string) {
     try {
       await this.client.get("debug_token", {
         input_token: appToken,
@@ -120,9 +160,33 @@ export class Login {
     }
   }
 
+  async verifyUserId(userId: string, userToken: string) {
+    try {
+      await this.client.get(userId, { access_token: userToken });
+      return true;
+    } catch (error: any) {
+      throw new CredentialError(
+        "Bad credentials. Please make an issue on GitHub if this problem persists.",
+        error
+      );
+    }
+  }
+
+  async verifyPageId(pageId: string, pageToken: string) {
+    try {
+      await this.client.get(pageId, { access_token: pageToken });
+      return true;
+    } catch (error: any) {
+      throw new CredentialError(
+        "Bad credentials. Please make an issue on GitHub if this problem persists.",
+        error
+      );
+    }
+  }
+
   async verifyUserCredentials(userToken: string, userTokenExpires: number) {
     const now = Date.now();
-    if (now - userTokenExpires <= 60) {
+    if (now - userTokenExpires <= this.expireTime) {
       return true;
     }
 
@@ -143,7 +207,7 @@ export class Login {
 
   async verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
     const now = Date.now();
-    if (now - pageTokenExpires <= 60) {
+    if (now - pageTokenExpires <= this.expireTime) {
       return true;
     }
 
@@ -165,10 +229,12 @@ export class Login {
   async verifyCredentials(config: Config) {
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const readCredentials = config.readCredentials || readFromJSONCredentials;
+    const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
     const credentials = readCredentials();
 
     this.readCredentials = readCredentials;
     this.writeCredentials = writeCredentials;
+    this.expireTime = expireTime;
 
     const emptyCredentials = credentialOptions.filter(
       (option) => !credentials[option as keyof Credentials]
@@ -176,7 +242,7 @@ export class Login {
     const invalidCredentials = emptyCredentials;
 
     if ("appToken" in emptyCredentials === false) {
-      const appValid = await this.verifyAppCredentials(
+      const appValid = await this.verifyAppToken(
         credentials.appToken as string
       );
       if (appValid === false) {
@@ -194,6 +260,16 @@ export class Login {
       }
     }
 
+    if ("userId" in emptyCredentials === false) {
+      const userValid = await this.verifyUserId(
+        credentials.userId as string,
+        credentials.userToken as string
+      );
+      if (userValid === false) {
+        invalidCredentials.push("userId");
+      }
+    }
+
     if ("pageToken" in emptyCredentials === false) {
       const pageValid = await this.verifyUserCredentials(
         credentials.pageToken as string,
@@ -201,6 +277,16 @@ export class Login {
       );
       if (pageValid === false) {
         invalidCredentials.push("pageToken");
+      }
+
+      if ("pageId" in emptyCredentials === false) {
+        const pageValid = await this.verifyPageId(
+          credentials.pageId as string,
+          credentials.pageToken as string
+        );
+        if (pageValid === false) {
+          invalidCredentials.push("pageId");
+        }
       }
     }
 
@@ -308,6 +394,20 @@ export class Login {
     }, 1000);
   }
 
+  async refreshUserId(userToken: string) {
+    const data = await this.client.get("me", { access_token: userToken });
+    const userId = data.id;
+    this.writeCredentials({
+      appId: this.appId,
+      appSecret: this.appSecret,
+      userId,
+    });
+  }
+
+  async refreshPageId(userToken: string) {}
+
+  async refreshPageToken(scope: Permissions) {}
+
   async refreshCredentials(scope: Permissions) {
     this.staleCredentials.map(async (stale) => {
       switch (stale) {
@@ -317,6 +417,8 @@ export class Login {
         case "userToken":
           await this.refreshUserToken(scope);
           break;
+        case "userId":
+
         case "pageToken":
           break;
       }

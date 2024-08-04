@@ -14,8 +14,10 @@ export interface Config {
 
   appToken?: string;
   userToken?: string;
+  userId?: string;
   userTokenExpires?: number;
   pageToken?: string;
+  pageId?: string;
   pageTokenExpires?: number;
 
   scope?: Permissions;
@@ -32,8 +34,10 @@ export class Facebook extends Login {
 
   appToken: string | null = null;
   userToken?: string | null = null;
+  userId?: string | null = null;
   userTokenExpires?: number | null = null;
   pageToken?: string | null = null;
+  pageId?: string | null = null;
   pageTokenExpires?: number | null = null;
 
   overrideLocal = true;
@@ -49,14 +53,11 @@ export class Facebook extends Login {
   };
 
   constructor(config: Config = {}) {
-    super();
-
-    const readCredentials = config.readCredentials || this.readCredentials;
+    const readCredentials = config.readCredentials || readFromJSONCredentials;
     const credentials = readCredentials();
 
-    const appId = config.appId || credentials.appId || this.appId;
-    const appSecret =
-      config.appSecret || credentials.appSecret || this.appSecret;
+    const appId = config.appId || credentials.appId || null;
+    const appSecret = config.appSecret || credentials.appSecret || null;
 
     if (appId === null || appSecret === null) {
       throw new CredentialError(
@@ -64,15 +65,19 @@ export class Facebook extends Login {
       );
     }
 
+    super(appId, appSecret);
+
     const appToken = config.appToken || credentials.appToken || this.appToken;
     const userToken =
       config.userToken || credentials.userToken || this.userToken;
+    const userId = config.userId || credentials.userId || this.userId;
     const userTokenExpires =
       config.userTokenExpires ||
       credentials.userTokenExpires ||
       this.userTokenExpires;
     const pageToken =
       config.pageToken || credentials.pageToken || this.pageToken;
+    const pageId = config.pageId || credentials.pageId || this.pageId;
     const pageTokenExpires =
       config.pageTokenExpires ||
       credentials.pageTokenExpires ||
@@ -106,38 +111,5 @@ export class Facebook extends Login {
         scope,
       });
     }
-  }
-
-  async updateCredentials(credentials: Credentials) {
-    const appId = credentials.appId || this.appId;
-    const appSecret = credentials.appSecret || this.appSecret;
-    const appToken = credentials.appToken || this.appToken;
-    const userToken = credentials.userToken || this.userToken;
-    const userTokenExpires =
-      credentials.userTokenExpires || this.userTokenExpires;
-    const pageToken = credentials.pageToken || this.pageToken;
-    const pageTokenExpires =
-      credentials.pageTokenExpires || this.pageTokenExpires;
-    const scope = credentials.scope || this.scope;
-
-    this.appId = appId;
-    this.appSecret = appSecret;
-    this.appToken = appToken;
-    this.userToken = userToken;
-    this.userTokenExpires = userTokenExpires;
-    this.pageToken = pageToken;
-    this.pageTokenExpires = pageTokenExpires;
-    this.scope = scope;
-
-    this.writeCredentials({
-      appId,
-      appSecret,
-      appToken,
-      userToken,
-      userTokenExpires,
-      pageToken,
-      pageTokenExpires,
-      scope,
-    });
   }
 }
