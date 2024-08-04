@@ -1,12 +1,11 @@
-// import Facebook from "../src";
+import Facebook from "../src";
 
-// const facebook = new Facebook();
+const facebook = new Facebook();
 
-// facebook
-//   .login()
-//   .credentials()
-//   .then((credentials) => {
-//     console.log(credentials);
-//   });
+facebook
+  .login()
+  .credentials()
+  .then((credentials) => console.log(credentials))
+  .catch((error) => console.error(error));
 
-// facebook.publish({ message: "Hello, World!" });
+facebook.publish({ message: "Hello, World!" });

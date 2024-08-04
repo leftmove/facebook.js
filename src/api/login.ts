@@ -162,7 +162,7 @@ export class Login {
       );
     }
 
-    // If the credentials object doesn't have all the correct properties (a likely
+    // If the credentials/config object doesn't have all the correct properties (a likely
     // problem), the following variables will still be filled because of the fallbacks.
     // This would normally cause an error in TS, but the Credentials type fixes
     // this, even though the values may possibly be undefined.
@@ -186,8 +186,9 @@ export class Login {
     const pageId = config.pageId || credentials.pageId || this.pageId;
     const pageIdExpires =
       config.pageIdExpires || credentials.pageIdExpires || this.pageIdExpires;
-    const pageIndex =
-      config.pageIndex || credentials.pageIndex || this.pageIndex;
+    const pageIndex = Number(
+      config.pageIndex || credentials.pageIndex?.toString() || this.pageIndex
+    );
     const pageTokenExpires =
       config.pageTokenExpires ||
       credentials.pageTokenExpires ||
@@ -769,6 +770,7 @@ export class Login {
       .then((data: Data) => {
         const pageId = data.data[pageIndex].id;
         this.pageId = pageId;
+        this.pageIndex = pageIndex;
         this.writeCredentials({
           appId,
           appSecret,
@@ -882,8 +884,8 @@ export class Login {
 
     if (this.stale.length > 0) {
       console.warn(
-        "Warning: error refreshing credentials, some credentials were unable to be refreshed.",
-        this.stale
+        "Error refreshing credentials, some credentials were unable to be refreshed: " +
+          this.stale
       );
     }
 
@@ -923,56 +925,57 @@ export class Login {
         }
       };
 
+      // This will never happen
       if (appId === undefined) {
-        warn("App ID is required.");
+        warn("App ID is missing.");
       }
 
       if (appSecret === undefined) {
-        warn("App secret is required.");
+        warn("App secret is missing.");
       }
 
       if (appToken === undefined) {
-        warn("App token is required.");
+        warn("App token is missing.");
       }
 
       if (options.expirations && appTokenExpires === undefined) {
-        warn("App token expiration is required.");
+        warn("App token expiration is missing.");
       }
 
       if (userToken === undefined) {
-        warn("User token is required.");
+        warn("User token is missing.");
       }
 
       if (options.expirations && userTokenExpires === undefined) {
-        warn("User token expiration is required.");
+        warn("User token expiration is missing.");
       }
 
       if (userId === undefined) {
-        warn("User ID is required.");
+        warn("User ID is missing.");
       }
 
       if (options.expirations && userIdExpires === undefined) {
-        warn("User ID expiration is required.");
+        warn("User ID expiration is missing.");
       }
 
       if (pageId === undefined) {
-        warn("Page ID is required.");
+        warn("Page ID is missing.");
       }
 
       if (options.expirations && pageIdExpires === undefined) {
-        warn("Page ID expiration is required.");
+        warn("Page ID expiration is missing.");
       }
 
       if (pageIndex === undefined) {
-        warn("Page index is required.");
+        warn("Page index is missing.");
       }
 
       if (pageToken === undefined) {
-        warn("Page token is required.");
+        warn("Page token is missing.");
       }
 
       if (options.index && pageTokenExpires === undefined) {
-        warn("Page token expiration is required.");
+        warn("Page token expiration is missing.");
       }
 
       resolve({

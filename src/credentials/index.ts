@@ -43,7 +43,7 @@ export function createJSONFileIfNotExists(filePath: string) {
 export function writeToJSONCredentials(
   credentials: Credentials,
   filePath: string = DEFAULT_FILE_PATH
-) {
+): void {
   createJSONFileIfNotExists(filePath);
 
   const oldData = fs.readFileSync(filePath, "utf8");
@@ -58,7 +58,9 @@ export function writeToJSONCredentials(
   }
 }
 
-export function readFromJSONCredentials(filePath: string = DEFAULT_FILE_PATH) {
+export function readFromJSONCredentials(
+  filePath: string = DEFAULT_FILE_PATH
+): Credentials {
   createJSONFileIfNotExists(filePath);
   try {
     const data = fs.readFileSync(filePath, "utf8");
