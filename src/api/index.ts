@@ -1,4 +1,4 @@
-import Client from "./client";
+import Client from "./wrapper";
 
 export { Client };
 export { Login } from "./login";

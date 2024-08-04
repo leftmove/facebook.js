@@ -6,14 +6,14 @@ import open from "open";
 import chalk from "chalk";
 import ora from "ora";
 
-import Client from "./client";
+import Client from "./wrapper";
 import {
   writeToJSONCredentials,
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
 import { CredentialError } from "../errors";
-import type { Config } from "../client/wrapper";
+import type { Config } from "../client/client";
 import type {
   Credentials,
   writeCredentials,
@@ -92,17 +92,17 @@ const credentialOptions = [
   "appId",
   "appSecret",
   "appToken",
-  "userToken",
   "userId",
-  "pageToken",
+  "userToken",
   "pageId",
+  "pageToken",
 ];
 
 export class Login {
   appId: string;
   appSecret: string;
 
-  staleCredentials: Array<string> = [];
+  stale: Array<string> = [];
   client = new Client();
 
   writeCredentials: writeCredentials = writeToJSONCredentials;
@@ -190,52 +190,38 @@ export class Login {
     }
   }
 
-  // Verification methods for various credentials, including app, user, and page tokens.
-  // While different methods are used, the "/debug_token" endpoint can be used to verify all tokens.
-  // The only reason it's not used universally, is because it would take a while to refactor and all the code, and in the end it doesn't really make a difference.
-
   async verifyAppCredentials(appId: string, appSecret: string) {
-    try {
-      const appAccessToken = `${appId}|${appSecret}`;
-      const data = await this.client.get("debug_token", {
+    const appAccessToken = `${appId}|${appSecret}`;
+    const data = await this.client
+      .get("debug_token", {
         input_token: appAccessToken,
         access_token: appAccessToken,
+      })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying app credentials.", error, e);
       });
-      if (data.is_valid) {
-        return true;
-      } else {
-        throw new CredentialError(
-          "Credentials not valid, provide a valid App ID and App Secret."
-        );
-      }
-    } catch (error: any) {
-      if (error.status === 190 || error.data.is_valid === false) {
-        return false;
-      } else {
-        throw new CredentialError(
-          "Bad credentials. Please make an issue on GitHub if this problem persists.",
-          error
-        );
-      }
+    if (data?.is_valid) {
+      return true;
+    } else {
+      return false;
     }
   }
 
   async verifyAppToken(appToken: string) {
-    try {
-      await this.client.get("debug_token", {
+    const data = await this.client
+      .get("debug_token", {
         input_token: appToken,
         access_token: `${this.appId}|${this.appSecret}`,
+      })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying app token.", error, e);
       });
+    if (data?.is_valid) {
       return true;
-    } catch (error: any) {
-      if (error.status === 190 || error.data.is_valid === false) {
-        return false;
-      } else {
-        throw new CredentialError(
-          "Bad credentials. Please make an issue on GitHub if this problem persists.",
-          error
-        );
-      }
+    } else {
+      return false;
     }
   }
 
@@ -250,15 +236,13 @@ export class Login {
   }
 
   async verifyPageId(pageId: string, pageToken: string) {
-    try {
-      await this.client.get(pageId, { access_token: pageToken });
-      return true;
-    } catch (error: any) {
-      throw new CredentialError(
-        "Bad credentials. Please make an issue on GitHub if this problem persists.",
-        error
-      );
-    }
+    await this.client
+      .get(pageId, { access_token: pageToken })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying app token.", error, e);
+      });
+    return true;
   }
 
   async verifyUserCredentials(userToken: string, userTokenExpires: number) {
@@ -267,18 +251,16 @@ export class Login {
       return true;
     }
 
-    try {
-      await this.client.get("me", { access_token: userToken });
+    const data = await this.client
+      .get("debug_token", { input_token: userToken, access_token: userToken })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying user token.", error, e);
+      });
+    if (data?.is_valid) {
       return true;
-    } catch (error: any) {
-      if (error.status === 463 || error.status === 2500) {
-        return false;
-      } else {
-        throw new CredentialError(
-          "Bad credentials. Please make an issue on GitHub if this problem persists.",
-          error
-        );
-      }
+    } else {
+      return false;
     }
   }
 
@@ -288,18 +270,16 @@ export class Login {
       return true;
     }
 
-    try {
-      await this.client.get("me", { access_token: pageToken });
+    const data = await this.client
+      .get("debug_token", { input_token: pageToken, access_token: pageToken })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Error verifying page token.", error, e);
+      });
+    if (data?.is_valid) {
       return true;
-    } catch (error: any) {
-      if (error.status === 190) {
-        return false;
-      } else {
-        throw new CredentialError(
-          "Bad credentials. Please make an issue on GitHub if this problem persists.",
-          error
-        );
-      }
+    } else {
+      return false;
     }
   }
 
@@ -318,7 +298,7 @@ export class Login {
     );
     const invalidCredentials = emptyCredentials;
 
-    if ("appToken" in emptyCredentials === false) {
+    if ("appToken" in emptyCredentials === true) {
       const appValid = await this.verifyAppToken(
         credentials.appToken as string
       );
@@ -327,7 +307,7 @@ export class Login {
       }
     }
 
-    if ("userToken" in emptyCredentials === false) {
+    if ("userToken" in emptyCredentials === true) {
       const userValid = await this.verifyUserCredentials(
         credentials.userToken as string,
         credentials.userTokenExpires as number
@@ -337,7 +317,7 @@ export class Login {
       }
     }
 
-    if ("userId" in emptyCredentials === false) {
+    if ("userId" in emptyCredentials === true) {
       const userValid = await this.verifyUserId(
         credentials.userId as string,
         credentials.userToken as string
@@ -347,7 +327,7 @@ export class Login {
       }
     }
 
-    if ("pageToken" in emptyCredentials === false) {
+    if ("pageToken" in emptyCredentials === true) {
       const pageValid = await this.verifyUserCredentials(
         credentials.pageToken as string,
         credentials.pageTokenExpires as number
@@ -356,7 +336,7 @@ export class Login {
         invalidCredentials.push("pageToken");
       }
 
-      if ("pageId" in emptyCredentials === false) {
+      if ("pageId" in emptyCredentials === true) {
         const pageValid = await this.verifyPageId(
           credentials.pageId as string,
           credentials.pageToken as string
@@ -367,7 +347,12 @@ export class Login {
       }
     }
 
-    this.staleCredentials = invalidCredentials;
+    this.stale = invalidCredentials.sort((a, b) => {
+      const indexA = credentialOptions.indexOf(a);
+      const indexB = credentialOptions.indexOf(b);
+      return indexA - indexB;
+    });
+    console.log("stale", this.stale);
     return this;
   }
 
@@ -526,7 +511,7 @@ export class Login {
   }
 
   async refreshCredentials(scope: Permissions) {
-    this.staleCredentials.map(async (stale) => {
+    this.stale.map(async (stale) => {
       switch (stale) {
         case "appToken":
           await this.refreshAppToken(this.appId, this.appSecret);
@@ -536,16 +521,20 @@ export class Login {
           break;
         case "userId":
           if (this.userToken === undefined) {
+            const error = new Error();
             throw new CredentialError(
-              "Error getting user ID, user token is required first."
+              "Error getting user ID, user token is required first.",
+              error
             );
           }
           await this.refreshUserId(this.appId, this.appSecret, this.userToken);
           break;
         case "pageId":
           if (this.userId === undefined || this.userToken === undefined) {
+            const error = new Error();
             throw new CredentialError(
-              "Error getting page ID, user ID and user token are required first."
+              "Error getting page ID, user ID and user token are required first.",
+              error
             );
           }
           await this.refreshPageId(
@@ -557,8 +546,10 @@ export class Login {
           break;
         case "pageToken":
           if (this.pageId === undefined || this.userToken === undefined) {
+            const error = new Error();
             throw new CredentialError(
-              "Error getting page token, page ID and user token are required first."
+              "Error getting page token, page ID and user token are required first.",
+              error
             );
           }
           await this.refreshPageToken(
@@ -584,10 +575,10 @@ export class Login {
     await this.refreshCredentials(scope);
     await this.verifyCredentials(readCredentials, writeCredentials, expireTime);
 
-    if (this.staleCredentials.length > 0) {
+    if (this.stale.length > 0) {
       console.warn(
-        "Error refreshing credentials, some credentials were unable to be refreshed.",
-        this.staleCredentials
+        "Warning: error refreshing credentials, some credentials were unable to be refreshed.",
+        this.stale
       );
     }
   }

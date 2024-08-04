@@ -1,4 +1,4 @@
-import { Facebook } from "./client/wrapper";
+import { Facebook } from "./client/client";
 
 export default Facebook;
 export type { Permissions, Authentication } from "./api";
