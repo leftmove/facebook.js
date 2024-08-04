@@ -13,51 +13,9 @@ import {
   writeToJSONCredentials,
   readFromJSONCredentials,
 } from "../credentials";
+import type { writeCredentials, readCredentials } from "../credentials";
+import type { Permissions } from "../api";
 import type { Credentials } from "../credentials";
-
-export interface Permissions {
-  commerce_account_manage_orders?: boolean;
-  commerce_account_read_orders?: boolean;
-  commerce_account_read_reports?: boolean;
-  commerce_account_read_settings?: boolean;
-  instagram_shopping_tag_products?: boolean;
-  email?: boolean;
-  ads_management?: boolean;
-  ads_read?: boolean;
-  business_management?: boolean;
-  instagram_manage_events?: boolean;
-  page_events?: boolean;
-  pages_manage_ads?: boolean;
-  pages_manage_cta?: boolean;
-  pages_manage_engagement?: boolean;
-  pages_manage_instant_articles?: boolean;
-  pages_manage_metadata?: boolean;
-  pages_manage_posts?: boolean;
-  pages_messaging?: boolean;
-  pages_messaging_subscriptions?: boolean;
-  pages_read_engagement?: boolean;
-  pages_read_user_content?: boolean;
-  pages_show_list?: boolean;
-  read_page_mailboxes?: boolean;
-  catalog_management?: boolean;
-  instagram_basic?: boolean;
-  instagram_branded_content_ads_brand?: boolean;
-  instagram_branded_content_brand?: boolean;
-  instagram_branded_content_creator?: boolean;
-  instagram_content_publish?: boolean;
-  instagram_manage_comments?: boolean;
-  instagram_manage_insights?: boolean;
-  instagram_manage_messages?: boolean;
-  leads_retrieval?: boolean;
-  manage_fundraisers?: boolean;
-  publish_video?: boolean;
-  read_insights?: boolean;
-  whatsapp_business_management?: boolean;
-  whatsapp_business_messaging?: boolean;
-}
-
-export type writeCredentials = (...args: any) => void;
-export type readCredentials = (...args: any) => Credentials;
 
 export interface Config {
   appId?: string;

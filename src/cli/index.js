@@ -19,8 +19,8 @@ const credentialOptions = [
 ];
 
 program
-  .name("cli-zuckerberg.js")
-  .description("The CLI tool for zuckerberg.js and Facebook authentication.");
+  .name("cli-facebook.js")
+  .description("The CLI tool for facebook.js and Facebook authentication.");
 
 program
   .command("login")
@@ -43,6 +43,7 @@ program
           credentials.appId = appId;
         case "appSecret":
           credentials.appSecret = appSecret;
+        case "appToken":
         default:
           break;
       }
