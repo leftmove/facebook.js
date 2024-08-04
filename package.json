@@ -21,6 +21,8 @@
   },
   "type": "module",
   "dependencies": {
-    "server-destroy": "^1.0.1"
+    "chalk": "^5.3.0",
+    "cli-spinners": "^3.1.0",
+    "ora": "^8.0.1"
   }
 }
