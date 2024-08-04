@@ -1,9 +1,8 @@
 import Facebook from "../src";
-import type { Permissions, Config } from "../src";
+import type { Permissions, Authentication } from "../src";
 
 const facebook = new Facebook();
 
-const config: Config = { path: "./credentials.json", expireTime: 60 };
 const scope: Permissions = {
   pages_manage_engagement: true,
   pages_manage_posts: true,
@@ -13,9 +12,10 @@ const scope: Permissions = {
   read_insights: true,
   business_management: true,
 };
+const config: Authentication = {
+  path: "./credentials.json",
+  expireTime: 60,
+  scope,
+};
 
-// Embed credentials config above into Facebook class
-// await facebook
-//   .verifyCredentials(config)
-//   .refreshCredentials(scope)
-//   .fufillCredentials(config);
+await facebook.authenticate(config);

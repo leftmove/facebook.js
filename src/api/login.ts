@@ -13,6 +13,7 @@ import {
   DEFAULT_FILE_PATH,
 } from "../credentials";
 import { CredentialError } from "../errors";
+import type { Config } from "../client/wrapper";
 import type {
   Credentials,
   writeCredentials,
@@ -71,16 +72,18 @@ export const DEFAULT_SCOPE: Permissions = {
 
 export const DEFAULT_EXPIRE_TIME = 60;
 
-export interface Config {
+export interface Authentication {
   path?: string;
   expireTime?: number;
+  scope: Permissions;
   writeCredentials?: writeCredentials;
   readCredentials?: readCredentials;
 }
 
-export const DEFAULT_CONFIG: Config = {
+export const DEFAULT_CONFIG: Authentication = {
   path: DEFAULT_FILE_PATH,
   expireTime: DEFAULT_EXPIRE_TIME,
+  scope: DEFAULT_SCOPE,
   writeCredentials: writeToJSONCredentials,
   readCredentials: readFromJSONCredentials,
 };
@@ -106,9 +109,85 @@ export class Login {
   readCredentials: readCredentials = readFromJSONCredentials;
   expireTime: number = DEFAULT_EXPIRE_TIME;
 
-  constructor(appId: string, appSecret: string) {
+  appToken?: string;
+  userToken?: string;
+  userId?: string;
+  userTokenExpires?: number;
+  pageToken?: string;
+  pageId?: string;
+  pageTokenExpires?: number;
+
+  overrideLocal = true;
+
+  scope: Permissions = {
+    pages_manage_engagement: true,
+    pages_manage_posts: true,
+    pages_read_engagement: true,
+    pages_read_user_content: true,
+    pages_show_list: true,
+    read_insights: true,
+    business_management: true,
+  };
+
+  constructor(config: Config = {}) {
+    const readCredentials = config.readCredentials || readFromJSONCredentials;
+    const writeCredentials = config.writeCredentials || writeToJSONCredentials;
+    const credentials = readCredentials();
+
+    const appId = config.appId || credentials.appId || undefined;
+    const appSecret = config.appSecret || credentials.appSecret || undefined;
+
+    if (appId === undefined || appSecret === undefined) {
+      throw new CredentialError(
+        "Empty credentials provided. App ID and App Secret are required."
+      );
+    }
+
+    const appToken = config.appToken || credentials.appToken || this.appToken;
+    const userToken =
+      config.userToken || credentials.userToken || this.userToken;
+    const userId = config.userId || credentials.userId || this.userId;
+    const userTokenExpires =
+      config.userTokenExpires ||
+      credentials.userTokenExpires ||
+      this.userTokenExpires;
+    const pageToken =
+      config.pageToken || credentials.pageToken || this.pageToken;
+    const pageId = config.pageId || credentials.pageId || this.pageId;
+    const pageTokenExpires =
+      config.pageTokenExpires ||
+      credentials.pageTokenExpires ||
+      this.pageTokenExpires;
+
+    const scope = config.scope || credentials.scope || this.scope;
+    const overrideLocal = config.overrideLocal || this.overrideLocal;
+
     this.appId = appId;
     this.appSecret = appSecret;
+    this.appToken = appToken;
+    this.userToken = userToken;
+    this.userId = userId;
+    this.userTokenExpires = userTokenExpires;
+    this.pageToken = pageToken;
+    this.pageId = pageId;
+    this.pageTokenExpires = pageTokenExpires;
+    this.scope = scope;
+    this.writeCredentials = writeCredentials;
+    this.readCredentials = readCredentials;
+    this.overrideLocal = overrideLocal;
+
+    if (overrideLocal) {
+      writeCredentials({
+        appId,
+        appSecret,
+        appToken,
+        userToken,
+        userTokenExpires,
+        pageToken,
+        pageTokenExpires,
+        scope,
+      });
+    }
   }
 
   // Verification methods for various credentials, including app, user, and page tokens.
@@ -161,15 +240,13 @@ export class Login {
   }
 
   async verifyUserId(userId: string, userToken: string) {
-    try {
-      await this.client.get(userId, { access_token: userToken });
-      return true;
-    } catch (error: any) {
-      throw new CredentialError(
-        "Bad credentials. Please make an issue on GitHub if this problem persists.",
-        error
-      );
-    }
+    await this.client
+      .get(userId, { access_token: userToken })
+      .catch((e: any) => {
+        const error = new Error();
+        throw new CredentialError("Bad user ID credentials.", error, e);
+      });
+    return true;
   }
 
   async verifyPageId(pageId: string, pageToken: string) {
@@ -226,12 +303,12 @@ export class Login {
     }
   }
 
-  async verifyCredentials(config: Config) {
-    const writeCredentials = config.writeCredentials || writeToJSONCredentials;
-    const readCredentials = config.readCredentials || readFromJSONCredentials;
-    const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
+  async verifyCredentials(
+    readCredentials: readCredentials,
+    writeCredentials: writeCredentials,
+    expireTime: number
+  ) {
     const credentials = readCredentials();
-
     this.readCredentials = readCredentials;
     this.writeCredentials = writeCredentials;
     this.expireTime = expireTime;
@@ -294,22 +371,23 @@ export class Login {
     return this;
   }
 
-  async refreshAppToken() {
+  async refreshAppToken(appId: string, appSecret: string) {
     const data = await this.client.get("oauth/access_token", {
-      client_id: this.appId,
-      client_secret: this.appSecret,
+      client_id: appId,
+      client_secret: appSecret,
       grant_type: "client_credentials",
     });
     const accessToken = data.access_token;
+    this.appToken = accessToken;
     this.writeCredentials({
-      appId: this.appId,
-      appSecret: this.appSecret,
+      appId: appId,
+      appSecret: appSecret,
       appToken: accessToken,
     });
   }
 
-  async refreshUserToken(scope: Permissions) {
-    if (this.appId === "" || this.appSecret === "") {
+  async refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
+    if (appId == "" || appSecret === "") {
       throw new CredentialError(
         "App ID and App Secret are required to generate user tokens."
       );
@@ -330,8 +408,8 @@ export class Login {
             const data = await this.client
               .get("oauth/access_token", {
                 code,
-                client_id: this.appId,
-                client_secret: this.appSecret,
+                client_id: appId,
+                client_secret: appSecret,
                 redirect_uri: redirect.href,
               })
               .catch((e: any) => {
@@ -346,9 +424,11 @@ export class Login {
 
             const userToken = data.access_token;
             const userTokenExpires = data.expires_in;
+            this.userToken = userToken;
+            this.userTokenExpires = userTokenExpires;
             this.writeCredentials({
-              appId: this.appId,
-              appSecret: this.appSecret,
+              appId,
+              appSecret,
               userToken,
               userTokenExpires,
             });
@@ -394,34 +474,121 @@ export class Login {
     }, 1000);
   }
 
-  async refreshUserId(userToken: string) {
-    const data = await this.client.get("me", { access_token: userToken });
+  async refreshUserId(appId: string, appSecret: string, userToken: string) {
+    const data = await this.client.get("me", {
+      access_token: userToken,
+    });
     const userId = data.id;
+    this.userId = userId;
     this.writeCredentials({
-      appId: this.appId,
-      appSecret: this.appSecret,
+      appId,
+      appSecret,
       userId,
     });
   }
 
-  async refreshPageId(userToken: string) {}
+  async refreshPageId(
+    appId: string,
+    appSecret: string,
+    userId: string,
+    userToken: string,
+    pageIndex: number = 0
+  ) {
+    const data = await this.client.get(`${userId}/accounts`, {
+      access_token: userToken,
+    });
+    const pageId = data.data[pageIndex].id;
+    this.pageId = pageId;
+    this.writeCredentials({
+      appId,
+      appSecret,
+      pageId,
+    });
+  }
 
-  async refreshPageToken(scope: Permissions) {}
+  async refreshPageToken(
+    appId: string,
+    appSecret: string,
+    pageId: string,
+    userToken: string
+  ) {
+    const data = await this.client.get(`${pageId}`, {
+      access_token: userToken,
+      fields: "access_token",
+    });
+    const accessToken = data.access_token;
+    this.pageToken = accessToken;
+    this.writeCredentials({
+      appId,
+      appSecret,
+      pageToken: accessToken,
+    });
+  }
 
   async refreshCredentials(scope: Permissions) {
     this.staleCredentials.map(async (stale) => {
       switch (stale) {
         case "appToken":
-          await this.refreshAppToken();
+          await this.refreshAppToken(this.appId, this.appSecret);
           break;
         case "userToken":
-          await this.refreshUserToken(scope);
+          await this.refreshUserToken(this.appId, this.appSecret, scope);
           break;
         case "userId":
-
+          if (this.userToken === undefined) {
+            throw new CredentialError(
+              "Error getting user ID, user token is required first."
+            );
+          }
+          await this.refreshUserId(this.appId, this.appSecret, this.userToken);
+          break;
+        case "pageId":
+          if (this.userId === undefined || this.userToken === undefined) {
+            throw new CredentialError(
+              "Error getting page ID, user ID and user token are required first."
+            );
+          }
+          await this.refreshPageId(
+            this.appId,
+            this.appSecret,
+            this.userId,
+            this.userToken
+          );
+          break;
         case "pageToken":
+          if (this.pageId === undefined || this.userToken === undefined) {
+            throw new CredentialError(
+              "Error getting page token, page ID and user token are required first."
+            );
+          }
+          await this.refreshPageToken(
+            this.appId,
+            this.appSecret,
+            this.pageId,
+            this.userToken
+          );
+          break;
+        default:
           break;
       }
     });
+  }
+
+  async authenticate(config: Authentication) {
+    const scope = config.scope || this.scope;
+    const writeCredentials = config.writeCredentials || writeToJSONCredentials;
+    const readCredentials = config.readCredentials || readFromJSONCredentials;
+    const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
+
+    await this.verifyCredentials(readCredentials, writeCredentials, expireTime);
+    await this.refreshCredentials(scope);
+    await this.verifyCredentials(readCredentials, writeCredentials, expireTime);
+
+    if (this.staleCredentials.length > 0) {
+      console.warn(
+        "Error refreshing credentials, some credentials were unable to be refreshed.",
+        this.staleCredentials
+      );
+    }
   }
 }
