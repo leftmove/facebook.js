@@ -91,7 +91,7 @@ export default class Client extends Queue {
     return this.enqueue(helper);
   }
 
-  post(path: string, body: Object) {
+  post(path: string, body: Object | FormData) {
     const helper = () =>
       new Promise(async (resolve, reject) => {
         const response = await fetch(`${this.url}/${path}`, {
@@ -112,6 +112,6 @@ export default class Client extends Queue {
         });
         resolve(response);
       });
-    return this.enqueue(helper);
+    return this.enqueue(helper) as any;
   }
 }
