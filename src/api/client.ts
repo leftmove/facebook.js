@@ -8,10 +8,11 @@ export default class Client {
     this.url = url;
   }
 
-  async get(path: string, params: Object = {}) {
-    console.log(params);
+  async get(path: string, params: any = {}) {
     return await fetch(
-      `${this.url}/${path}${params ? "" : "?" + new URLSearchParams(params)}`
+      `${this.url}/${path}${
+        params ? "?" + new URLSearchParams(params).toString() : ""
+      }`
     ).then(async (r) => {
       const data = await r.json();
       if (r.ok) {
