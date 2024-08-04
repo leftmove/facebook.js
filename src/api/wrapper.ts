@@ -67,7 +67,7 @@ export default class Client extends Queue {
 
   get(path: string, params: any = {}): any {
     const helper = () =>
-      new Promise(async (resolve) => {
+      new Promise(async (resolve, reject) => {
         const response = await fetch(
           `${this.url}/${path}${
             params ? "?" + new URLSearchParams(params).toString() : ""
@@ -78,7 +78,8 @@ export default class Client extends Queue {
             return data;
           } else {
             const error = new Error(r.statusText);
-            throw new GraphError(error, r, data);
+            const graph = new GraphError(error, r, data);
+            reject(graph);
           }
         });
         resolve(response);
