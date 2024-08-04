@@ -20,6 +20,9 @@ export interface Credentials {
   scope?: Object | null;
 }
 
+export type writeCredentials = (credentials: Credentials) => void;
+export type readCredentials = () => Credentials;
+
 export function createJSONFileIfNotExists(filePath: string) {
   try {
     fs.readFileSync(filePath, "utf8");
