@@ -26,7 +26,7 @@ export class GraphError extends Error {
 }
 
 export class CredentialError extends GraphError {
-  constructor(message: string, error: any) {
+  constructor(message: string, error: any = null) {
     super(error.response, error.data, error);
     this.message = `${error.message}\n${message}`;
     this.name = "CredentialError";

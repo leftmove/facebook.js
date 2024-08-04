@@ -9,7 +9,7 @@ export default class Client {
   }
 
   async get(path: string, params: any = {}) {
-    return await fetch(
+    return fetch(
       `${this.url}/${path}${
         params ? "?" + new URLSearchParams(params).toString() : ""
       }`

@@ -1,64 +1,63 @@
-import { promises as fs, access } from "fs";
+import fs from "fs";
 
+import Login from "./login";
 import { CredentialError } from "../errors";
 
 const DEFAULT_FILE_PATH = "./credentials.json";
-const DEFAULT_CONFIG: AuthConfig = {
-  appId: "",
-  appSecret: "",
+const DEFAULT_CONFIG: Credentials = {
+  appId: null,
+  appSecret: null,
 };
 
-export interface AuthConfig {
-  appId: string;
-  appSecret: string;
+export interface Credentials {
+  appId: string | null;
+  appSecret: string | null;
+  appToken?: string | null;
+  appTokenExpires?: number | null;
   userToken?: string | null;
   userTokenExpires?: number | null;
   pageToken?: string | null;
   pageTokenExpires?: number | null;
+  scope?: Object | null;
 }
 
-export async function createJSONFileIfNotExists(filePath: string) {
-  access(filePath, async (error) => {
-    try {
-      await fs.writeFile(
-        filePath,
-        JSON.stringify(DEFAULT_CONFIG, null, 2),
-        "utf8"
-      );
-    } catch {
-      throw new CredentialError(
-        "Error writing to credentials JSON file",
-        error
-      );
+export function createJSONFileIfNotExists(filePath: string) {
+  try {
+    fs.readFileSync(filePath, "utf8");
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      fs.writeFileSync(filePath, JSON.stringify(DEFAULT_CONFIG, null, 2));
+    } else {
+      throw new CredentialError("Error reading credentials JSON file", error);
     }
-  });
+  }
 }
 
-export async function writeToJSONConfig(
-  config: AuthConfig,
+export function writeToJSONCredentials(
+  credentials: Credentials,
   filePath: string = DEFAULT_FILE_PATH
 ) {
   createJSONFileIfNotExists(filePath);
 
-  const oldData = await fs.readFile(filePath, "utf8");
-  const oldConfig: AuthConfig = JSON.parse(oldData);
+  const oldData = fs.readFileSync(filePath, "utf8");
+  const oldCredentials: Credentials = JSON.parse(oldData);
 
-  const newConfig: AuthConfig = { ...oldConfig, ...config };
-  const data = JSON.stringify(newConfig, null, 2);
+  const newCredentials: Credentials = { ...oldCredentials, ...credentials };
+  const data = JSON.stringify(newCredentials, null, 2);
   try {
-    await fs.writeFile(filePath, data, "utf8");
+    fs.writeFileSync(filePath, data, "utf8");
   } catch (error) {
     throw new CredentialError("Error writing to credentials JSON file", error);
   }
 }
 
-export async function readFromJSONConfig(filePath: string = DEFAULT_FILE_PATH) {
+export function readFromJSONCredentials(filePath: string = DEFAULT_FILE_PATH) {
   createJSONFileIfNotExists(filePath);
 
   try {
-    const data = await fs.readFile(filePath, "utf8");
-    const config: AuthConfig = JSON.parse(data);
-    return config;
+    const data = fs.readFileSync(filePath, "utf8");
+    const credentials: Credentials = JSON.parse(data);
+    return credentials;
   } catch (error) {
     throw new CredentialError(
       "Error reading from credentials JSON file",
@@ -66,3 +65,5 @@ export async function readFromJSONConfig(filePath: string = DEFAULT_FILE_PATH) {
     );
   }
 }
+
+export default Login;
