@@ -20,6 +20,7 @@ A Facebook API wrapper that's _not_ from 2011.
 
 ### Long Term
 
+- Migrate CLI and core into different packages
 - Documentation
   - Every function, class, type
   - Programmatic login
