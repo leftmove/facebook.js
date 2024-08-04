@@ -66,6 +66,7 @@ export const DEFAULT_SCOPE: Permissions = {
 };
 
 export const DEFAULT_EXPIRE_TIME = 60;
+export const DEFAULT_EXPIRE_ADD = 60 * 60 * 72;
 
 export interface Authentication {
   path?: string;
@@ -124,10 +125,13 @@ export class Login {
   expireTime: number = DEFAULT_EXPIRE_TIME;
 
   appToken?: string;
+  appTokenExpires?: number;
   userToken?: string;
   userId?: string;
+  userIdExpires?: number;
   userTokenExpires?: number;
   pageId?: string;
+  pageIdExpires?: number;
   pageIndex?: number;
   pageToken?: string;
   pageTokenExpires?: number;
@@ -159,9 +163,15 @@ export class Login {
     }
 
     const appToken = config.appToken || credentials.appToken || this.appToken;
+    const appTokenExpires =
+      config.appTokenExpires ||
+      credentials.appTokenExpires ||
+      this.appTokenExpires;
     const userToken =
       config.userToken || credentials.userToken || this.userToken;
     const userId = config.userId || credentials.userId || this.userId;
+    const userIdExpires =
+      config.userIdExpires || credentials.userIdExpires || this.userIdExpires;
     const userTokenExpires =
       config.userTokenExpires ||
       credentials.userTokenExpires ||
@@ -169,6 +179,8 @@ export class Login {
     const pageToken =
       config.pageToken || credentials.pageToken || this.pageToken;
     const pageId = config.pageId || credentials.pageId || this.pageId;
+    const pageIdExpires =
+      config.pageIdExpires || credentials.pageIdExpires || this.pageIdExpires;
     const pageIndex =
       config.pageIndex || credentials.pageIndex || this.pageIndex;
     const pageTokenExpires =
@@ -182,10 +194,13 @@ export class Login {
     this.appId = appId;
     this.appSecret = appSecret;
     this.appToken = appToken;
+    this.appTokenExpires = appTokenExpires;
     this.userToken = userToken;
     this.userId = userId;
+    this.userIdExpires = userIdExpires;
     this.userTokenExpires = userTokenExpires;
     this.pageId = pageId;
+    this.pageIdExpires = pageIdExpires;
     this.pageIndex = pageIndex;
     this.pageToken = pageToken;
     this.pageTokenExpires = pageTokenExpires;
@@ -233,6 +248,7 @@ export class Login {
           return true;
         } else {
           this.stale = [...this.stale, ...token];
+          return false;
         }
       })
       .catch((e: GraphError) => {
@@ -240,6 +256,7 @@ export class Login {
         const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, ...token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError(
@@ -251,10 +268,21 @@ export class Login {
       });
   }
 
-  verifyAppToken(appToken: string | undefined = this.appToken) {
+  verifyAppToken(
+    appToken: string | undefined = this.appToken,
+    appTokenExpires: number | undefined = this.appTokenExpires
+  ) {
     const token = "appToken";
 
     if (appToken === undefined) {
+      this.stale = [...this.stale, token];
+      return new Promise((resolve) => resolve(false));
+    }
+
+    if (
+      appTokenExpires &&
+      Date.now() / 1000 - appTokenExpires >= this.expireTime
+    ) {
       this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
     }
@@ -314,8 +342,9 @@ export class Login {
       return new Promise((resolve) => resolve(false));
     }
 
-    const now = Date.now();
+    const now = Date.now() / 1000;
     if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
+      this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
     }
 
@@ -349,6 +378,13 @@ export class Login {
       .get("debug_token", { input_token: userToken, access_token: userToken })
       .then((data: Data) => {
         if (data.data.is_valid) {
+          this.writeCredentials({
+            appId: this.appId,
+            appSecret: this.appSecret,
+            userId: data.data.user_id,
+            userToken,
+            userTokenExpires: data.data.data_access_expires_at,
+          });
           return true;
         } else {
           this.stale = [...this.stale, token];
@@ -370,11 +406,17 @@ export class Login {
 
   verifyUserId(
     userId: string | undefined = this.userId,
+    userIdExpires: number | undefined = this.userIdExpires,
     userToken: string | undefined = this.userToken
   ) {
     const token = "userId";
 
     if (userToken === undefined || userId === undefined) {
+      this.stale = [...this.stale, token];
+      return new Promise((resolve) => resolve(false));
+    }
+
+    if (userIdExpires && Date.now() / 1000 - userIdExpires >= this.expireTime) {
       this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
     }
@@ -413,11 +455,17 @@ export class Login {
 
   verifyPageId(
     pageId: string | undefined = this.appId,
+    pageIdExpires: number | undefined = this.pageIdExpires,
     userToken: string | undefined = this.userToken
   ) {
     const token = "pageId";
 
     if (userToken === undefined || pageId === undefined) {
+      this.stale = [...this.stale, token];
+      return new Promise((resolve) => resolve(false));
+    }
+
+    if (pageIdExpires && Date.now() / 1000 - pageIdExpires >= this.expireTime) {
       this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
     }
@@ -465,15 +513,48 @@ export class Login {
       return new Promise((resolve) => resolve(false));
     }
 
-    const now = Date.now();
+    const now = Date.now() / 1000;
     if (pageTokenExpires && now - pageTokenExpires >= this.expireTime) {
+      this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
+    }
+
+    interface Data {
+      data: {
+        app_id: string;
+        type: string;
+        application: string;
+        data_access_expires_at: number;
+        expires_at: number;
+        is_valid: boolean;
+        issued_at: number;
+        profile_id: string;
+        scopes: string[];
+        granular_scopes: Array<null[]>;
+        user_id: string;
+      };
+    }
+    interface Error {
+      data: {
+        error: {
+          code: number;
+          message: string;
+        };
+        is_valid: boolean;
+        scopes: any[];
+      };
     }
 
     return this.client
       .get("debug_token", { input_token: pageToken, access_token: pageToken })
-      .then((data: Debug) => {
+      .then((data: Data) => {
         if (data.data.is_valid) {
+          this.writeCredentials({
+            appId: this.appId,
+            appSecret: this.appSecret,
+            pageToken,
+            pageTokenExpires: data.data.data_access_expires_at,
+          });
           return true;
         } else {
           this.stale = [...this.stale, token];
@@ -481,8 +562,8 @@ export class Login {
         }
       })
       .catch((e: GraphError) => {
-        const data: DebugError = e.data;
-        const code = data?.error?.code || 400;
+        const data: Error = e.data;
+        const code = data.data.error.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
           return false;
@@ -510,7 +591,10 @@ export class Login {
     this.stale = emptyCredentials;
 
     if ("appToken" in emptyCredentials === true) {
-      this.verifyAppToken(credentials.appToken as string);
+      this.verifyAppToken(
+        credentials.appToken as string,
+        credentials.appTokenExpires as number
+      );
     }
 
     if ("userToken" in emptyCredentials === true) {
@@ -523,6 +607,15 @@ export class Login {
     if ("userId" in emptyCredentials === true) {
       this.verifyUserId(
         credentials.userId as string,
+        credentials.userIdExpires as number,
+        credentials.userToken as string
+      );
+    }
+
+    if ("pageId" in emptyCredentials === true) {
+      this.verifyPageId(
+        credentials.pageId as string,
+        credentials.pageIdExpires as number,
         credentials.userToken as string
       );
     }
@@ -531,13 +624,6 @@ export class Login {
       this.verifyPageCredentials(
         credentials.pageToken as string,
         credentials.pageTokenExpires as number
-      );
-    }
-
-    if ("pageId" in emptyCredentials === true) {
-      this.verifyPageId(
-        credentials.pageId as string,
-        credentials.pageToken as string
       );
     }
 
@@ -571,6 +657,7 @@ export class Login {
           appId: appId,
           appSecret: appSecret,
           appToken: accessToken,
+          appTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
         });
       })
       .catch((e: GraphError) => {
@@ -631,6 +718,7 @@ export class Login {
           appId,
           appSecret,
           userId,
+          userIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
         });
       })
       .catch((e: GraphError) => {
@@ -680,6 +768,7 @@ export class Login {
           appId,
           appSecret,
           pageId,
+          pageIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
         });
       })
       .catch((e: any) => {
@@ -714,6 +803,7 @@ export class Login {
           appId,
           appSecret,
           pageToken: accessToken,
+          pageTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
         });
       })
       .catch((e: GraphError) => {

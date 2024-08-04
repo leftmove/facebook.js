@@ -53,7 +53,7 @@ export async function appTokenCredential(
     await facebook.refreshAppToken(appId, appSecret);
     return await facebook.verifyAppToken().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("App token authenticated.");
+        spinner.succeed(" App token authenticated.");
         info("success", "App token authenticated.");
         return facebook.appToken;
       } else {
@@ -64,6 +64,7 @@ export async function appTokenCredential(
   } else {
     return await facebook.verifyAppToken(appToken).then((valid: boolean) => {
       if (valid) {
+        info("success", "App token authenticated.");
         return facebook.appToken;
       } else {
         throw new CredentialError("Invalid app token.");
@@ -146,7 +147,7 @@ export async function userTokenCredential(
               switch (pathname) {
                 case path:
                   clearTimeout(timer);
-                  spinner.succeed("Opened OAuth in default browser.");
+                  spinner.succeed(" Opened OAuth in default browser.");
                   resolve(query.code as string);
 
                   res.writeHead(200);
@@ -171,7 +172,7 @@ export async function userTokenCredential(
 
     return await facebook.verifyUserCredentials().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("User token authenticated.");
+        spinner.succeed(" User token authenticated.");
         info("success", "User token authenticated.");
         return facebook.userToken;
       } else {
@@ -184,6 +185,7 @@ export async function userTokenCredential(
       .verifyUserCredentials(userToken, Infinity)
       .then((valid: boolean) => {
         if (valid) {
+          info("success", "User token authenticated.");
           return facebook.userToken;
         } else {
           throw new CredentialError("Invalid user token.");
@@ -220,7 +222,7 @@ export async function pageTokenCredential(
 
     return await facebook.verifyPageCredentials().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("Page token authenticated.");
+        spinner.succeed(" Page token authenticated.");
         info("success", "Page token authenticated.");
         return facebook.pageToken;
       } else {
@@ -233,6 +235,7 @@ export async function pageTokenCredential(
       .verifyPageCredentials(pageToken)
       .then((valid: boolean) => {
         if (valid) {
+          info("success", "Page token authenticated.");
           return facebook.pageToken;
         } else {
           throw new CredentialError("Invalid page token.");

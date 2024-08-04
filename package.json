@@ -24,7 +24,7 @@
     "check:client": "mocha test/client/**/*.ts"
   },
   "bin": {
-    "zuck": "./src/cli/index.ts"
+    "facebook": "./src/cli/index.ts"
   },
   "type": "module",
   "dependencies": {

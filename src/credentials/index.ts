@@ -15,8 +15,10 @@ export interface Credentials {
   appTokenExpires?: number;
   userToken?: string;
   userId?: string;
+  userIdExpires?: number;
   userTokenExpires?: number;
   pageId?: string;
+  pageIdExpires?: number;
   pageIndex?: number;
   pageToken?: string;
   pageTokenExpires?: number;

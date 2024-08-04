@@ -25,7 +25,8 @@ export async function userIdCredential(
     await facebook.refreshUserId(appId, appSecret, userToken);
     return await facebook.verifyUserId().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("User ID authenticated.");
+        spinner.succeed(" User ID authenticated.");
+        info("success", "User ID authenticated.");
         return facebook.userId;
       } else {
         spinner.fail("User ID authentication failed.");
@@ -35,6 +36,7 @@ export async function userIdCredential(
   } else {
     return await facebook.verifyUserId(userId).then((valid: boolean) => {
       if (valid) {
+        info("success", "User ID authenticated.");
         return userId;
       } else {
         throw new CredentialError("Invalid user ID.");
@@ -138,7 +140,7 @@ export async function pageIdCredential(
     );
     return await facebook.verifyPageId().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("Page ID authenticated.");
+        spinner.succeed(" Page ID authenticated.");
         info("success", "Page ID authenticated.");
         return facebook.pageId;
       } else {
@@ -149,6 +151,7 @@ export async function pageIdCredential(
   } else {
     return await facebook.verifyPageId(pageId).then((valid: boolean) => {
       if (valid) {
+        info("success", "Page ID authenticated.");
         return facebook.pageId;
       } else {
         throw new CredentialError("Invalid page ID.");

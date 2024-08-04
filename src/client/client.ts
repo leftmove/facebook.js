@@ -13,10 +13,13 @@ export interface Config {
   appSecret?: string;
 
   appToken?: string;
+  appTokenExpires?: number;
   userToken?: string;
   userId?: string;
+  userIdExpires?: number;
   userTokenExpires?: number;
   pageId?: string;
+  pageIdExpires?: number;
   pageIndex?: number;
   pageToken?: string;
   pageTokenExpires?: number;

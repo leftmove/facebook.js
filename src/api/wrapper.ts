@@ -1,7 +1,3 @@
-import http from "http";
-import assert from "node:assert";
-import url from "node:url";
-
 import { GraphError } from "../errors";
 
 export const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
