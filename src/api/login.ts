@@ -7,7 +7,6 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
-import { log, yellow, green, spin } from "../cli/components";
 import { CredentialError, GraphError } from "../errors";
 import type { Config } from "../client/client";
 import type {
@@ -154,10 +153,8 @@ export class Login {
     const appSecret = config.appSecret || credentials.appSecret || undefined;
 
     if (appId === undefined || appSecret === undefined) {
-      const error = new Error();
       throw new CredentialError(
-        "Empty credentials provided. App ID and App Secret are required.",
-        error
+        "Empty credentials provided. App ID and App Secret are required."
       );
     }
 
@@ -226,13 +223,13 @@ export class Login {
       throw new CredentialError("App ID and App Secret are required.", error);
     }
 
-    this.client
+    return this.client
       .get("debug_token", {
         input_token: appAccessToken,
         access_token: appAccessToken,
       })
       .then((data: Debug) => {
-        if (data?.data?.is_valid) {
+        if (data.data.is_valid) {
           return true;
         } else {
           this.stale = [...this.stale, ...token];
@@ -252,8 +249,6 @@ export class Login {
           );
         }
       });
-
-    return this;
   }
 
   verifyAppToken(appToken: string | undefined = this.appToken) {
@@ -261,33 +256,51 @@ export class Login {
 
     if (appToken === undefined) {
       this.stale = [...this.stale, token];
-      return;
+      return new Promise((resolve) => resolve(false));
     }
 
-    this.client
+    interface Data {
+      data: {
+        app_id: string;
+        type: string;
+        application: string;
+        is_valid: boolean;
+        scopes: Array<any>;
+      };
+    }
+    interface Error {
+      error: {
+        message: string;
+        type: string;
+        code: number;
+        fbtrace_id: string;
+      };
+    }
+
+    return this.client
       .get("debug_token", {
         input_token: appToken,
         access_token: `${this.appId}|${this.appSecret}`,
       })
-      .then((data: Debug) => {
-        if (data?.data?.is_valid) {
+      .then((data: Data) => {
+        if (data.data.is_valid) {
           return true;
         } else {
           this.stale = [...this.stale, token];
+          return false;
         }
       })
       .catch((e: GraphError) => {
-        const data: DebugError = e.data;
-        const code = data?.error?.code || 400;
+        const data: Error = e.data;
+        const code = data.error.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError("Error verifying app token.", error, e);
         }
       });
-
-    return this;
   }
 
   verifyUserCredentials(
@@ -298,35 +311,61 @@ export class Login {
 
     if (userToken === undefined) {
       this.stale = [...this.stale, token];
-      return;
+      return new Promise((resolve) => resolve(false));
     }
 
     const now = Date.now();
-    if (userTokenExpires && now - userTokenExpires <= this.expireTime) {
-      return;
+    if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
+      return new Promise((resolve) => resolve(false));
     }
 
-    this.client
+    interface Data {
+      data: {
+        app_id: string;
+        type: string;
+        application: string;
+        data_access_expires_at: number;
+        expires_at: number;
+        is_valid: boolean;
+        issued_at: number;
+        scopes: Array<string>;
+        granular_scopes: Array<{
+          scope: string;
+          target_ids?: Array<string>;
+        }>;
+        user_id: string;
+      };
+    }
+    interface Error {
+      error: {
+        message: string;
+        type: string;
+        code: number;
+        fbtrace_id: string;
+      };
+    }
+
+    return this.client
       .get("debug_token", { input_token: userToken, access_token: userToken })
-      .then((data: Debug) => {
-        if (data?.data?.is_valid) {
+      .then((data: Data) => {
+        if (data.data.is_valid) {
           return true;
         } else {
           this.stale = [...this.stale, token];
+          return false;
         }
       })
       .catch((e: GraphError) => {
-        const data: DebugError = e.data;
+        const data: Error = e.data;
         const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError("Error verifying user token.", error, e);
         }
       });
-
-    return this;
   }
 
   verifyUserId(
@@ -337,30 +376,39 @@ export class Login {
 
     if (userToken === undefined || userId === undefined) {
       this.stale = [...this.stale, token];
-      return;
+      return new Promise((resolve) => resolve(false));
     }
 
-    this.client
+    interface Data {
+      name: string;
+      id: string;
+    }
+    interface Error {
+      error: {
+        message: string;
+        type: string;
+        code: number;
+        error_subcode: number;
+        fbtrace_id: string;
+      };
+    }
+
+    return this.client
       .get(userId, { access_token: userToken })
-      .then((data: Debug) => {
-        if (data?.data?.is_valid) {
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-        }
+      .then((data: Data) => {
+        return true;
       })
       .catch((e: GraphError) => {
-        const data: DebugError = e.data;
-        const code = data?.error?.code || 400;
+        const data: Error = e.data;
+        const code = data.error.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError("Error verifying user ID.", error, e);
         }
       });
-
-    return this;
   }
 
   verifyPageId(
@@ -371,30 +419,39 @@ export class Login {
 
     if (pageToken === undefined || pageId === undefined) {
       this.stale = [...this.stale, token];
-      return;
+      return new Promise((resolve) => resolve(false));
     }
 
-    this.client
+    interface Data {
+      name: string;
+      id: string;
+    }
+    interface Error {
+      error: {
+        message: string;
+        type: string;
+        code: number;
+        error_subcode: number;
+        fbtrace_id: string;
+      };
+    }
+
+    return this.client
       .get(pageId, { access_token: pageToken })
-      .then((data: Debug) => {
-        if (data?.data?.is_valid) {
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-        }
+      .then((data: Data) => {
+        return true;
       })
       .catch((e: GraphError) => {
-        const data: DebugError = e.data;
+        const data: Error = e.data;
         const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError("Error verifying page ID.", error, e);
         }
       });
-
-    return this;
   }
 
   verifyPageCredentials(
@@ -405,21 +462,22 @@ export class Login {
 
     if (pageToken === undefined) {
       this.stale = [...this.stale, token];
-      return;
+      return new Promise((resolve) => resolve(false));
     }
 
     const now = Date.now();
-    if (pageTokenExpires && now - pageTokenExpires <= this.expireTime) {
-      return;
+    if (pageTokenExpires && now - pageTokenExpires >= this.expireTime) {
+      return new Promise((resolve) => resolve(false));
     }
 
-    this.client
+    return this.client
       .get("debug_token", { input_token: pageToken, access_token: pageToken })
       .then((data: Debug) => {
-        if (data?.data?.is_valid) {
+        if (data.data.is_valid) {
           return true;
         } else {
           this.stale = [...this.stale, token];
+          return false;
         }
       })
       .catch((e: GraphError) => {
@@ -427,13 +485,12 @@ export class Login {
         const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          return false;
         } else {
           const error = new Error();
           throw new CredentialError("Error verifying page token.", error, e);
         }
       });
-
-    return this;
   }
 
   verify(
@@ -501,7 +558,7 @@ export class Login {
       access_token: string;
       token_type: string;
     }
-    this.client
+    return this.client
       .get("oauth/access_token", {
         client_id: appId,
         client_secret: appSecret,
@@ -520,94 +577,42 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
-
-    return this;
   }
 
-  refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
-    if (appId == "" || appSecret === "") {
-      throw new CredentialError(
-        "App ID and App Secret are required to generate user tokens."
-      );
+  refreshUserToken(
+    appId: string,
+    appSecret: string,
+    redirect: string,
+    code: string
+  ) {
+    interface Data {
+      access_token: string;
+      token_type: string;
+      expires_in: number;
     }
-
-    const port = 2279;
-    const host = "localhost";
-    const redirect = new URL(`http://${host}:${port}/login`);
-
-    const oauth =
-      "https://facebook.com/v20.0/dialog/oauth?" +
-      new URLSearchParams({
-        client_id: this.appId,
-        response_type: "code",
-        auth_type: "rerequest",
-        scope: Object.keys(scope).join(","),
-        redirect_uri: redirect.href,
-      });
-
-    const handleOAuth = () => {
-      const spinner = spin("Attempting OAuth in default browser ...");
-
-      open(oauth);
-      const client = new Client();
-
-      client.wait(2500).then(() => {
-        spinner.stop();
-        log("-", "Attempted to open OAuth in default browser.", yellow);
-        log(
-          "!",
-          `If OAuth did not open, you can visit the link manually:\n${oauth}`,
-          yellow
-        );
-      });
-    };
-
-    this.client
-      .server("/login", handleOAuth, { host, port })
-      .then((query: any) => {
-        const client = new Client();
-        const code = query.code;
-
-        const spinner = spin("Authenticating user token ...");
-        interface Data {
-          access_token: string;
-          token_type: string;
-          expires_in: number;
-        }
-
-        client
-          .get("oauth/access_token", {
-            code,
-            client_id: appId,
-            client_secret: appSecret,
-            redirect_uri: redirect.href,
-          })
-          .then((data: Data) => {
-            spinner.stop();
-            log("✓", "Successfully authenticated user token.", green);
-
-            const userToken = data.access_token;
-            const userTokenExpires = data.expires_in;
-            this.userToken = userToken;
-            this.userTokenExpires = userTokenExpires;
-            this.writeCredentials({
-              appId,
-              appSecret,
-              userToken,
-              userTokenExpires,
-            });
-          })
-          .catch((e: GraphError) => {
-            const error = new Error();
-            throw new CredentialError("Error getting user token.", error, e);
-          });
+    return this.client
+      .get("oauth/access_token", {
+        code,
+        client_id: appId,
+        client_secret: appSecret,
+        redirect_uri: redirect,
+      })
+      .then((data: Data) => {
+        const userToken = data.access_token;
+        const userTokenExpires = data.expires_in;
+        this.userToken = userToken;
+        this.userTokenExpires = userTokenExpires;
+        this.writeCredentials({
+          appId,
+          appSecret,
+          userToken,
+          userTokenExpires,
+        });
       })
       .catch((e: GraphError) => {
         const error = new Error();
         throw new CredentialError("Error getting user token.", error, e);
       });
-
-    return this;
   }
 
   refreshUserId(appId: string, appSecret: string, userToken: string) {
@@ -615,7 +620,7 @@ export class Login {
       name: string;
       id: string;
     }
-    this.client
+    return this.client
       .get("me", {
         access_token: userToken,
       })
@@ -632,8 +637,6 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
-
-    return this;
   }
 
   refreshPageId(
@@ -662,7 +665,7 @@ export class Login {
         };
       };
     }
-    this.client
+    return this.client
       .get(`${userId}/accounts`, {
         access_token: userToken,
       })
@@ -709,7 +712,7 @@ export class Login {
       access_token: string;
       id: string;
     }
-    this.client
+    return this.client
       .get(`${pageId}`, {
         access_token: userToken,
         fields: "access_token",
@@ -727,21 +730,13 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
-
-    return this;
   }
 
-  refresh(
-    credentials: Array<string> = this.stale,
-    scope: Permissions = DEFAULT_SCOPE
-  ) {
+  refresh(credentials: Array<string> = this.stale) {
     credentials.map((c) => {
       switch (c) {
         case "appToken":
           this.refreshAppToken(this.appId, this.appSecret);
-          break;
-        case "userToken":
-          this.refreshUserToken(this.appId, this.appSecret, scope);
           break;
         case "userId":
           if (this.userToken === undefined) {
@@ -790,13 +785,12 @@ export class Login {
   }
 
   authenticate(config: Authentication = DEFAULT_CONFIG) {
-    const scope = config.scope || this.scope;
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const readCredentials = config.readCredentials || readFromJSONCredentials;
     const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
 
     this.verify(this.stale, readCredentials, writeCredentials, expireTime);
-    this.refresh(this.stale, scope);
+    this.refresh(this.stale);
     this.verify(this.stale, readCredentials, writeCredentials, expireTime);
 
     if (this.stale.length > 0) {

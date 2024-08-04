@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
 import { render, Box, Text } from "ink";
 
 import ora from "ora";
-import chalk from "chalk";
 
 export const yellow = "\x1b[43m";
 export const blue = "\x1b[44m";
@@ -10,11 +8,11 @@ export const green = "\x1b[42m";
 export const white = "\x1b[47";
 export const reset = "\x1b[0m";
 
-export const initial = () => {
-  return render(
-    <Box justifyContent="center">
+export const Initial = () => {
+  return (
+    <Box flexDirection="column" alignItems="center" marginBottom={2}>
       <Text color="white">---------------</Text>
-      <Text color="blue"> facebook.js </Text>
+      <Text color="cyan">facebook.js</Text>
       <Text color="white">---------------</Text>
     </Box>
   );
@@ -61,16 +59,19 @@ export const spin = (message: string) => {
 export const loginStart = () => {
   return render(
     <Box flexDirection="column" alignItems="center">
-      <Box marginBottom={2} justifyContent="center">
-        <Text color="yellow">Logging In</Text>
+      <Initial />
+      <Box flexDirection="column" alignItems="center">
+        <Box flexDirection="column" alignItems="center" marginBottom={2}>
+          <Text color="yellow">Logging In</Text>
+        </Box>
+        <Text>
+          To View Your App Credentials, visit
+          https://developers.facebook.com/apps and select/create your app.
+        </Text>
+        <Text>
+          Then, copy the app ID and secret from App Settings &gt; Basic.
+        </Text>
       </Box>
-      <Text>
-        To View Your App Credentials, visit https://developers.facebook.com/apps
-        and select/create your app.
-      </Text>
-      <Text>
-        Then, copy the app ID and secret from App Settings &gt; Basic.
-      </Text>
     </Box>
   );
 };
@@ -78,7 +79,7 @@ export const loginStart = () => {
 export const loginSuccess = () => {
   return render(
     <Box flexDirection="column" alignItems="center">
-      <Box marginBottom={2} justifyContent="center">
+      <Box marginBottom={2}>
         <Text color="yellow">Logging In</Text>
       </Box>
       <Text>
@@ -99,25 +100,27 @@ export function centerText(text: string): string {
   return " ".repeat(padding) + text;
 }
 
-export function log(emoji: string, message: string, color = yellow) {
-  let marker;
-  switch (color) {
-    case yellow:
-      marker = chalk.yellow(emoji);
+export function info(emoji: string, message: string, color = "yellow") {
+  switch (emoji) {
+    case "loading":
+      emoji = "⌛";
       break;
-    case blue:
-      marker = chalk.blue(emoji);
+    case "auth":
+      emoji = "🔒";
       break;
-    case green:
-      marker = chalk.green(emoji);
+    case "success":
+      emoji = "✅";
       break;
-    case white:
-      marker = chalk.white(emoji);
-      break;
-    default:
-      marker = chalk.yellow(emoji);
+    case "error":
+      emoji = "❌";
       break;
   }
-  const text = chalk.bold(message);
-  console.log(marker, text);
+  render(
+    <Box>
+      <Text bold={true} color={color}>
+        {emoji}
+      </Text>
+      <Text bold={true}> {message}</Text>
+    </Box>
+  );
 }

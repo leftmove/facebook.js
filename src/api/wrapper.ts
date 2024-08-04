@@ -4,7 +4,7 @@ import url from "node:url";
 
 import { GraphError } from "../errors";
 
-const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
+export const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
 
 export interface Response {
   response: Response;
@@ -77,11 +77,11 @@ export default class Client extends Queue {
   get(path: string, params: any = {}): any {
     const helper = () =>
       new Promise(async (resolve, reject) => {
-        const response = await fetch(
-          `${this.url}/${path}${
-            params ? "?" + new URLSearchParams(params).toString() : ""
-          }`
-        ).then(async (r: any) => {
+        const url = `${this.url}/${path}${
+          params ? "?" + new URLSearchParams(params).toString() : ""
+        }`;
+        // console.log(url, new Error().stack);
+        const response = await fetch(url).then(async (r: any) => {
           const data = await r.json();
           if (r.ok) {
             return data;
@@ -115,44 +115,5 @@ export default class Client extends Queue {
         resolve(response);
       });
     return this.enqueue(helper);
-  }
-
-  server(
-    path: string,
-    callback: Function,
-    listener: { host: string; port: number } = { host: "localhost", port: 2279 }
-  ) {
-    const helper = () =>
-      new Promise((resolve) => {
-        callback();
-        const server = http.createServer(
-          (req: http.IncomingMessage, res: http.ServerResponse) => {
-            assert(req.url, "This request doesn't have a URL");
-            const { pathname, query } = url.parse(req.url, true);
-
-            switch (pathname) {
-              case path:
-                resolve(query);
-                res.writeHead(200);
-                res.end(
-                  "Success! Your Facebook instance has been authenticated, you may now close this tab.",
-                  () => server.close()
-                );
-                break;
-              default:
-                res.writeHead(404);
-                res.end("not found");
-            }
-          }
-        );
-        server.listen(listener.port, listener.host);
-      });
-    return this.enqueue(helper);
-  }
-
-  // Bad practice, hacky
-  callback(c: Function) {
-    const helper = () => new Promise((resolve) => resolve(c()));
-    return new Client().enqueue(helper);
   }
 }

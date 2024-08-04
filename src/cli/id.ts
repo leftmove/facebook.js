@@ -1,6 +1,7 @@
 import inquirer from "inquirer";
 
 import Facebook from "../index";
+import { FACEBOOK_GRAPH_API } from "../index";
 import { CredentialError } from "../index";
 import { spin } from "./components";
 
@@ -9,7 +10,7 @@ export async function userIdCredential(
   userId: string | undefined
 ) {
   if (userId === undefined) {
-    const spinner = spin("Authenticating User ID ...");
+    const spinner = spin("Authenticating user ID ...");
 
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
@@ -17,39 +18,77 @@ export async function userIdCredential(
 
     if (userToken === undefined) {
       throw new CredentialError(
-        "User Token is required for User ID authentication."
+        "User token is required for user ID authentication."
       );
     }
 
-    facebook.refreshUserId(appId, appSecret, userToken).verifyUserId();
-    spinner.succeed("User ID Authenticated.");
-
-    return facebook.userId;
+    await facebook.refreshUserId(appId, appSecret, userToken);
+    return await facebook.verifyUserId().then((valid: boolean) => {
+      if (valid) {
+        spinner.succeed("User ID authenticated.");
+        return facebook.userId;
+      } else {
+        spinner.fail("User ID authentication failed.");
+        throw new CredentialError("Invalid user ID.");
+      }
+    });
   } else {
-    facebook.verifyUserId();
-    return userId;
+    return await facebook.verifyUserId(userId).then((valid: boolean) => {
+      if (valid) {
+        return userId;
+      } else {
+        throw new CredentialError("Invalid user ID.");
+      }
+    });
   }
 }
 
 export async function pageIdCredential(
   facebook: Facebook,
   pageId: string | undefined,
-  pageIndex: string | undefined
+  pageIndex: number | undefined
 ) {
   if (pageId === undefined) {
-    const spinner = spin("Authenticating Page ID ...");
+    const spinner = spin("Authenticating page ID ...");
 
     const userId = facebook.userId;
     const userToken = facebook.userToken;
 
     if (userToken === undefined) {
       throw new CredentialError(
-        "User Token is required for Page ID authentication."
+        "User token is required for page ID authentication."
       );
     }
 
-    const data: any = await fetch(
-      `${userId}/accounts?access_token=${userToken}`
+    if (userId === undefined) {
+      throw new CredentialError(
+        "User ID is required for page ID authentication."
+      );
+    }
+
+    interface Data {
+      data: {
+        access_token: string;
+        category: string;
+        category_list: {
+          id: string;
+          name: string;
+        }[];
+        name: string;
+        id: string;
+        tasks: string[];
+      }[];
+      paging: {
+        cursors: {
+          before: string;
+          after: string;
+        };
+      };
+    }
+
+    spinner.stop();
+    const data: Data = await fetch(
+      `${FACEBOOK_GRAPH_API}/${userId}/accounts?access_token=${userToken}`
     ).then((r) => r.json());
 
     if (pageIndex === undefined) {
@@ -58,7 +97,7 @@ export async function pageIdCredential(
           type: "list",
           name: "page",
           message: "Select a Page:",
-          choices: data.data.map((d: any, i: number) => {
+          choices: data.data.map((d, i) => {
             return {
               name: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
                 d.category
@@ -70,10 +109,11 @@ export async function pageIdCredential(
       ];
       await inquirer.prompt(questions).then((answers: any) => {
         const { page } = answers;
-        pageIndex = page;
+        pageIndex = Number(page);
       });
     }
 
+    spinner.start();
     if (pageIndex === undefined) {
       throw new CredentialError("Invalid page index.");
     }
@@ -81,14 +121,30 @@ export async function pageIdCredential(
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
 
-    facebook
-      .refreshPageId(appId, appSecret, userToken, pageIndex)
-      .verifyPageId();
-    spinner.succeed("Page ID Authenticated.");
-
-    return facebook.pageId;
+    await facebook.refreshPageId(
+      appId,
+      appSecret,
+      userId,
+      userToken,
+      pageIndex
+    );
+    return await facebook.verifyPageId().then((valid: boolean) => {
+      if (valid) {
+        spinner.succeed("Page ID authenticated.");
+        return facebook.pageId;
+      } else {
+        spinner.fail("Page ID authentication failed.");
+        throw new CredentialError("Invalid page ID.");
+      }
+    });
   } else {
-    facebook.verifyPageId();
-    return pageId;
+    console.log("not undefined");
+    return await facebook.verifyPageId(pageId).then((valid: boolean) => {
+      if (valid) {
+        return facebook.pageId;
+      } else {
+        throw new CredentialError("Invalid page ID.");
+      }
+    });
   }
 }
