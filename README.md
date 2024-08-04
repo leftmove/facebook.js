@@ -11,6 +11,7 @@ A Facebook API wrapper that's _not_ from 2011.
 
 - Seperate login flow from main app, minimum setup
 - Allow for login programmatically
+- Better error handling with more specific error types
 - Flesh out README.md with minimal examples/use-cases (i.e. quickstart section)
 - JSON credential login flow
 - Native function for every major use-case

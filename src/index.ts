@@ -7,5 +7,7 @@ export { DEFAULT_FILE_PATH } from "./credentials";
 export { DEFAULT_SCOPE } from "./api/login";
 export { DEFAULT_EXPIRE_TIME } from "./api/login";
 
+export { CredentialError, UnauthorizedError } from "./errors";
+
 export { Client } from "./api";
 export type { Permissions, Authentication } from "./api";

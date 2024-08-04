@@ -6,11 +6,19 @@ import chalk from "chalk";
 import ora from "ora";
 
 import Facebook from "../index";
-import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "../index";
 import {
   readFromJSONCredentials,
   writeToJSONCredentials,
 } from "../credentials";
+import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "../index";
+
+import {
+  appCredentials,
+  appTokenCredential,
+  userTokenCredential,
+} from "./token";
+import { userIdCredential, pageIdCredential } from "./id";
+
 import { centerText, log, reset } from "./utils";
 
 const program = new Command();
@@ -46,120 +54,49 @@ program
   )
   .option("--credentials", "Facebook credentials.", DEFAULT_FILE_PATH)
   .option("--path", "Path to the credentials file.")
-  .action((options) => {
+  .action(async (options) => {
     const credentials = readFromJSONCredentials(options.credentials);
     const scope =
-      credentials.scope || JSON.parse(options.scope || "{}") || null;
-
-    let appId = options.appId || credentials.appId || null;
-    let appSecret = options.appSecret || credentials.appSecret || null;
+      credentials.scope || JSON.parse(options.scope || "{}") || undefined;
 
     log("-", "Logging In ...", reset);
+    log(
+      "-",
+      "To View Your App Credentials, visit https://developers.facebook.com/apps and select/create your app. Then, copy the app ID and secret from App Settings > Basic.",
+      reset
+    );
 
-    // App ID and App Secret
-    if (appId === null || appSecret === null) {
-      const questions: any = [
-        {
-          type: "input",
-          name: "appId",
-          message: "Enter your Facebook App ID:",
-        },
-        {
-          type: "password",
-          name: "appSecret",
-          message: "Enter your Facebook App Secret:",
-        },
-      ];
-      inquirer.prompt(questions).then((answers) => {
-        const { appId: newAppId, appSecret: newAppSecret } = answers;
-        appId = newAppId;
-        appSecret = newAppSecret;
-      });
-    }
+    const { appId, appSecret } = await appCredentials(
+      options.appId || credentials.appId || undefined,
+      options.appSecret || credentials.appSecret || undefined
+    );
+    const facebook = new Facebook({ appId, appSecret }).verifyAppCredentials();
 
-    const facebook = new Facebook({ appId, appSecret });
-    facebook.verifyAppCredentials(appId, appSecret);
+    const appToken = await appTokenCredential(
+      facebook,
+      options.appToken || credentials.appToken || undefined
+    );
+    const userToken = await userTokenCredential(
+      facebook,
+      scope,
+      options.userToken || credentials.userToken || undefined
+    );
+    const userId = await userIdCredential(
+      facebook,
+      options.userId || credentials.userId || undefined
+    );
+    const pageId = await pageIdCredential(
+      facebook,
+      options.pageId || credentials.pageId || undefined,
+      options.pageIndex || credentials.pageIndex || undefined
+    );
 
-    // App Token
-    let spinner = ora({
-      text: "Authenticating App Token ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
-    let appToken = options.appToken || credentials.appToken || null;
-    if (appToken === null) {
-      facebook.refreshAppToken(appId, appSecret);
-      appToken = facebook.appToken;
-    }
-    facebook.verifyAppToken(appToken);
-    spinner.succeed("App Token Authenticated.");
-
-    // User Token
-    spinner = ora({
-      text: "Authenticating User Token ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
-    let userToken = options.userToken || credentials.userToken || null;
-    if (userToken === null) {
-      facebook.refreshUserToken(appId, appSecret, scope);
-      userToken = facebook.userToken;
-    }
-    facebook.verifyUserCredentials(userToken, Infinity);
-    spinner.succeed("User Token Authenticated.");
-
-    // User ID
-    spinner = ora({
-      text: "Authenticating User ID ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
-    let userId = options.userId || credentials.userId || null;
-    if (userId === null) {
-      facebook.refreshUserId(appId, appSecret, userToken);
-      userId = facebook.userId;
-    }
-    facebook.verifyUserId(userId, userToken);
-    spinner.succeed("User ID Authenticated.");
-
-    // Page ID
-    let pageIndex = options.pageIndex || credentials.pageIndex || null;
-    if (pageIndex === null) {
-      const data: any = facebook.client.get(`${userId}/accounts`, {
-        access_token: userToken,
-      });
-      const questions: any = [
-        {
-          type: "list",
-          name: "page",
-          message: "Select a Page:",
-          choices: data.data.map((d: any, i: number) => {
-            return {
-              name: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
-                d.category
-              }\n    ${d.tasks.join(",\n    ")}`,
-              value: i,
-            };
-          }),
-        },
-      ];
-      inquirer.prompt(questions).then((answers: any) => {
-        const { page } = answers;
-        pageIndex = page;
-      });
-    }
-
-    spinner = ora({
-      text: "Authenticating Page ID ...",
-      spinner: "dots",
-      color: "white",
-    }).start();
-
-    let pageId = options.pageId || credentials.pageId || null;
-    if (pageId === null) {
-      facebook.refreshPageId(appId, appSecret, userToken, pageIndex);
-      pageId = facebook.pageId;
-    }
+    const path = options.path || DEFAULT_FILE_PATH;
+    writeToJSONCredentials(
+      { appId, appSecret, appToken, userToken, userId, pageId },
+      path
+    );
+    log("-", "Logged In Successfully", reset);
   });
 
 program.parse();

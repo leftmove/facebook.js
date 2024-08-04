@@ -215,7 +215,10 @@ export class Login {
     }
   }
 
-  verifyAppCredentials(appId: string, appSecret: string) {
+  verifyAppCredentials(
+    appId: string = this.appId,
+    appSecret: string = this.appSecret
+  ) {
     const token = ["appId", "appSecret"];
     const appAccessToken = `${appId}|${appSecret}`;
 
@@ -250,9 +253,11 @@ export class Login {
           );
         }
       });
+
+    return this;
   }
 
-  verifyAppToken(appToken: string) {
+  verifyAppToken(appToken: string | undefined = this.appToken) {
     const token = "appToken";
 
     if (appToken === undefined) {
@@ -282,9 +287,14 @@ export class Login {
           throw new CredentialError("Error verifying app token.", error, e);
         }
       });
+
+    return this;
   }
 
-  verifyUserCredentials(userToken: string, userTokenExpires: number) {
+  verifyUserCredentials(
+    userToken: string | undefined = this.userToken,
+    userTokenExpires: number | undefined = this.userTokenExpires
+  ) {
     const token = "userToken";
 
     if (userToken === undefined) {
@@ -293,7 +303,7 @@ export class Login {
     }
 
     const now = Date.now();
-    if (now - userTokenExpires <= this.expireTime) {
+    if (userTokenExpires && now - userTokenExpires <= this.expireTime) {
       return;
     }
 
@@ -316,9 +326,14 @@ export class Login {
           throw new CredentialError("Error verifying user token.", error, e);
         }
       });
+
+    return this;
   }
 
-  verifyUserId(userId: string, userToken: string) {
+  verifyUserId(
+    userId: string | undefined = this.userId,
+    userToken: string | undefined = this.userToken
+  ) {
     const token = "userId";
 
     if (userToken === undefined || userId === undefined) {
@@ -345,9 +360,14 @@ export class Login {
           throw new CredentialError("Error verifying user ID.", error, e);
         }
       });
+
+    return this;
   }
 
-  verifyPageId(pageId: string, pageToken: string) {
+  verifyPageId(
+    pageId: string | undefined = this.appId,
+    pageToken: string | undefined = this.pageToken
+  ) {
     const token = "pageId";
 
     if (pageToken === undefined || pageId === undefined) {
@@ -374,10 +394,14 @@ export class Login {
           throw new CredentialError("Error verifying page ID.", error, e);
         }
       });
-    return true;
+
+    return this;
   }
 
-  verifyPageCredentials(pageToken: string, pageTokenExpires: number) {
+  verifyPageCredentials(
+    pageToken: string | undefined = this.pageToken,
+    pageTokenExpires: number | undefined = this.pageTokenExpires
+  ) {
     const token = "pageToken";
 
     if (pageToken === undefined) {
@@ -386,7 +410,7 @@ export class Login {
     }
 
     const now = Date.now();
-    if (now - pageTokenExpires <= this.expireTime) {
+    if (pageTokenExpires && now - pageTokenExpires <= this.expireTime) {
       return;
     }
 
@@ -409,6 +433,8 @@ export class Login {
           throw new CredentialError("Error verifying page token.", error, e);
         }
       });
+
+    return this;
   }
 
   verify(
@@ -495,6 +521,8 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
+
+    return this;
   }
 
   refreshUserToken(appId: string, appSecret: string, scope: Permissions) {
@@ -587,6 +615,8 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error getting user token.", error, e);
       });
+
+    return this;
   }
 
   refreshUserId(appId: string, appSecret: string, userToken: string) {
@@ -611,6 +641,8 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
+
+    return this;
   }
 
   refreshPageId(
@@ -672,6 +704,8 @@ export class Login {
           throw new CredentialError("Error verifying page token.", e);
         }
       });
+
+    return this;
   }
 
   refreshPageToken(
@@ -702,6 +736,8 @@ export class Login {
         const error = new Error();
         throw new CredentialError("Error verifying page token.", error, e);
       });
+
+    return this;
   }
 
   refresh(
