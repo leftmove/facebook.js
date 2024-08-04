@@ -1,10 +1,9 @@
 import fs from "fs";
 
-import Login from "./login";
 import { CredentialError } from "../errors";
 
-const DEFAULT_FILE_PATH = "./credentials.json";
-const DEFAULT_CONFIG: Credentials = {
+export const DEFAULT_FILE_PATH = "./credentials.json";
+export const DEFAULT_CONFIG: Credentials = {
   appId: null,
   appSecret: null,
 };
@@ -65,5 +64,3 @@ export function readFromJSONCredentials(filePath: string = DEFAULT_FILE_PATH) {
     );
   }
 }
-
-export default Login;
