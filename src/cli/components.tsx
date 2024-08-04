@@ -80,15 +80,11 @@ export const loginSuccess = () => {
   return render(
     <Box flexDirection="column" alignItems="center">
       <Box marginBottom={2}>
-        <Text color="yellow">Logging In</Text>
+        <Text color="yellow">Successfully Logged In!</Text>
       </Box>
-      <Text>
-        To View Your App Credentials, visit https://developers.facebook.com/apps
-        and select/create your app.
-      </Text>
-      <Text>
-        Then, copy the app ID and secret from App Settings &gt; Basic.
-      </Text>
+      <Box>
+        <Text>You can now use all the features of the Facebook API.</Text>
+      </Box>
     </Box>
   );
 };
@@ -109,7 +105,7 @@ export function info(emoji: string, message: string, color = "yellow") {
       emoji = "🔒";
       break;
     case "success":
-      emoji = "✅";
+      emoji = "✔";
       break;
     case "error":
       emoji = "❌";

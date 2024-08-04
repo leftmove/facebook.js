@@ -413,11 +413,11 @@ export class Login {
 
   verifyPageId(
     pageId: string | undefined = this.appId,
-    pageToken: string | undefined = this.pageToken
+    userToken: string | undefined = this.userToken
   ) {
     const token = "pageId";
 
-    if (pageToken === undefined || pageId === undefined) {
+    if (userToken === undefined || pageId === undefined) {
       this.stale = [...this.stale, token];
       return new Promise((resolve) => resolve(false));
     }
@@ -437,7 +437,7 @@ export class Login {
     }
 
     return this.client
-      .get(pageId, { access_token: pageToken })
+      .get(pageId, { access_token: userToken })
       .then((data: Data) => {
         return true;
       })
@@ -644,8 +644,12 @@ export class Login {
     appSecret: string,
     userId: string,
     userToken: string,
-    pageIndex: number | null = null
+    pageIndex: number | undefined
   ) {
+    if (pageIndex === undefined) {
+      pageIndex = 0;
+    }
+
     interface Data {
       data: {
         access_token: string;
@@ -670,18 +674,6 @@ export class Login {
         access_token: userToken,
       })
       .then((data: Data) => {
-        const pageCount = data.data.length;
-        if (pageCount === 0) {
-          throw new Error("No pages found.");
-        }
-        if (pageCount === 1 || pageIndex === null) {
-          pageIndex = 0;
-        }
-
-        if (pageIndex === null) {
-          throw new Error("Invalid page index selected.");
-        }
-
         const pageId = data.data[pageIndex].id;
         this.pageId = pageId;
         this.writeCredentials({
@@ -698,8 +690,6 @@ export class Login {
           throw new CredentialError("Error verifying page token.", e);
         }
       });
-
-    return this;
   }
 
   refreshPageToken(
@@ -760,7 +750,8 @@ export class Login {
             this.appId,
             this.appSecret,
             this.userId,
-            this.userToken
+            this.userToken,
+            this.pageIndex
           );
           break;
         case "pageToken":

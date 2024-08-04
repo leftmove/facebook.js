@@ -3,7 +3,7 @@ import inquirer from "inquirer";
 import Facebook from "../index";
 import { FACEBOOK_GRAPH_API } from "../index";
 import { CredentialError } from "../index";
-import { spin } from "./components";
+import { spin, info } from "./components";
 
 export async function userIdCredential(
   facebook: Facebook,
@@ -91,6 +91,14 @@ export async function pageIdCredential(
       `${FACEBOOK_GRAPH_API}/${userId}/accounts?access_token=${userToken}`
     ).then((r) => r.json());
 
+    if (data.data.length === 0) {
+      throw new CredentialError("No pages found.");
+    }
+
+    if (data.data.length === 1) {
+      pageIndex = 0;
+    }
+
     if (pageIndex === undefined) {
       const questions: any = [
         {
@@ -131,6 +139,7 @@ export async function pageIdCredential(
     return await facebook.verifyPageId().then((valid: boolean) => {
       if (valid) {
         spinner.succeed("Page ID authenticated.");
+        info("success", "Page ID authenticated.");
         return facebook.pageId;
       } else {
         spinner.fail("Page ID authentication failed.");
@@ -138,7 +147,6 @@ export async function pageIdCredential(
       }
     });
   } else {
-    console.log("not undefined");
     return await facebook.verifyPageId(pageId).then((valid: boolean) => {
       if (valid) {
         return facebook.pageId;

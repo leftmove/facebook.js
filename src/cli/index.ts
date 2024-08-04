@@ -78,8 +78,8 @@ program
     appToken = await appTokenCredential(facebook, appToken);
     userToken = await userTokenCredential(facebook, scope, userToken);
     userId = await userIdCredential(facebook, userId);
-    pageToken = await pageTokenCredential(facebook, pageToken);
     pageId = await pageIdCredential(facebook, pageId, pageIndex);
+    pageToken = await pageTokenCredential(facebook, pageToken);
 
     const path = options.path || DEFAULT_FILE_PATH;
     writeToJSONCredentials(

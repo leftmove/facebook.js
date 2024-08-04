@@ -54,6 +54,7 @@ export async function appTokenCredential(
     return await facebook.verifyAppToken().then((valid: boolean) => {
       if (valid) {
         spinner.succeed("App token authenticated.");
+        info("success", "App token authenticated.");
         return facebook.appToken;
       } else {
         spinner.fail("App token authentication failed.");
@@ -127,20 +128,14 @@ export async function userTokenCredential(
         const spinner = spin(
           "Attempting OAuth for user token in default browser ..."
         );
-        timeoutCallback(
-          1000 * 5,
-          () => {
-            open(oauth);
-          },
-          "Error occured while opening OAuth in default browser.",
-          () => {
-            spinner.fail("Attempted to open OAuth in default browser.");
-            info(
-              "auth",
-              `If OAuth did not open, you can visit the link manually:\n${oauth}`
-            );
-          }
-        );
+        const timer = setTimeout(() => {
+          spinner.fail("Attempted to open OAuth in default browser.");
+          info(
+            "auth",
+            `If OAuth did not open, you can visit the link manually:\n${oauth}`
+          );
+        }, 1000 * 5);
+        open(oauth);
 
         const server = http
           .createServer(
@@ -148,18 +143,12 @@ export async function userTokenCredential(
               assert(req.url, "This request doesn't have a URL");
               const { pathname, query } = url.parse(req.url, true);
 
-              setTimeout(() => {
-                spinner.stop();
-                info("auth", "Attempted to open OAuth in default browser.");
-                info(
-                  "auth",
-                  `If OAuth did not open, you can visit the link manually:\n${oauth}`
-                );
-              }, 1000 * 5);
-
               switch (pathname) {
                 case path:
+                  clearTimeout(timer);
+                  spinner.succeed("Opened OAuth in default browser.");
                   resolve(query.code as string);
+
                   res.writeHead(200);
                   res.end(
                     "Success! Your Facebook instance has been authenticated, you may now close this tab.",
@@ -183,6 +172,7 @@ export async function userTokenCredential(
     return await facebook.verifyUserCredentials().then((valid: boolean) => {
       if (valid) {
         spinner.succeed("User token authenticated.");
+        info("success", "User token authenticated.");
         return facebook.userToken;
       } else {
         spinner.fail("User token authentication failed.");
@@ -230,10 +220,11 @@ export async function pageTokenCredential(
 
     return await facebook.verifyPageCredentials().then((valid: boolean) => {
       if (valid) {
-        spinner.succeed("Page Token authenticated.");
+        spinner.succeed("Page token authenticated.");
+        info("success", "Page token authenticated.");
         return facebook.pageToken;
       } else {
-        spinner.fail("Page Token authentication failed.");
+        spinner.fail("Page token authentication failed.");
         throw new CredentialError("Invalid page token.");
       }
     });
