@@ -6,7 +6,7 @@ import inquirer from "inquirer";
 
 import Facebook from "../index";
 import { spin, info } from "./components";
-import { CredentialError } from "../index";
+import { UnauthorizedError } from "../index";
 import type { Permissions } from "../index";
 
 export async function appCredentials(
@@ -34,7 +34,7 @@ export async function appCredentials(
   }
 
   if (appId === undefined || appSecret === undefined) {
-    throw new CredentialError("Invalid app credentials.");
+    throw new UnauthorizedError("Invalid app credentials.");
   }
 
   return { appId, appSecret };
@@ -58,7 +58,7 @@ export async function appTokenCredential(
         return facebook.appToken;
       } else {
         spinner.fail("App token authentication failed.");
-        throw new CredentialError("Invalid app token.");
+        throw new UnauthorizedError("Invalid app token.");
       }
     });
   } else {
@@ -67,7 +67,7 @@ export async function appTokenCredential(
         info("success", "App token authenticated.");
         return facebook.appToken;
       } else {
-        throw new CredentialError("Invalid app token.");
+        throw new UnauthorizedError("Invalid app token.");
       }
     });
   }
@@ -177,7 +177,7 @@ export async function userTokenCredential(
         return facebook.userToken;
       } else {
         spinner.fail("User token authentication failed.");
-        throw new CredentialError("Invalid user token.");
+        throw new UnauthorizedError("Invalid user token.");
       }
     });
   } else {
@@ -188,7 +188,7 @@ export async function userTokenCredential(
           info("success", "User token authenticated.");
           return facebook.userToken;
         } else {
-          throw new CredentialError("Invalid user token.");
+          throw new UnauthorizedError("Invalid user token.");
         }
       });
   }
@@ -207,13 +207,13 @@ export async function pageTokenCredential(
     const userToken = facebook.userToken;
 
     if (pageId === undefined) {
-      throw new CredentialError(
+      throw new UnauthorizedError(
         "Page ID is required for page token authentication."
       );
     }
 
     if (userToken === undefined) {
-      throw new CredentialError(
+      throw new UnauthorizedError(
         "User token is required for page token authentication."
       );
     }
@@ -227,7 +227,7 @@ export async function pageTokenCredential(
         return facebook.pageToken;
       } else {
         spinner.fail("Page token authentication failed.");
-        throw new CredentialError("Invalid page token.");
+        throw new UnauthorizedError("Invalid page token.");
       }
     });
   } else {
@@ -238,7 +238,7 @@ export async function pageTokenCredential(
           info("success", "Page token authenticated.");
           return facebook.pageToken;
         } else {
-          throw new CredentialError("Invalid page token.");
+          throw new UnauthorizedError("Invalid page token.");
         }
       });
   }

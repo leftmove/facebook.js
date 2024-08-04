@@ -58,7 +58,12 @@ export const spin = (message: string) => {
 
 export const loginStart = () => {
   return render(
-    <Box flexDirection="column" alignItems="center">
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+    >
       <Initial />
       <Box flexDirection="column" alignItems="center">
         <Box flexDirection="column" alignItems="center" marginBottom={2}>
@@ -78,7 +83,12 @@ export const loginStart = () => {
 
 export const loginSuccess = () => {
   return render(
-    <Box flexDirection="column" alignItems="center">
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+    >
       <Box marginBottom={2}>
         <Text color="yellow">Successfully Logged In!</Text>
       </Box>

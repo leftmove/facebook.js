@@ -35,10 +35,16 @@ export class CredentialError extends GraphError {
   }
 }
 
-export class UnauthorizedError extends GraphError {
-  constructor(message: string = "", error: any, api: any = {}) {
-    super(error, api?.response, api?.data);
-    this.message = `${this.message}${message}`;
+export class PostError extends CredentialError {
+  constructor(...args: any) {
+    super(...args);
+    this.name = "PostError";
+  }
+}
+
+export class UnauthorizedError extends CredentialError {
+  constructor(...args: any) {
+    super(...args);
     this.name = "UnauthorizedError";
   }
 }

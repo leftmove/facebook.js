@@ -7,7 +7,7 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
-import { CredentialError, GraphError } from "../errors";
+import { CredentialError, UnauthorizedError, GraphError } from "../errors";
 import type { Config } from "../client/client";
 import type {
   Credentials,
@@ -22,6 +22,7 @@ export interface Permissions {
   commerce_account_read_settings?: boolean;
   instagram_shopping_tag_products?: boolean;
   email?: boolean;
+  Events_Groups_Pages?: boolean;
   ads_management?: boolean;
   ads_read?: boolean;
   business_management?: boolean;
@@ -55,12 +56,14 @@ export interface Permissions {
   whatsapp_business_management?: boolean;
   whatsapp_business_messaging?: boolean;
 }
+
 export const DEFAULT_SCOPE: Permissions = {
   pages_manage_engagement: true,
   pages_manage_posts: true,
   pages_read_engagement: true,
   pages_read_user_content: true,
   pages_show_list: true,
+  publish_video: true,
   read_insights: true,
   business_management: true,
 };
@@ -259,7 +262,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError(
+          throw new UnauthorizedError(
             "Error verifying app credentials.",
             error,
             e
@@ -326,7 +329,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError("Error verifying app token.", error, e);
+          throw new UnauthorizedError("Error verifying app token.", error, e);
         }
       });
   }
@@ -399,7 +402,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError("Error verifying user token.", error, e);
+          throw new UnauthorizedError("Error verifying user token.", error, e);
         }
       });
   }
@@ -448,7 +451,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError("Error verifying user ID.", error, e);
+          throw new UnauthorizedError("Error verifying user ID.", error, e);
         }
       });
   }
@@ -497,7 +500,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError("Error verifying page ID.", error, e);
+          throw new UnauthorizedError("Error verifying page ID.", error, e);
         }
       });
   }
@@ -569,7 +572,7 @@ export class Login {
           return false;
         } else {
           const error = new Error();
-          throw new CredentialError("Error verifying page token.", error, e);
+          throw new UnauthorizedError("Error verifying page token.", error, e);
         }
       });
   }
@@ -662,7 +665,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const error = new Error();
-        throw new CredentialError("Error verifying page token.", error, e);
+        throw new UnauthorizedError("Error verifying page token.", error, e);
       });
   }
 
@@ -698,7 +701,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const error = new Error();
-        throw new CredentialError("Error getting user token.", error, e);
+        throw new UnauthorizedError("Error getting user token.", error, e);
       });
   }
 
@@ -723,7 +726,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const error = new Error();
-        throw new CredentialError("Error verifying page token.", error, e);
+        throw new UnauthorizedError("Error verifying page token.", error, e);
       });
   }
 
@@ -774,9 +777,9 @@ export class Login {
       .catch((e: any) => {
         if (e instanceof GraphError) {
           const error = new Error();
-          throw new CredentialError("Error verifying page token.", error, e);
+          throw new UnauthorizedError("Error verifying page token.", error, e);
         } else {
-          throw new CredentialError("Error verifying page token.", e);
+          throw new UnauthorizedError("Error verifying page token.", e);
         }
       });
   }
@@ -808,7 +811,7 @@ export class Login {
       })
       .catch((e: GraphError) => {
         const error = new Error();
-        throw new CredentialError("Error verifying page token.", error, e);
+        throw new UnauthorizedError("Error verifying page token.", error, e);
       });
   }
 
