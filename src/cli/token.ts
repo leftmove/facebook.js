@@ -50,7 +50,7 @@ export async function appTokenCredential(
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
 
-    await facebook.refreshAppToken(appId, appSecret);
+    await facebook.generateAppToken(appId, appSecret);
     return await facebook.verifyAppToken().then((valid: boolean) => {
       if (valid) {
         spinner.succeed(" App token authenticated.");
@@ -167,7 +167,7 @@ export async function userTokenCredential(
       "OAuth for user token timed out."
     );
 
-    await facebook.refreshUserToken(appId, appSecret, redirect.href, code);
+    await facebook.generateUserToken(appId, appSecret, redirect.href, code);
     const spinner = spin("Authenticating user token ...");
 
     return await facebook.verifyUserCredentials().then((valid: boolean) => {
@@ -218,7 +218,7 @@ export async function pageTokenCredential(
       );
     }
 
-    await facebook.refreshPageToken(appId, appSecret, pageId, userToken);
+    await facebook.generatePageToken(appId, appSecret, pageId, userToken);
 
     return await facebook.verifyPageCredentials().then((valid: boolean) => {
       if (valid) {

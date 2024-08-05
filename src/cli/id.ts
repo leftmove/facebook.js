@@ -22,7 +22,7 @@ export async function userIdCredential(
       );
     }
 
-    await facebook.refreshUserId(appId, appSecret, userToken);
+    await facebook.generateUserId(appId, appSecret, userToken);
     return await facebook.verifyUserId().then((valid: boolean) => {
       if (valid) {
         spinner.succeed(" User ID authenticated.");
@@ -131,7 +131,7 @@ export async function pageIdCredential(
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
 
-    await facebook.refreshPageId(
+    await facebook.generatePageId(
       appId,
       appSecret,
       userId,

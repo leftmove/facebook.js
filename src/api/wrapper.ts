@@ -94,12 +94,13 @@ export default class Client extends Queue {
   post(path: string, body: Object | FormData) {
     const helper = () =>
       new Promise(async (resolve, reject) => {
+        console.log(body);
         const response = await fetch(`${this.url}/${path}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
+          // headers: {
+          //   "Content-Type": body instanceof FormData ? "multiparth" : "application/json",
+          // },
+          body,
         }).then(async (r) => {
           const data = await r.json();
           if (r.ok) {

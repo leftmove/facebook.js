@@ -94,44 +94,16 @@ export class Facebook extends Login {
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    */
   publish(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
-    if (this.userId === undefined) {
-      throw new CredentialError("User ID is not defined.");
-    }
-
-    if (this.userToken === undefined) {
-      throw new CredentialError("User token is not defined.");
-    }
-
-    if (this.pageToken === undefined) {
-      throw new CredentialError("Page token is not defined.");
-    }
-
-    if (this.pageId === undefined) {
-      throw new CredentialError("Page ID is not defined.");
-    }
-
-    this.refreshPageId(
-      this.appId,
-      this.appSecret,
-      this.userId,
-      this.userToken,
-      this.pageIndex
-    );
-    this.refreshPageToken(
-      this.appId,
-      this.appSecret,
-      this.pageId,
-      this.userToken
-    );
-
-    try {
-      return this.client.post(`${this.pageId}/feed`, {
-        ...config,
-        access_token: this.pageToken,
-      });
-    } catch (error) {
-      throw new PostError("Error publishing post.", error);
-    }
+    return this.refresh(["pageId", "pageToken"]).then(() => {
+      try {
+        return this.client.post(`${this.pageId}/feed`, {
+          ...config,
+          access_token: this.pageToken,
+        });
+      } catch (error) {
+        throw new PostError("Error publishing post.", error);
+      }
+    });
   }
 
   /**
@@ -142,100 +114,79 @@ export class Facebook extends Login {
    * @throws {PostError} If there is an error uploading or posting the photos.
    * @returns The post ID.
    */
-
   upload(config: PostMedia | MediaScheduled) {
-    if (this.userId === undefined) {
-      throw new CredentialError("User ID is not defined.");
-    }
-
-    if (this.userToken === undefined) {
-      throw new CredentialError("User token is not defined.");
-    }
-
-    if (this.pageToken === undefined) {
-      throw new CredentialError("Page token is not defined.");
-    }
-
-    if (this.pageId === undefined) {
-      throw new CredentialError("Page ID is not defined.");
-    }
-
-    this.refreshPageId(
-      this.appId,
-      this.appSecret,
-      this.userId,
-      this.userToken,
-      this.pageIndex
-    );
-    this.refreshPageToken(
-      this.appId,
-      this.appSecret,
-      this.pageId,
-      this.userToken
-    );
-
-    try {
-      const validExtensions = ["jpeg", "bmp", "png", "gif", "tiff"];
-      const file = (path: string): Promise<any> => {
-        if (fs.existsSync(path) === false) {
-          throw new PostError(
-            `File specified at path '${path}' does not exist, cannot upload photo.`
-          );
-        }
-        const extension = path.split(".").pop();
-        if (
-          extension === undefined ||
-          validExtensions.includes(extension) === false
-        ) {
-          throw new PostError(
-            `File specified at path '${path}' is not a supported image. Supported extensions are: ${validExtensions}`
-          );
+    return this.refresh(["userToken", "pageId", "pageToken"]).then(() => {
+      console.log(this.pageToken);
+      try {
+        const validExtensions = ["jpeg", "bmp", "png", "gif", "tiff"];
+        interface Data {
+          id: string;
         }
 
-        assert(this.pageToken); // Will never throw an error because of above check, but TypeScript doesn't know that
-        const body = new FormData();
-        const image = new Blob([path], { type: `image/${extension}` });
-        body.append("source", image);
-        body.append("published", "false");
-        body.append("temporary", "true");
-        body.append("access_token", this.pageToken);
-
-        return new Promise((resolve) => {
-          try {
-            console.log(body);
-            resolve(this.client.post("me/photos", body));
-          } catch (error) {
-            throw new PostError("Error uploading photo.", error);
+        const file = (path: string): Promise<Data> => {
+          if (fs.existsSync(path) === false) {
+            throw new PostError(
+              `File specified at path '${path}' does not exist, cannot upload photo.`
+            );
           }
-        });
-      };
+          const extension = path.split(".").pop();
+          if (
+            extension === undefined ||
+            validExtensions.includes(extension) === false
+          ) {
+            throw new PostError(
+              `File specified at path '${path}' is not a supported image. Supported extensions are: ${validExtensions}`
+            );
+          }
 
-      interface Data {
-        id: string;
-      }
+          assert(this.pageToken); // Will never throw an error because of above check, but TypeScript doesn't know that
+          const body = new FormData();
 
-      return Promise.all(
-        Array.isArray(config.url)
-          ? config.url.map((url) => {
-              return file(url);
-            })
-          : [file(config.url)]
-      )
-        .then((images: Data[]) => {
-          console.log(images);
-          return {
-            ...config,
+          const image = new Blob([path], { type: `image/jpg` });
+          body.append("source", image);
+          body.append("published", "false");
+          body.append("temporary", "true");
+          body.append("access_token", this.pageToken);
+
+          const formData = {
+            source: fs.createReadStream(path),
+            published: "false",
+            temporary: "true",
             access_token: this.pageToken,
-            attached_media: images.map((image) => {
-              return { media_fbid: image.id };
-            }),
           };
-        })
-        .then((body) => {
-          return this.client.post(`${this.pageId}/feed`, body);
-        });
-    } catch (error) {
-      throw new PostError("Error uploading photos.", error);
-    }
+
+          return new Promise((resolve) => {
+            try {
+              resolve(this.client.post(`${this.pageId}/photos`, formData));
+            } catch (error) {
+              throw new PostError("Error uploading photo.", error);
+            }
+          });
+        };
+
+        return Promise.all(
+          Array.isArray(config.url)
+            ? config.url.map((url) => {
+                return file(url);
+              })
+            : [file(config.url)]
+        )
+          .then((images) => {
+            console.log(images);
+            return {
+              ...config,
+              access_token: this.pageToken,
+              attached_media: images.map((image) => {
+                return { media_fbid: image.id };
+              }),
+            };
+          })
+          .then((body) => {
+            return this.client.post(`${this.pageId}/feed`, body);
+          });
+      } catch (error) {
+        throw new PostError("Error uploading photos.", error);
+      }
+    });
   }
 }
