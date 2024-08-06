@@ -55,18 +55,12 @@ interface LinkScheduled extends PostLink {
 
 interface PostMedia extends Omit<PostRegular, "message"> {
   message?: string;
-  type?: "path" | "url" | "media";
-  url?: string | string[];
-  path?: string | string[];
-  media?: string | string[];
+  path: string | string[];
 }
 
 interface MediaScheduled extends Omit<PostScheduled, "message"> {
   message?: string;
-  type?: "path" | "url" | "media";
-  url?: string | string[];
-  path?: string | string[];
-  media?: string | string[];
+  path: string | string[];
 }
 
 export class Facebook extends Login {
@@ -120,7 +114,7 @@ export class Facebook extends Login {
    * @param config.url - The path of the photo(s) to upload. Can be a single path or an array of paths.
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    * @throws {PostError} If there is an error uploading or posting the photos.
-   * @returns An object with the ID of the post under the 'id' property, and the images IDs under the 'images' property.
+   * @returns An object with the ID of the post under the 'id' property.
    */
   upload(config: PostMedia | MediaScheduled) {
     return this.refresh(["userToken", "pageId", "pageToken"]).then(() => {
@@ -129,29 +123,7 @@ export class Facebook extends Login {
       }
 
       const validExtensions = ["jpg", "bmp", "png", "gif", "tiff"];
-      const store = (...args: any[]): Promise<Data> => {
-        return new Promise((resolve) => {
-          try {
-            const form = new FormData();
-
-            assert(this.pageToken, "Page token is missing."); // Will never throw an error because of above check, but TypeScript doesn't know that
-
-            form.append("access_token", this.pageToken);
-            form.append("published", "false");
-            form.append("temporary", "true");
-            form.append(...args);
-
-            resolve(
-              this.client.post(`me/photos`, form, {
-                "Content-Type": "multipart/form-data",
-              })
-            );
-          } catch (error) {
-            throw new PostError("Error uploading photo.", error);
-          }
-        });
-      };
-      const file = (path: string) => {
+      const file = (path: string): Promise<Data> => {
         if (fs.existsSync(path) === false) {
           throw new PostError(
             `File specified at path '${path}' does not exist, cannot upload photo.`
@@ -179,43 +151,21 @@ export class Facebook extends Login {
         form.append("published", "false");
         form.append("temporary", "true");
 
-        return store(form);
+        return new Promise((resolve) => {
+          try {
+            resolve(this.client.post(`me/photos`, form, {}));
+          } catch (error) {
+            throw new PostError("Error uploading photo.", error);
+          }
+        });
       };
-      const url = (href: string) => {
-        const valid = new RegExp(/^(http|https):\/\/[^ "]+$/);
-        if (valid.test(href) === false) {
-          throw new PostError(
-            `URL specified at '${href}' is not a valid URL, cannot upload photo.`
-          );
-        }
-        return store(href)
-      };
-
-      const promises = [];
-      const type = config.type || "path";
-      
-      let urls = config[type] as string | string[];
-      if (Array.isArray(urls) === false) {
-        urls = [urls];
-      }
-
-      urls.forEach((url) => {
-        switch (type) {
-          case "path":
-            promises.push(file(url));
-            break;
-          case "url":
-            promises.push(url(url));
-            break;
-        }
-
 
       return Promise.all(
-        Array.isArray(config.url)
-          ? config.url.map((url) => {
-              return file(url);
+        Array.isArray(config.path)
+          ? config.path.map((path) => {
+              return file(path);
             })
-          : [file(config.url)]
+          : [file(config.path)]
       ).then((images: any) => {
         const options: any = config;
         delete options.url;
