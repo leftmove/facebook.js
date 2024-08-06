@@ -76,7 +76,7 @@ export class Facebook extends Login {
    * @returns The post data.
    * @throws {PostError} If there is an error getting the post.
    */
-  post(postId: string) {
+  getPost(postId: string) {
     try {
       return this.client.get(postId);
     } catch (error) {
@@ -95,7 +95,7 @@ export class Facebook extends Login {
    * @returns An object with the ID of the post under the 'id' property.
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    */
-  publish(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
+  publishPost(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
     return this.refresh(["pageId", "pageToken"]).then(() => {
       try {
         return this.client.post(`${this.pageId}/feed`, {
@@ -116,7 +116,7 @@ export class Facebook extends Login {
    * @throws {PostError} If there is an error uploading or posting the photos.
    * @returns An object with the ID of the post under the 'id' property.
    */
-  upload(config: PostMedia | MediaScheduled) {
+  mediaPost(config: PostMedia | MediaScheduled) {
     return this.refresh(["userToken", "pageId", "pageToken"]).then(() => {
       interface Data {
         id: string;
@@ -184,5 +184,88 @@ export class Facebook extends Login {
         });
       });
     });
+  }
+
+  /**
+   * Edits a post on Facebook.
+   * @param postId - The ID of the post to edit.
+   * @param message - The new message for the post.
+   * @returns Void.
+   * @throws {CredentialError} If the user ID, user token, or page token is not defined.
+   * @throws {PostError} If there is an error editing the post.
+   **/
+  editPost(postId: string, message: string) {
+    return this.refresh(["pageId", "pageToken"]).then(() => {
+      try {
+        return this.client.post(postId, {
+          message,
+          access_token: this.pageToken,
+        });
+      } catch (error) {
+        throw new PostError("Error editing post.", error);
+      }
+    });
+  }
+
+  /**
+   * Deletes a post on Facebook.
+   * @param postId - The ID of the post to delete.
+   * @returns Void.
+   * @throws {CredentialError} If the user ID, user token, or page token is not defined.
+   * @throws {PostError} If there is an error deleting the post.
+   **/
+  deletePost(postId: string) {
+    return this.refresh(["pageToken"]).then(() => {
+      try {
+        return this.client.post(
+          postId,
+          {
+            access_token: this.pageToken,
+          },
+          { "Content-Type": "application/json" },
+          "DELETE"
+        );
+      } catch (error) {
+        throw new PostError("Error deleting post.", error);
+      }
+    });
+  }
+
+  /**
+   * Returns an object with methods for interacting with Facebook posts.
+   * @returns An object with methods for interacting with Facebook posts
+   **/
+  posts = {
+    get: this.getPost,
+    publish: this.publishPost,
+    upload: this.mediaPost,
+    edit: this.editPost,
+  };
+
+  /**
+   * Retrieves a comment by its ID.
+   * @param postId - The ID of the post or comment to reply to. If the comment is a reply, this should be the ID of the parent comment.
+   * @returns The comment data.
+   * @throws {PostError} If there is an error getting the comment.
+   **/
+  publishComment(postId: string, message: string) {
+    return this.refresh(["pageToken"]).then(() => {
+      try {
+        return this.client.post(postId, {
+          message,
+          access_token: this.pageToken,
+        });
+      } catch (error) {
+        throw new PostError("Error publishing comment.", error);
+      }
+    });
+  }
+
+  /**
+   * Returns an object with methods for interacting with Facebook comments.
+   * @returns An object with methods for interacting with Facebook comments
+   **/
+  comments() {
+    return {};
   }
 }

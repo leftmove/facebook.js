@@ -96,12 +96,13 @@ export default class Client extends Queue {
     body: any,
     headers: { "Content-Type"?: string } = {
       "Content-Type": "application/json",
-    }
+    },
+    method = "POST"
   ) {
     const helper = () =>
       new Promise(async (resolve, reject) => {
         const response = await fetch(`${this.url}/${path}`, {
-          method: "POST",
+          method,
           headers,
           body,
         }).then(async (r) => {
