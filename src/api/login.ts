@@ -49,6 +49,7 @@ export interface Permissions {
   leads_retrieval?: boolean;
   manage_fundraisers?: boolean;
   publish_video?: boolean;
+  publish_to_groups?: boolean;
   read_insights?: boolean;
   whatsapp_business_management?: boolean;
   whatsapp_business_messaging?: boolean;
@@ -61,6 +62,7 @@ export const DEFAULT_SCOPE: Permissions = {
   pages_read_user_content: true,
   pages_show_list: true,
   publish_video: true,
+  publish_to_groups: true,
   read_insights: true,
   business_management: true,
 };

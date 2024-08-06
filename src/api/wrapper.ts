@@ -91,15 +91,18 @@ export default class Client extends Queue {
     return this.enqueue(helper);
   }
 
-  post(path: string, body: Object | FormData) {
+  post(
+    path: string,
+    body: any,
+    headers: { "Content-Type"?: string } = {
+      "Content-Type": "application/json",
+    }
+  ) {
     const helper = () =>
       new Promise(async (resolve, reject) => {
-        console.log(body);
         const response = await fetch(`${this.url}/${path}`, {
           method: "POST",
-          // headers: {
-          //   "Content-Type": body instanceof FormData ? "multiparth" : "application/json",
-          // },
+          headers,
           body,
         }).then(async (r) => {
           const data = await r.json();

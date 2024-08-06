@@ -53,12 +53,20 @@ interface LinkScheduled extends PostLink {
   scheduled_publish_time: number;
 }
 
-interface PostMedia extends PostRegular {
-  url: string | string[];
+interface PostMedia extends Omit<PostRegular, "message"> {
+  message?: string;
+  type?: "path" | "url" | "media";
+  url?: string | string[];
+  path?: string | string[];
+  media?: string | string[];
 }
 
-interface MediaScheduled extends PostScheduled {
-  url: string | string[];
+interface MediaScheduled extends Omit<PostScheduled, "message"> {
+  message?: string;
+  type?: "path" | "url" | "media";
+  url?: string | string[];
+  path?: string | string[];
+  media?: string | string[];
 }
 
 export class Facebook extends Login {
@@ -90,7 +98,7 @@ export class Facebook extends Login {
    * @param config.published - Whether the post is published now or scheduled, true if published now, and false if later. Default is true.
    * @param config.scheduled_publish_time - The time to publish the post, if the post is scheduled. Required if the 'published' is set to true.
    * @param config.targeting - The targeting options for the post, including the audiences the post will target. Optional, find more info [here](https://developers.facebook.com/docs/marketing-api/targeting-specs).
-   * @returns The post ID.
+   * @returns An object with the ID of the post under the 'id' property.
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    */
   publish(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
@@ -112,81 +120,119 @@ export class Facebook extends Login {
    * @param config.url - The path of the photo(s) to upload. Can be a single path or an array of paths.
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    * @throws {PostError} If there is an error uploading or posting the photos.
-   * @returns The post ID.
+   * @returns An object with the ID of the post under the 'id' property, and the images IDs under the 'images' property.
    */
   upload(config: PostMedia | MediaScheduled) {
     return this.refresh(["userToken", "pageId", "pageToken"]).then(() => {
-      console.log(this.pageToken);
-      try {
-        const validExtensions = ["jpeg", "bmp", "png", "gif", "tiff"];
-        interface Data {
-          id: string;
+      interface Data {
+        id: string;
+      }
+
+      const validExtensions = ["jpg", "bmp", "png", "gif", "tiff"];
+      const store = (...args: any[]): Promise<Data> => {
+        return new Promise((resolve) => {
+          try {
+            const form = new FormData();
+
+            assert(this.pageToken, "Page token is missing."); // Will never throw an error because of above check, but TypeScript doesn't know that
+
+            form.append("access_token", this.pageToken);
+            form.append("published", "false");
+            form.append("temporary", "true");
+            form.append(...args);
+
+            resolve(
+              this.client.post(`me/photos`, form, {
+                "Content-Type": "multipart/form-data",
+              })
+            );
+          } catch (error) {
+            throw new PostError("Error uploading photo.", error);
+          }
+        });
+      };
+      const file = (path: string) => {
+        if (fs.existsSync(path) === false) {
+          throw new PostError(
+            `File specified at path '${path}' does not exist, cannot upload photo.`
+          );
         }
 
-        const file = (path: string): Promise<Data> => {
-          if (fs.existsSync(path) === false) {
-            throw new PostError(
-              `File specified at path '${path}' does not exist, cannot upload photo.`
-            );
-          }
-          const extension = path.split(".").pop();
-          if (
-            extension === undefined ||
-            validExtensions.includes(extension) === false
-          ) {
-            throw new PostError(
-              `File specified at path '${path}' is not a supported image. Supported extensions are: ${validExtensions}`
-            );
-          }
+        const extension = path.split(".").pop();
+        if (
+          extension === undefined ||
+          validExtensions.includes(extension) === false
+        ) {
+          throw new PostError(
+            `File specified at path '${path}' is not a supported image. Supported extensions are: ${validExtensions}`
+          );
+        }
 
-          assert(this.pageToken); // Will never throw an error because of above check, but TypeScript doesn't know that
-          const body = new FormData();
+        assert(this.pageToken, "Page token is missing."); // Will never throw an error because of above check, but TypeScript doesn't know that
+        const form = new FormData();
+        const image = fs.readFileSync(path);
+        const name = path.split("/").pop();
+        const blob = new Blob([image], { type: `image/${extension}}` });
 
-          const image = new Blob([path], { type: `image/jpg` });
-          body.append("source", image);
-          body.append("published", "false");
-          body.append("temporary", "true");
-          body.append("access_token", this.pageToken);
+        form.append("access_token", this.pageToken);
+        form.append("source", blob, name);
+        form.append("published", "false");
+        form.append("temporary", "true");
 
-          const formData = {
-            source: fs.createReadStream(path),
-            published: "false",
-            temporary: "true",
-            access_token: this.pageToken,
-          };
+        return store(form);
+      };
+      const url = (href: string) => {
+        const valid = new RegExp(/^(http|https):\/\/[^ "]+$/);
+        if (valid.test(href) === false) {
+          throw new PostError(
+            `URL specified at '${href}' is not a valid URL, cannot upload photo.`
+          );
+        }
+        return store(href)
+      };
 
-          return new Promise((resolve) => {
-            try {
-              resolve(this.client.post(`${this.pageId}/photos`, formData));
-            } catch (error) {
-              throw new PostError("Error uploading photo.", error);
-            }
-          });
-        };
-
-        return Promise.all(
-          Array.isArray(config.url)
-            ? config.url.map((url) => {
-                return file(url);
-              })
-            : [file(config.url)]
-        )
-          .then((images) => {
-            console.log(images);
-            return {
-              ...config,
-              access_token: this.pageToken,
-              attached_media: images.map((image) => {
-                return { media_fbid: image.id };
-              }),
-            };
-          })
-          .then((body) => {
-            return this.client.post(`${this.pageId}/feed`, body);
-          });
-      } catch (error) {
-        throw new PostError("Error uploading photos.", error);
+      const promises = [];
+      const type = config.type || "path";
+      
+      let urls = config[type] as string | string[];
+      if (Array.isArray(urls) === false) {
+        urls = [urls];
       }
+
+      urls.forEach((url) => {
+        switch (type) {
+          case "path":
+            promises.push(file(url));
+            break;
+          case "url":
+            promises.push(url(url));
+            break;
+        }
+
+
+      return Promise.all(
+        Array.isArray(config.url)
+          ? config.url.map((url) => {
+              return file(url);
+            })
+          : [file(config.url)]
+      ).then((images: any) => {
+        const options: any = config;
+        delete options.url;
+        const body = new URLSearchParams({
+          ...options,
+          access_token: this.pageToken,
+        });
+        images.forEach((image: any, i: number) => {
+          body.append(
+            `attached_media[${i}]`,
+            JSON.stringify({ media_fbid: image.id })
+          );
+        });
+        return this.client.post(`${this.pageId}/feed`, body, {
+          "Content-Type": "application/x-www-form-urlencoded",
+        });
+      });
     });
   }
 }
