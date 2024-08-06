@@ -50,7 +50,26 @@ export async function appTokenCredential(
     const appId = facebook.appId;
     const appSecret = facebook.appSecret;
 
-    await facebook.generateAppToken(appId, appSecret);
+    return await facebook
+      .verifyAppToken()
+      .then((valid: boolean) => {
+        if (valid) {
+          return false;
+        } else {
+          return true;
+        }
+      })
+      .then((refresh: boolean) => {
+        if (refresh) {
+          return facebook
+            .generateAppToken(appId, appSecret)
+            .verifyAppToken()
+            .then(() => facebook.appToken);
+        } else {
+          return facebook.appToken;
+        }
+      });
+
     return await facebook.verifyAppToken().then((valid: boolean) => {
       if (valid) {
         spinner.succeed(" App token authenticated.");
@@ -62,7 +81,7 @@ export async function appTokenCredential(
       }
     });
   } else {
-    return await facebook.verifyAppToken(appToken).then((valid: boolean) => {
+    return await facebook.verifyAppToken(appToken).then((valid) => {
       if (valid) {
         info("success", "App token authenticated.");
         return facebook.appToken;

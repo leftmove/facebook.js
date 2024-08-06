@@ -13,13 +13,15 @@ import type {
 } from "../credentials";
 
 export interface Permissions {
+  [key: string]: boolean | undefined;
+
+  public_profile?: boolean;
   commerce_account_manage_orders?: boolean;
   commerce_account_read_orders?: boolean;
   commerce_account_read_reports?: boolean;
   commerce_account_read_settings?: boolean;
   instagram_shopping_tag_products?: boolean;
   email?: boolean;
-  Events_Groups_Pages?: boolean;
   ads_management?: boolean;
   ads_read?: boolean;
   business_management?: boolean;
@@ -48,21 +50,22 @@ export interface Permissions {
   instagram_manage_messages?: boolean;
   leads_retrieval?: boolean;
   manage_fundraisers?: boolean;
-  publish_video?: boolean;
   publish_to_groups?: boolean;
+  publish_video?: boolean;
   read_insights?: boolean;
   whatsapp_business_management?: boolean;
   whatsapp_business_messaging?: boolean;
 }
 
 export const DEFAULT_SCOPE: Permissions = {
+  public_profile: true,
   pages_manage_engagement: true,
   pages_manage_posts: true,
   pages_read_engagement: true,
   pages_read_user_content: true,
   pages_show_list: true,
-  publish_video: true,
   publish_to_groups: true,
+  publish_video: true,
   read_insights: true,
   business_management: true,
 };
@@ -237,7 +240,7 @@ export class Login {
   verifyAppCredentials(
     appId: string = this.appId,
     appSecret: string = this.appSecret
-  ) {
+  ): Promise<boolean> {
     const token = ["appId", "appSecret"];
     const appAccessToken = `${appId}|${appSecret}`;
 
@@ -279,7 +282,7 @@ export class Login {
   verifyAppToken(
     appToken: string | undefined = this.appToken,
     appTokenExpires: number | undefined = this.appTokenExpires
-  ) {
+  ): Promise<boolean> {
     const token = "appToken";
 
     if (appToken === undefined) {
@@ -319,6 +322,7 @@ export class Login {
         access_token: `${this.appId}|${this.appSecret}`,
       })
       .then((data: Data) => {
+        console.log("hi", data);
         if (data.data.is_valid) {
           return true;
         } else {
@@ -329,6 +333,7 @@ export class Login {
       .catch((e: GraphError) => {
         const data: Error = e.data;
         const code = data.error.code || 400;
+        console.log(data);
         if (code === 190) {
           this.stale = [...this.stale, token];
           return false;
@@ -342,7 +347,7 @@ export class Login {
   verifyUserCredentials(
     userToken: string | undefined = this.userToken,
     userTokenExpires: number | undefined = this.userTokenExpires
-  ) {
+  ): Promise<boolean> {
     const token = "userToken";
 
     if (userToken === undefined) {
@@ -350,11 +355,11 @@ export class Login {
       return new Promise((resolve) => resolve(false));
     }
 
-    const now = Date.now() / 1000;
-    if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
+    // const now = Date.now() / 1000;
+    // if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
+    //   this.stale = [...this.stale, token];
+    //   return new Promise((resolve) => resolve(false));
+    // }
 
     interface Data {
       data: {
@@ -385,7 +390,30 @@ export class Login {
     return this.client
       .get("debug_token", { input_token: userToken, access_token: userToken })
       .then((data: Data) => {
-        if (data.data.is_valid) {
+        const scopes = data.data.granular_scopes.map((scope) => scope.scope);
+        const scopes2 = data.data.scopes;
+        const scopes3 = Object.keys(this.scope)
+          .filter((key) => this.scope[key] === true)
+          .sort()
+          .join(",");
+        const scopes4 = scopes.sort().join(",");
+        const scopes5 = Object.keys(DEFAULT_SCOPE).sort().join(",");
+        console.log(
+          "1\n",
+          scopes,
+          "2\n",
+          scopes2,
+          "3\n",
+          scopes3,
+          "4\n",
+          scopes4,
+          "5\n",
+          scopes5
+        );
+        if (
+          data.data.is_valid &&
+          data.data.scopes.sort().join(",") === scopes3
+        ) {
           this.writeCredentials({
             appId: this.appId,
             appSecret: this.appSecret,
@@ -399,15 +427,23 @@ export class Login {
           return false;
         }
       })
-      .catch((e: GraphError) => {
-        const data: Error = e.data;
-        const code = data?.error?.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          return false;
+      .catch((e: any) => {
+        if (e instanceof GraphError) {
+          const data: Error = e.data;
+          const code = data?.error?.code || 400;
+          if (code === 190) {
+            this.stale = [...this.stale, token];
+            return false;
+          } else {
+            const error = new Error();
+            throw new UnauthorizedError(
+              "Error verifying user token.",
+              error,
+              e
+            );
+          }
         } else {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying user token.", error, e);
+          throw e;
         }
       });
   }
@@ -416,7 +452,7 @@ export class Login {
     userId: string | undefined = this.userId,
     userIdExpires: number | undefined = this.userIdExpires,
     userToken: string | undefined = this.userToken
-  ) {
+  ): Promise<boolean> {
     const token = "userId";
 
     if (userToken === undefined || userId === undefined) {
@@ -465,7 +501,7 @@ export class Login {
     pageId: string | undefined = this.appId,
     pageIdExpires: number | undefined = this.pageIdExpires,
     userToken: string | undefined = this.userToken
-  ) {
+  ): Promise<boolean> {
     const token = "pageId";
 
     if (userToken === undefined || pageId === undefined) {
@@ -513,7 +549,7 @@ export class Login {
   verifyPageCredentials(
     pageToken: string | undefined = this.pageToken,
     pageTokenExpires: number | undefined = this.pageTokenExpires
-  ) {
+  ): Promise<boolean> {
     const token = "pageToken";
 
     if (pageToken === undefined) {
@@ -1067,11 +1103,6 @@ export class Login {
         case "userId":
           promises.push(
             new Promise((resolve) => resolve(this.refreshUserId()))
-          );
-          break;
-        case "userToken":
-          promises.push(
-            new Promise((resolve) => resolve(this.refreshUserToken()))
           );
           break;
         case "pageId":

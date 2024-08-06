@@ -6,7 +6,7 @@ export class GraphError extends Error {
   response: Response;
   data: any;
   constructor(error: any, response: Response, data: any) {
-    const message = response?.statusText || "Graph API Error:";
+    const message = response?.statusText || "";
     const e = new Error(message);
     super(message);
 

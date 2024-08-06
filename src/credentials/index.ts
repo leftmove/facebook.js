@@ -1,6 +1,7 @@
 import fs from "fs";
 
 import { CredentialError } from "../errors";
+import type { Permissions } from "../api";
 
 export const DEFAULT_FILE_PATH = "./credentials.json";
 export const DEFAULT_CONFIG: Credentials = {
@@ -22,7 +23,7 @@ export interface Credentials {
   pageIndex?: number;
   pageToken?: string;
   pageTokenExpires?: number;
-  scope?: Object;
+  scope?: Permissions;
 }
 
 export type writeCredentials = (credentials: Credentials) => void;

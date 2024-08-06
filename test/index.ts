@@ -7,8 +7,12 @@ facebook
   .credentials()
   .catch((error) => console.error(error));
 
-const post = await facebook.posts.upload({
-  path: ["/Users/anonyo/Pictures/mark.jpg", "/Users/anonyo/Pictures/fb.png"],
-});
+facebook.verifyUserCredentials().then((valid) => console.log(valid));
 
-console.log(post);
+// console.log(facebook.scope);
+// const post = await facebook.posts.publish({ message: "Hello World!" });
+
+// console.log("Deleting in 10 Seconds...");
+// setTimeout(() => {
+//   post.remove();
+// }, 5000);

@@ -6,6 +6,8 @@ import { CredentialError, PostError } from "../errors";
 import type { writeCredentials, readCredentials } from "../credentials";
 import type { Permissions } from "../api";
 
+import { Post } from "./post";
+
 export interface Config {
   appId?: string;
   appSecret?: string;
@@ -92,16 +94,20 @@ export class Facebook extends Login {
    * @param config.published - Whether the post is published now or scheduled, true if published now, and false if later. Default is true.
    * @param config.scheduled_publish_time - The time to publish the post, if the post is scheduled. Required if the 'published' is set to true.
    * @param config.targeting - The targeting options for the post, including the audiences the post will target. Optional, find more info [here](https://developers.facebook.com/docs/marketing-api/targeting-specs).
-   * @returns An object with the ID of the post under the 'id' property.
+   * @returns A post object with methods for interacting with the post.
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    */
-  publishPost(config: PostRegular | PostLink | PostScheduled | LinkScheduled) {
+  publishPost(
+    config: PostRegular | PostLink | PostScheduled | LinkScheduled
+  ): Promise<Post> {
     return this.refresh(["pageId", "pageToken"]).then(() => {
       try {
-        return this.client.post(`${this.pageId}/feed`, {
-          ...config,
-          access_token: this.pageToken,
-        });
+        return this.client
+          .post(`${this.pageId}/feed`, {
+            ...config,
+            access_token: this.pageToken,
+          })
+          .then((data: { id: string }) => new Post(data.id, this));
       } catch (error) {
         throw new PostError("Error publishing post.", error);
       }
@@ -179,9 +185,11 @@ export class Facebook extends Login {
             JSON.stringify({ media_fbid: image.id })
           );
         });
-        return this.client.post(`${this.pageId}/feed`, body, {
-          "Content-Type": "application/x-www-form-urlencoded",
-        });
+        return this.client
+          .post(`${this.pageId}/feed`, body, {
+            "Content-Type": "application/x-www-form-urlencoded",
+          })
+          .then((data: Data) => new Post(data.id, this));
       });
     });
   }
@@ -194,10 +202,10 @@ export class Facebook extends Login {
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    * @throws {PostError} If there is an error editing the post.
    **/
-  editPost(postId: string, message: string) {
+  editPost({ id, message }: { id: string; message: string }) {
     return this.refresh(["pageId", "pageToken"]).then(() => {
       try {
-        return this.client.post(postId, {
+        return this.client.post(id, {
           message,
           access_token: this.pageToken,
         });
@@ -214,11 +222,11 @@ export class Facebook extends Login {
    * @throws {CredentialError} If the user ID, user token, or page token is not defined.
    * @throws {PostError} If there is an error deleting the post.
    **/
-  deletePost(postId: string) {
+  removePost({ id }: { id: string }) {
     return this.refresh(["pageToken"]).then(() => {
       try {
         return this.client.post(
-          postId,
+          id,
           {
             access_token: this.pageToken,
           },
@@ -236,10 +244,11 @@ export class Facebook extends Login {
    * @returns An object with methods for interacting with Facebook posts
    **/
   posts = {
-    get: this.getPost,
-    publish: this.publishPost,
-    upload: this.mediaPost,
-    edit: this.editPost,
+    get: this.getPost.bind(this),
+    publish: this.publishPost.bind(this),
+    upload: this.mediaPost.bind(this),
+    edit: this.editPost.bind(this),
+    remove: this.removePost.bind(this),
   };
 
   /**
