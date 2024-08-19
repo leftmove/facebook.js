@@ -5,14 +5,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "bun",
-      "internalConsoleOptions": "neverOpen",
+      "name": "TSX Debug CLI",
+      "type": "node",
       "request": "launch",
-      "name": "Debug File",
+      "program": "${workspaceFolder}/src/cli/index.ts",
+      "args": ["login"],
+      "runtimeExecutable": "tsx",
+      "console": "externalTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      "name": "TSX Debug File",
+      "type": "node",
+      "request": "launch",
       "program": "${file}",
-      "cwd": "${workspaceFolder}",
-      "stopOnEntry": false,
-      "watchMode": false
+      "runtimeExecutable": "tsx",
+      "console": "externalTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
     }
   ]
 }

@@ -1,6 +1,6 @@
+import React, { useState, useEffect } from "react";
 import { render, Box, Text } from "ink";
-
-import ora from "ora";
+import type { ReactNode } from "react";
 
 export const yellow = "\x1b[43m";
 export const blue = "\x1b[44m";
@@ -8,15 +8,47 @@ export const green = "\x1b[42m";
 export const white = "\x1b[47";
 export const reset = "\x1b[0m";
 
-export const Initial = () => {
-  return (
-    <Box flexDirection="column" alignItems="center" marginBottom={2}>
-      <Text color="white">---------------</Text>
-      <Text color="cyan">facebook.js</Text>
-      <Text color="white">---------------</Text>
-    </Box>
-  );
-};
+export const Initial = (
+  <Box flexDirection="column" alignItems="center" marginBottom={1}>
+    <Text color="white">---------------</Text>
+    <Text color="cyan">facebook.js</Text>
+    <Text color="white">---------------</Text>
+  </Box>
+);
+
+export class App {
+  app: ReactNode = Initial;
+  elements: ReactNode[] = [];
+
+  constructor(element: ReactNode = Initial) {
+    const app = (
+      <Box flexDirection="column" alignItems="center">
+        {element}
+      </Box>
+    );
+    this.app = app;
+    this.elements.push(element);
+    render(app);
+    return this;
+  }
+
+  render(element: ReactNode) {
+    this.elements.push(element);
+    const app = (
+      <Box flexDirection="column" alignItems="center">
+        {this.elements.map((element, index) => (
+          <React.Fragment key={index}>{element}</React.Fragment>
+        ))}
+      </Box>
+    );
+    this.app = app;
+    render(app);
+  }
+
+  rerender(app: ReactNode) {
+    render(app);
+  }
+}
 
 // export const Spinner = (message: string) => {
 //   const [running, setRunning] = useState(true);
@@ -46,58 +78,108 @@ export const Initial = () => {
 //   return () => setRunning(false);
 // };
 
-export const spin = (message: string) => {
-  const spinner = ora({
-    text: message,
-    spinner: "dots",
-    color: "white",
-  }).start();
+function Spinner(props: { message: string }) {
+  const [frame, setFrame] = useState(0);
+  const spinner = {
+    interval: 80,
+    frames: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+  };
 
-  return spinner;
-};
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((previousFrame) => {
+        const isLastFrame = previousFrame === spinner.frames.length - 1;
+        return isLastFrame ? 0 : previousFrame + 1;
+      });
+    }, spinner.interval);
 
-export const loginStart = () => {
-  return render(
-    <Box
-      flexDirection="column"
-      alignItems="center"
-      marginTop={1}
-      marginBottom={1}
-    >
-      <Initial />
-      <Box flexDirection="column" alignItems="center">
-        <Box flexDirection="column" alignItems="center" marginBottom={2}>
-          <Text color="yellow">Logging In</Text>
+    return () => {
+      clearInterval(timer);
+    };
+  }, [spinner]);
+
+  return (
+    <Text>
+      {spinner.frames[frame]} {props.message}
+    </Text>
+  );
+}
+
+export const spin = (message: string, app: App) => {
+  return new (class {
+    elements: ReactNode[];
+    constructor() {
+      this.elements = [...app.elements];
+      app.render(<Spinner message={message} />);
+    }
+
+    succeed(msg: string) {
+      app.elements = this.elements;
+      app.render(
+        <Box justifyContent="center">
+          <Text color="green">{success} </Text>
+          <Text>{msg}</Text>
         </Box>
-        <Text>
-          To View Your App Credentials, visit
-          https://developers.facebook.com/apps and select/create your app.
-        </Text>
-        <Text>
-          Then, copy the app ID and secret from App Settings &gt; Basic.
-        </Text>
-      </Box>
-    </Box>
-  );
+      );
+    }
+
+    fail(msg: string) {
+      app.elements = this.elements;
+      app.render(
+        <Box justifyContent="center">
+          <Text color="red">{failure} </Text>
+          <Text>{msg}</Text>
+        </Box>
+      );
+    }
+  })();
 };
 
-export const loginSuccess = () => {
-  return render(
-    <Box
-      flexDirection="column"
-      alignItems="center"
-      marginTop={1}
-      marginBottom={1}
-    >
-      <Box marginBottom={2}>
-        <Text color="yellow">Successfully Logged In!</Text>
+export function info(
+  message: string,
+  app: App,
+  color: string | undefined = undefined
+) {
+  app.render(<Text color={color}>{message}</Text>);
+}
+
+export const LoginStart = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Box flexDirection="column" alignItems="center" marginBottom={2}>
+        <Text color="yellow">Logging In</Text>
       </Box>
-      <Box>
-        <Text>You can now use all the features of the Facebook API.</Text>
-      </Box>
+      <Text>
+        To View Your App Credentials, visit https://developers.facebook.com/apps
+        and select/create your app.
+      </Text>
+      <Text>
+        Then, copy the app ID and secret from App Settings &gt; Basic.
+      </Text>
     </Box>
-  );
-};
+  </Box>
+);
+
+export const LoginSuccess = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box marginBottom={2}>
+      <Text color="yellow">Successfully Logged In!</Text>
+    </Box>
+    <Box>
+      <Text>You can now use all the features of the Facebook API.</Text>
+    </Box>
+  </Box>
+);
 
 export function centerText(text: string): string {
   const terminalWidth = process.stdout.columns;
@@ -106,22 +188,27 @@ export function centerText(text: string): string {
   return " ".repeat(padding) + text;
 }
 
-export function info(emoji: string, message: string, color = "yellow") {
+export const log = "ℹ";
+export const failure = "×";
+export const warn = "⚠";
+export const success = "✔";
+
+export function Info(emoji: string, message: string, color = "yellow") {
   switch (emoji) {
-    case "loading":
-      emoji = "⌛";
-      break;
-    case "auth":
-      emoji = "🔒";
-      break;
     case "success":
-      emoji = "✔";
+      emoji = success;
       break;
     case "error":
-      emoji = "❌";
+      emoji = failure;
+      break;
+    case "info":
+      emoji = log;
+      break;
+    default:
+      emoji = emoji;
       break;
   }
-  render(
+  return (
     <Box>
       <Text bold={true} color={color}>
         {emoji}

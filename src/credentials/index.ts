@@ -3,15 +3,9 @@ import fs from "fs";
 import { CredentialError } from "../errors";
 import type { Permissions } from "../api";
 
-export const DEFAULT_FILE_PATH = "./credentials.json";
-export const DEFAULT_CONFIG: Credentials = {
-  appId: "",
-  appSecret: "",
-};
-
 export interface Credentials {
-  appId: string;
-  appSecret: string;
+  appId?: string;
+  appSecret?: string;
   appToken?: string;
   appTokenExpires?: number;
   userToken?: string;
@@ -25,6 +19,12 @@ export interface Credentials {
   pageTokenExpires?: number;
   scope?: Permissions;
 }
+
+export const DEFAULT_FILE_PATH = "./credentials.json";
+export const DEFAULT_CONFIG: Credentials = {
+  appId: undefined,
+  appSecret: undefined,
+};
 
 export type writeCredentials = (credentials: Credentials) => void;
 export type readCredentials = () => Credentials;

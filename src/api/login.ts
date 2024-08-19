@@ -12,6 +12,12 @@ import type {
   readCredentials,
 } from "../credentials";
 
+import { user } from "./user";
+import { app } from "./app";
+import { page } from "./page";
+import { uid } from "./uid";
+import { pid } from "./pid";
+
 export interface Permissions {
   [key: string]: boolean | undefined;
 
@@ -50,7 +56,6 @@ export interface Permissions {
   instagram_manage_messages?: boolean;
   leads_retrieval?: boolean;
   manage_fundraisers?: boolean;
-  publish_to_groups?: boolean;
   publish_video?: boolean;
   read_insights?: boolean;
   whatsapp_business_management?: boolean;
@@ -64,7 +69,6 @@ export const DEFAULT_SCOPE: Permissions = {
   pages_read_engagement: true,
   pages_read_user_content: true,
   pages_show_list: true,
-  publish_to_groups: true,
   publish_video: true,
   read_insights: true,
   business_management: true,
@@ -108,6 +112,59 @@ export interface DebugError {
   scopes: any[];
 }
 
+type Validate = (...args: any) => Promise<boolean>;
+type Generate = (...args: any) => Promise<string | undefined | ThisType<Login>>;
+type Refresh = (...args: any) => Promise<any>;
+
+export interface Token {
+  validate: Validate;
+  generate: Generate;
+  refresh: Refresh;
+  token: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
+}
+
+export const DEFAULT_TOKEN: Token = {
+  validate: () => new Promise((resolve) => resolve(false)),
+  generate: () => new Promise((resolve) => resolve(undefined)),
+  refresh: () => new Promise((resolve) => resolve(undefined)),
+  token: undefined,
+  expires: undefined,
+  valid: false,
+};
+
+export interface Id {
+  validate: Validate;
+  generate: Generate;
+  refresh: Refresh;
+  id: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
+}
+
+export const DEFAULT_INFO: Id = {
+  validate: () => new Promise((resolve) => resolve(false)),
+  generate: () => new Promise((resolve) => resolve(undefined)),
+  refresh: () => new Promise((resolve) => resolve(undefined)),
+  id: undefined,
+  expires: undefined,
+  valid: false,
+};
+export const DEFAULT_INDEX = 0;
+
+export interface Access {
+  app: Token;
+  user: Token;
+  page: Token;
+}
+
+export interface Info {
+  page: Id;
+  user: Id;
+  index: number;
+}
+
 export const credentialOptions = [
   "appId",
   "appSecret",
@@ -119,8 +176,8 @@ export const credentialOptions = [
 ];
 
 export class Login {
-  appId: string;
-  appSecret: string;
+  id: string;
+  secret: string;
 
   stale: Array<string> = credentialOptions;
   client = new Client();
@@ -129,20 +186,18 @@ export class Login {
   readCredentials: readCredentials = readFromJSONCredentials;
   expireTime: number = DEFAULT_EXPIRE_TIME;
 
-  appToken?: string;
-  appTokenExpires?: number;
-  userToken?: string;
-  userId?: string;
-  userIdExpires?: number;
-  userTokenExpires?: number;
-  pageId?: string;
-  pageIdExpires?: number;
-  pageIndex?: number;
-  pageToken?: string;
-  pageTokenExpires?: number;
+  access: Access = {
+    app: app(this),
+    user: user(this),
+    page: page(this),
+  };
+  info: Info = {
+    page: pid(this),
+    user: uid(this),
+    index: DEFAULT_INDEX,
+  };
 
   overrideLocal = true;
-
   scope: Permissions = {
     pages_manage_engagement: true,
     pages_manage_posts: true,
@@ -158,8 +213,8 @@ export class Login {
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const credentials = readCredentials();
 
-    const appId = config.appId || credentials.appId || undefined;
-    const appSecret = config.appSecret || credentials.appSecret || undefined;
+    const appId = config.id || credentials.appId || undefined;
+    const appSecret = config.secret || credentials.appSecret || undefined;
 
     if (appId === undefined || appSecret === undefined) {
       throw new CredentialError(
@@ -167,54 +222,66 @@ export class Login {
       );
     }
 
+    const scope = config.scope || credentials.scope || this.scope;
+    const overrideLocal = config.overrideLocal || this.overrideLocal;
+
     // If the credentials/config object doesn't have all the correct properties (a likely
     // problem), the following variables will still be filled because of the fallbacks.
     // This would normally cause an error in TS, but the Credentials type fixes
     // this, even though the values may possibly be undefined.
 
-    const appToken = config.appToken || credentials.appToken || this.appToken;
-    const appTokenExpires =
-      config.appTokenExpires ||
+    // Basic credentials
+    this.id = appId;
+    this.secret = appSecret;
+
+    // App token
+    this.access.app.token =
+      config?.access?.app?.token ||
+      credentials.appToken ||
+      this.access.app.token;
+    this.access.app.expires =
+      config?.access?.app?.expires ||
       credentials.appTokenExpires ||
-      this.appTokenExpires;
-    const userToken =
-      config.userToken || credentials.userToken || this.userToken;
-    const userId = config.userId || credentials.userId || this.userId;
-    const userIdExpires =
-      config.userIdExpires || credentials.userIdExpires || this.userIdExpires;
-    const userTokenExpires =
-      config.userTokenExpires ||
+      this.access.app.expires;
+
+    // User token
+    this.access.user.token =
+      config?.access?.user?.token ||
+      credentials.userToken ||
+      this.access.user.token;
+    this.access.user.expires =
+      config?.access?.user?.expires ||
       credentials.userTokenExpires ||
-      this.userTokenExpires;
-    const pageToken =
-      config.pageToken || credentials.pageToken || this.pageToken;
-    const pageId = config.pageId || credentials.pageId || this.pageId;
-    const pageIdExpires =
-      config.pageIdExpires || credentials.pageIdExpires || this.pageIdExpires;
-    const pageIndex = Number(
-      config.pageIndex || credentials.pageIndex?.toString() || this.pageIndex
-    );
-    const pageTokenExpires =
-      config.pageTokenExpires ||
+      this.access.user.expires;
+
+    // Page token
+    this.access.page.token =
+      config?.access?.page?.token ||
+      credentials.pageToken ||
+      this.access.page.token;
+    this.access.page.expires =
+      config?.access?.page?.expires ||
       credentials.pageTokenExpires ||
-      this.pageTokenExpires;
+      this.access.page.expires;
 
-    const scope = config.scope || credentials.scope || this.scope;
-    const overrideLocal = config.overrideLocal || this.overrideLocal;
+    // User ID
+    this.info.user.id =
+      config?.info?.user?.id || credentials.userId || this.info.user.id;
+    this.info.user.expires =
+      config?.info?.user?.expires || this.info.user.expires;
 
-    this.appId = appId;
-    this.appSecret = appSecret;
-    this.appToken = appToken;
-    this.appTokenExpires = appTokenExpires;
-    this.userToken = userToken;
-    this.userId = userId;
-    this.userIdExpires = userIdExpires;
-    this.userTokenExpires = userTokenExpires;
-    this.pageId = pageId;
-    this.pageIdExpires = pageIdExpires;
-    this.pageIndex = pageIndex;
-    this.pageToken = pageToken;
-    this.pageTokenExpires = pageTokenExpires;
+    // Page ID
+    this.info.page.id =
+      config?.info?.page?.id || credentials.pageId || this.info.page.id;
+    this.info.page.expires =
+      config?.info?.page?.expires ||
+      credentials.pageIdExpires ||
+      this.info.page.expires;
+
+    // Page index
+    this.info.index =
+      config?.info?.index || credentials.pageIndex || this.info.index;
+
     this.scope = scope;
     this.writeCredentials = writeCredentials;
     this.readCredentials = readCredentials;
@@ -224,30 +291,27 @@ export class Login {
       writeCredentials({
         appId,
         appSecret,
-        appToken,
-        userToken,
-        userId,
-        userTokenExpires,
-        pageIndex,
-        pageId,
-        pageToken,
-        pageTokenExpires,
+        appToken: this.access.app.token,
+        userToken: this.access.user.token,
+        userId: this.info.user.id,
+        userTokenExpires: this.access.user.expires,
+        pageIndex: this.info.index,
+        pageId: this.info.page.id,
+        pageToken: this.access.page.token,
+        pageTokenExpires: this.access.page.expires,
         scope,
       });
     }
   }
 
-  verifyAppCredentials(
-    appId: string = this.appId,
-    appSecret: string = this.appSecret
-  ): Promise<boolean> {
+  validate(): Promise<boolean> {
     const token = ["appId", "appSecret"];
-    const appAccessToken = `${appId}|${appSecret}`;
 
-    if (appId === undefined || appSecret === undefined) {
+    if (this.id === undefined || this.secret === undefined) {
       const error = new Error();
       throw new CredentialError("App ID and App Secret are required.", error);
     }
+    const appAccessToken = `${this.id}|${this.secret}`;
 
     return this.client
       .get("debug_token", {
@@ -279,343 +343,32 @@ export class Login {
       });
   }
 
-  verifyAppToken(
-    appToken: string | undefined = this.appToken,
-    appTokenExpires: number | undefined = this.appTokenExpires
-  ): Promise<boolean> {
-    const token = "appToken";
-
-    if (appToken === undefined) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    if (
-      appTokenExpires &&
-      Date.now() / 1000 - appTokenExpires >= this.expireTime
-    ) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    interface Data {
-      data: {
-        app_id: string;
-        type: string;
-        application: string;
-        is_valid: boolean;
-        scopes: Array<any>;
-      };
-    }
-    interface Error {
-      error: {
-        message: string;
-        type: string;
-        code: number;
-        fbtrace_id: string;
-      };
-    }
-
-    return this.client
-      .get("debug_token", {
-        input_token: appToken,
-        access_token: `${this.appId}|${this.appSecret}`,
-      })
-      .then((data: Data) => {
-        console.log("hi", data);
-        if (data.data.is_valid) {
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-          return false;
-        }
-      })
-      .catch((e: GraphError) => {
-        const data: Error = e.data;
-        const code = data.error.code || 400;
-        console.log(data);
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          return false;
-        } else {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying app token.", error, e);
-        }
-      });
-  }
-
-  verifyUserCredentials(
-    userToken: string | undefined = this.userToken,
-    userTokenExpires: number | undefined = this.userTokenExpires
-  ): Promise<boolean> {
-    const token = "userToken";
-
-    if (userToken === undefined) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    // const now = Date.now() / 1000;
-    // if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
-    //   this.stale = [...this.stale, token];
-    //   return new Promise((resolve) => resolve(false));
-    // }
-
-    interface Data {
-      data: {
-        app_id: string;
-        type: string;
-        application: string;
-        data_access_expires_at: number;
-        expires_at: number;
-        is_valid: boolean;
-        issued_at: number;
-        scopes: Array<string>;
-        granular_scopes: Array<{
-          scope: string;
-          target_ids?: Array<string>;
-        }>;
-        user_id: string;
-      };
-    }
-    interface Error {
-      error: {
-        message: string;
-        type: string;
-        code: number;
-        fbtrace_id: string;
-      };
-    }
-
-    return this.client
-      .get("debug_token", { input_token: userToken, access_token: userToken })
-      .then((data: Data) => {
-        const scopes = data.data.granular_scopes.map((scope) => scope.scope);
-        const scopes2 = data.data.scopes;
-        const scopes3 = Object.keys(this.scope)
-          .filter((key) => this.scope[key] === true)
-          .sort()
-          .join(",");
-        const scopes4 = scopes.sort().join(",");
-        const scopes5 = Object.keys(DEFAULT_SCOPE).sort().join(",");
-        console.log(
-          "1\n",
-          scopes,
-          "2\n",
-          scopes2,
-          "3\n",
-          scopes3,
-          "4\n",
-          scopes4,
-          "5\n",
-          scopes5
-        );
-        if (
-          data.data.is_valid &&
-          data.data.scopes.sort().join(",") === scopes3
-        ) {
-          this.writeCredentials({
-            appId: this.appId,
-            appSecret: this.appSecret,
-            userId: data.data.user_id,
-            userToken,
-            userTokenExpires: data.data.data_access_expires_at,
-          });
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-          return false;
-        }
-      })
-      .catch((e: any) => {
-        if (e instanceof GraphError) {
-          const data: Error = e.data;
-          const code = data?.error?.code || 400;
-          if (code === 190) {
-            this.stale = [...this.stale, token];
-            return false;
-          } else {
-            const error = new Error();
-            throw new UnauthorizedError(
-              "Error verifying user token.",
-              error,
-              e
-            );
-          }
-        } else {
-          throw e;
-        }
-      });
-  }
-
-  verifyUserId(
-    userId: string | undefined = this.userId,
-    userIdExpires: number | undefined = this.userIdExpires,
-    userToken: string | undefined = this.userToken
-  ): Promise<boolean> {
-    const token = "userId";
-
-    if (userToken === undefined || userId === undefined) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    if (userIdExpires && Date.now() / 1000 - userIdExpires >= this.expireTime) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    interface Data {
-      name: string;
-      id: string;
-    }
-    interface Error {
-      error: {
-        message: string;
-        type: string;
-        code: number;
-        error_subcode: number;
-        fbtrace_id: string;
-      };
-    }
-
-    return this.client
-      .get(userId, { access_token: userToken })
-      .then((data: Data) => {
-        return true;
-      })
-      .catch((e: GraphError) => {
-        const data: Error = e.data;
-        const code = data.error.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          return false;
-        } else {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying user ID.", error, e);
-        }
-      });
-  }
-
-  verifyPageId(
-    pageId: string | undefined = this.appId,
-    pageIdExpires: number | undefined = this.pageIdExpires,
-    userToken: string | undefined = this.userToken
-  ): Promise<boolean> {
-    const token = "pageId";
-
-    if (userToken === undefined || pageId === undefined) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    if (pageIdExpires && Date.now() / 1000 - pageIdExpires >= this.expireTime) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    interface Data {
-      name: string;
-      id: string;
-    }
-    interface Error {
-      error: {
-        message: string;
-        type: string;
-        code: number;
-        error_subcode: number;
-        fbtrace_id: string;
-      };
-    }
-
-    return this.client
-      .get(pageId, { access_token: userToken })
-      .then((data: Data) => {
-        return true;
-      })
-      .catch((e: GraphError) => {
-        const data: Error = e.data;
-        const code = data?.error?.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          return false;
-        } else {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying page ID.", error, e);
-        }
-      });
-  }
-
-  verifyPageCredentials(
-    pageToken: string | undefined = this.pageToken,
-    pageTokenExpires: number | undefined = this.pageTokenExpires
-  ): Promise<boolean> {
-    const token = "pageToken";
-
-    if (pageToken === undefined) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    const now = Date.now() / 1000;
-    if (pageTokenExpires && now - pageTokenExpires >= this.expireTime) {
-      this.stale = [...this.stale, token];
-      return new Promise((resolve) => resolve(false));
-    }
-
-    interface Data {
-      data: {
-        app_id: string;
-        type: string;
-        application: string;
-        data_access_expires_at: number;
-        expires_at: number;
-        is_valid: boolean;
-        issued_at: number;
-        profile_id: string;
-        scopes: string[];
-        granular_scopes: Array<null[]>;
-        user_id: string;
-      };
-    }
-    interface Error {
-      data: {
-        error: {
-          code: number;
-          message: string;
-        };
-        is_valid: boolean;
-        scopes: any[];
-      };
-    }
-
-    return this.client
-      .get("debug_token", { input_token: pageToken, access_token: pageToken })
-      .then((data: Data) => {
-        if (data.data.is_valid) {
-          this.writeCredentials({
-            appId: this.appId,
-            appSecret: this.appSecret,
-            pageToken,
-            pageTokenExpires: data.data.data_access_expires_at,
-          });
-          return true;
-        } else {
-          this.stale = [...this.stale, token];
-          return false;
-        }
-      })
-      .catch((e: GraphError) => {
-        const data: Error = e.data;
-        const code = data.data.error.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          return false;
-        } else {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying page token.", error, e);
-        }
-      });
+  refresh(
+    credentials: string[] = [
+      "appToken",
+      "userId",
+      "userToken",
+      "pageId",
+      "pageToken",
+    ]
+  ) {
+    const promises = credentials.map((c) => {
+      switch (c) {
+        case "appToken":
+          return new Promise((resolve) => resolve(this.access.app.refresh()));
+        case "userId":
+          return new Promise((resolve) => resolve(this.info.user.refresh()));
+        case "userToken":
+          return new Promise((resolve) => resolve(this.access.user.refresh()));
+        case "pageId":
+          return new Promise((resolve) => resolve(this.info.page.refresh()));
+        case "pageToken":
+          return new Promise((resolve) => resolve(this.access.page.refresh()));
+        default:
+          break;
+      }
+    });
+    return Promise.all(promises);
   }
 
   verify(
@@ -635,21 +388,21 @@ export class Login {
     this.stale = emptyCredentials;
 
     if ("appToken" in emptyCredentials === true) {
-      this.verifyAppToken(
+      this.access.app.validate(
         credentials.appToken as string,
         credentials.appTokenExpires as number
       );
     }
 
     if ("userToken" in emptyCredentials === true) {
-      this.verifyUserCredentials(
+      this.access.user.validate(
         credentials.userToken as string,
         credentials.userTokenExpires as number
       );
     }
 
     if ("userId" in emptyCredentials === true) {
-      this.verifyUserId(
+      this.info.user.validate(
         credentials.userId as string,
         credentials.userIdExpires as number,
         credentials.userToken as string
@@ -657,7 +410,7 @@ export class Login {
     }
 
     if ("pageId" in emptyCredentials === true) {
-      this.verifyPageId(
+      this.info.page.validate(
         credentials.pageId as string,
         credentials.pageIdExpires as number,
         credentials.userToken as string
@@ -665,7 +418,7 @@ export class Login {
     }
 
     if ("pageToken" in emptyCredentials === true) {
-      this.verifyPageCredentials(
+      this.access.page.validate(
         credentials.pageToken as string,
         credentials.pageTokenExpires as number
       );
@@ -683,443 +436,26 @@ export class Login {
     return this;
   }
 
-  generateAppToken(appId: string, appSecret: string) {
-    interface Data {
-      access_token: string;
-      token_type: string;
-    }
-    return this.client
-      .get("oauth/access_token", {
-        client_id: appId,
-        client_secret: appSecret,
-        grant_type: "client_credentials",
-      })
-      .then((data: Data) => {
-        const accessToken = data.access_token;
-        this.appToken = accessToken;
-        this.writeCredentials({
-          appId: appId,
-          appSecret: appSecret,
-          appToken: accessToken,
-          appTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-        });
-      })
-      .catch((e: GraphError) => {
-        const error = new Error();
-        throw new UnauthorizedError("Error verifying page token.", error, e);
-      });
-  }
-
-  generateUserToken(
-    appId: string,
-    appSecret: string,
-    redirect: string,
-    code: string
-  ) {
-    interface Data {
-      access_token: string;
-      token_type: string;
-      expires_in: number;
-    }
-    return this.client
-      .get("oauth/access_token", {
-        code,
-        client_id: appId,
-        client_secret: appSecret,
-        redirect_uri: redirect,
-      })
-      .then((data: Data) => {
-        const userToken = data.access_token;
-        const userTokenExpires = data.expires_in;
-        this.userToken = userToken;
-        this.userTokenExpires = userTokenExpires;
-        this.writeCredentials({
-          appId,
-          appSecret,
-          userToken,
-          userTokenExpires,
-        });
-      })
-      .catch((e: GraphError) => {
-        const error = new Error();
-        throw new UnauthorizedError("Error getting user token.", error, e);
-      });
-  }
-
-  generateUserId(appId: string, appSecret: string, userToken: string) {
-    interface Data {
-      name: string;
-      id: string;
-    }
-    return this.client
-      .get("me", {
-        access_token: userToken,
-      })
-      .then((data: Data) => {
-        const userId = data.id;
-        this.userId = userId;
-        this.writeCredentials({
-          appId,
-          appSecret,
-          userId,
-          userIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-        });
-      })
-      .catch((e: GraphError) => {
-        const error = new Error();
-        throw new UnauthorizedError("Error verifying page token.", error, e);
-      });
-  }
-
-  generatePageId(
-    appId: string,
-    appSecret: string,
-    userId: string,
-    userToken: string,
-    pageIndex: number | undefined
-  ) {
-    if (pageIndex === undefined) {
-      pageIndex = 0;
-    }
-
-    interface Data {
-      data: {
-        access_token: string;
-        category: string;
-        category_list: {
-          id: string;
-          name: string;
-        }[];
-        name: string;
-        id: string;
-        tasks: string[];
-      }[];
-      paging: {
-        cursors: {
-          before: string;
-          after: string;
-        };
-      };
-    }
-    return this.client
-      .get(`${userId}/accounts`, {
-        access_token: userToken,
-      })
-      .then((data: Data) => {
-        const pageId = data.data[pageIndex].id;
-        this.pageId = pageId;
-        this.pageIndex = pageIndex;
-        this.writeCredentials({
-          appId,
-          appSecret,
-          pageIndex,
-          pageId,
-          pageIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-        });
-      })
-      .catch((e: any) => {
-        if (e instanceof GraphError) {
-          const error = new Error();
-          throw new UnauthorizedError("Error verifying page token.", error, e);
-        } else {
-          throw new UnauthorizedError("Error verifying page token.", e);
-        }
-      });
-  }
-
-  generatePageToken(
-    appId: string,
-    appSecret: string,
-    pageId: string,
-    userToken: string
-  ) {
-    interface Data {
-      access_token: string;
-      id: string;
-    }
-    return this.client
-      .get(`${pageId}`, {
-        access_token: userToken,
-        fields: "access_token",
-      })
-      .then((data: Data) => {
-        const accessToken = data.access_token;
-        this.pageToken = accessToken;
-        this.writeCredentials({
-          appId,
-          appSecret,
-          pageToken: accessToken,
-          pageTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-        });
-      })
-      .catch((e: GraphError) => {
-        const error = new Error();
-        throw new UnauthorizedError("Error verifying page token.", error, e);
-      });
-  }
-
   generate(credentials: Array<string> = this.stale) {
     credentials.map((c) => {
       switch (c) {
         case "appToken":
-          this.generateAppToken(this.appId, this.appSecret);
+          this.access.app.generate();
           break;
         case "userId":
-          if (this.userToken === undefined) {
-            const error = new Error();
-            throw new CredentialError(
-              "Error getting user ID, user token is required first.",
-              error
-            );
-          }
-          this.generateUserId(this.appId, this.appSecret, this.userToken);
+          this.info.user.generate();
           break;
         case "pageId":
-          if (this.userId === undefined || this.userToken === undefined) {
-            const error = new Error();
-            throw new CredentialError(
-              "Error getting page ID, user ID, and user token are required first.",
-              error
-            );
-          }
-          this.generatePageId(
-            this.appId,
-            this.appSecret,
-            this.userId,
-            this.userToken,
-            this.pageIndex
-          );
+          this.info.page.generate();
           break;
         case "pageToken":
-          if (this.pageId === undefined || this.userToken === undefined) {
-            const error = new Error();
-            throw new CredentialError(
-              "Error getting page token, page ID and user token are required first.",
-              error
-            );
-          }
-          this.generatePageToken(
-            this.appId,
-            this.appSecret,
-            this.pageId,
-            this.userToken
-          );
+          this.access.page.generate();
           break;
         default:
           break;
       }
     });
-  }
-
-  refreshAppToken(
-    appId: string = this.appId,
-    appSecret: string = this.appSecret,
-    appToken: string | undefined = this.appToken,
-    appTokenExpires: number | undefined = this.appTokenExpires
-  ) {
-    if (appToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("App token is required.", error);
-    }
-
-    if (appTokenExpires === undefined) {
-      const error = new Error();
-      throw new CredentialError("App token expiration is required.", error);
-    }
-
-    return this.verifyAppToken(appToken, appTokenExpires).then(
-      (valid: boolean) =>
-        valid ? this : this.generateAppToken(appId, appSecret)
-    );
-  }
-
-  refreshUserToken(
-    userToken: string | undefined = this.userToken,
-    userTokenExpires: number | undefined = this.userTokenExpires
-  ) {
-    if (userToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("User token is required.", error);
-    }
-
-    if (userTokenExpires === undefined) {
-      const error = new Error();
-      throw new CredentialError("User token expiration is required.", error);
-    }
-
-    return this.verifyUserCredentials(userToken, userTokenExpires).then(
-      (valid: boolean) => {
-        if (valid) {
-          return this;
-        } else {
-          throw new CredentialError(
-            "User token is required. Since user tokens cannot be generated automatically, you must login again using the login command."
-          );
-        }
-      }
-    );
-  }
-
-  refreshUserId(
-    appId: string = this.appId,
-    appSecret: string = this.appSecret,
-    userId: string | undefined = this.userId,
-    userIdExpires: number | undefined = this.userIdExpires,
-    userToken: string | undefined = this.userToken
-  ) {
-    if (userId === undefined) {
-      const error = new Error();
-      throw new CredentialError("User ID is required.", error);
-    }
-
-    if (userIdExpires === undefined) {
-      const error = new Error();
-      throw new CredentialError("User ID expiration is required.", error);
-    }
-
-    if (userToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("User token is required.", error);
-    }
-
-    return this.verifyUserId(userId, userIdExpires, userToken).then(
-      (valid: boolean) => {
-        if (valid) {
-          return this;
-        } else {
-          return this.generateUserId(appId, appSecret, userToken);
-        }
-      }
-    );
-  }
-
-  refreshPageId(
-    appId: string = this.appId,
-    appSecret: string = this.appSecret,
-    pageId: string | undefined = this.pageId,
-    pageIdExpires: number | undefined = this.pageIdExpires,
-    userId: string | undefined = this.userId,
-    userToken: string | undefined = this.userToken,
-    pageIndex: number | undefined = this.pageIndex
-  ) {
-    if (pageId === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page ID is required.", error);
-    }
-
-    if (pageIdExpires === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page ID expiration is required.", error);
-    }
-
-    if (userId === undefined) {
-      const error = new Error();
-      throw new CredentialError("User ID is required.", error);
-    }
-
-    if (userToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("User token is required.", error);
-    }
-
-    if (pageIndex === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page index is required.", error);
-    }
-
-    return this.verifyPageId(pageId, pageIdExpires, userToken).then(
-      (valid: boolean) => {
-        if (valid) {
-          return this;
-        } else {
-          return this.generatePageId(
-            appId,
-            appSecret,
-            userId,
-            userToken,
-            pageIndex
-          );
-        }
-      }
-    );
-  }
-
-  refreshPageToken(
-    appId: string = this.appId,
-    appSecret: string = this.appSecret,
-    pageToken: string | undefined = this.pageToken,
-    pageTokenExpires: number | undefined = this.pageTokenExpires,
-    pageId: string | undefined = this.pageId,
-    userToken: string | undefined = this.userToken
-  ) {
-    if (pageToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page token is required.", error);
-    }
-
-    if (pageTokenExpires === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page token expiration is required.", error);
-    }
-
-    if (pageId === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page ID is required.", error);
-    }
-
-    if (userToken === undefined) {
-      const error = new Error();
-      throw new CredentialError("User token is required.", error);
-    }
-
-    return this.verifyPageCredentials(pageToken, pageTokenExpires).then(
-      (valid: boolean) => {
-        if (valid) {
-          return this;
-        } else {
-          return this.generatePageToken(appId, appSecret, pageId, userToken);
-        }
-      }
-    );
-  }
-
-  refresh(
-    credentials: string[] = [
-      "appToken",
-      "userId",
-      "userToken",
-      "pageId",
-      "pageToken",
-    ]
-  ) {
-    const promises: Promise<Function>[] = [];
-    credentials.map((c) => {
-      switch (c) {
-        case "appToken":
-          promises.push(
-            new Promise((resolve) => resolve(this.refreshAppToken()))
-          );
-          break;
-        case "userId":
-          promises.push(
-            new Promise((resolve) => resolve(this.refreshUserId()))
-          );
-          break;
-        case "pageId":
-          promises.push(
-            new Promise((resolve) => resolve(this.refreshPageId()))
-          );
-          break;
-        case "pageToken":
-          promises.push(
-            new Promise((resolve) => resolve(this.refreshPageToken()))
-          );
-          break;
-        default:
-          break;
-      }
-    });
-    return Promise.all(promises);
+    return this;
   }
 
   login(config: Authentication = DEFAULT_CONFIG) {
@@ -1127,16 +463,27 @@ export class Login {
     const readCredentials = config.readCredentials || readFromJSONCredentials;
     const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
 
-    this.verify(this.stale, readCredentials, writeCredentials, expireTime);
-    this.generate(this.stale);
-    this.verify(this.stale, readCredentials, writeCredentials, expireTime);
+    // These don't really do anything since they are asynchronous.
+    // They're just there to make sure that credentials are generated
+    // at some point in the future.
+    // Even though this function returns `this`, it doesn't wait for
+    // the following promises to resolve before returning.
+    // The real verification/generation happens in the `credentials` function
+    // or (more importantly) before the program even runs in the login CLI.
+    this.generate(this.stale).verify(
+      this.stale,
+      readCredentials,
+      writeCredentials,
+      expireTime
+    );
 
-    if (this.stale.length > 0) {
-      console.warn(
-        "Error generateing credentials, some credentials were unable to be generateed: " +
-          this.stale
-      );
-    }
+    // Will not work because the promises are not awaited.
+    // if (this.stale.length > 0) {
+    //   console.warn(
+    //     "Error generateing credentials, some credentials were unable to be generateed: " +
+    //       this.stale
+    //   );
+    // }
 
     return this;
   }
@@ -1150,20 +497,19 @@ export class Login {
   ) {
     return new Promise((resolve) => {
       const {
-        appId,
-        appSecret,
-        appToken,
-        appTokenExpires,
-        userToken,
-        userTokenExpires,
-        userId,
-        userIdExpires,
-        pageId,
-        pageIdExpires,
-        pageIndex,
-        pageToken,
-        pageTokenExpires,
-      } = this;
+        id: appId,
+        secret: appSecret,
+        access: {
+          app: { token: appToken, expires: appTokenExpires },
+          user: { token: userToken, expires: userTokenExpires },
+          page: { token: pageToken, expires: pageTokenExpires },
+        },
+        info: {
+          user: { id: userId, expires: userIdExpires },
+          page: { id: pageId, expires: pageIdExpires },
+          index: pageIndex,
+        },
+      }: { id: string; secret: string; access: Access; info: Info } = this;
 
       const warn = (message: string) => {
         if (options.error) {

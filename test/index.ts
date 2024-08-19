@@ -1,18 +1,8 @@
-import Facebook from "../src";
+import { App, LoginSuccess, spin } from "../src/cli/components";
 
-const facebook = new Facebook();
+const app = new App();
 
-facebook
-  .login()
-  .credentials()
-  .catch((error) => console.error(error));
-
-facebook.verifyUserCredentials().then((valid) => console.log(valid));
-
-// console.log(facebook.scope);
-// const post = await facebook.posts.publish({ message: "Hello World!" });
-
-// console.log("Deleting in 10 Seconds...");
-// setTimeout(() => {
-//   post.remove();
-// }, 5000);
+const spinner = spin("Authenticating App Token", app);
+setTimeout(() => {
+  spinner.fail("App Token Authenticated");
+}, 1000);

@@ -4,25 +4,16 @@ import assert from "node:assert";
 import { Client, Login } from "../api";
 import { CredentialError, PostError } from "../errors";
 import type { writeCredentials, readCredentials } from "../credentials";
-import type { Permissions } from "../api";
+import type { Permissions, Info, Access } from "../api";
 
 import { Post } from "./post";
 
 export interface Config {
-  appId?: string;
-  appSecret?: string;
+  id?: string;
+  secret?: string;
 
-  appToken?: string;
-  appTokenExpires?: number;
-  userToken?: string;
-  userId?: string;
-  userIdExpires?: number;
-  userTokenExpires?: number;
-  pageId?: string;
-  pageIdExpires?: number;
-  pageIndex?: number;
-  pageToken?: string;
-  pageTokenExpires?: number;
+  access?: Access;
+  info?: Info;
 
   scope?: Permissions;
   writeCredentials?: writeCredentials;
@@ -103,9 +94,9 @@ export class Facebook extends Login {
     return this.refresh(["pageId", "pageToken"]).then(() => {
       try {
         return this.client
-          .post(`${this.pageId}/feed`, {
+          .post(`${this.info.page.id}/feed`, {
             ...config,
-            access_token: this.pageToken,
+            access_token: this.access.page.token,
           })
           .then((data: { id: string }) => new Post(data.id, this));
       } catch (error) {
@@ -146,13 +137,13 @@ export class Facebook extends Login {
           );
         }
 
-        assert(this.pageToken, "Page token is missing."); // Will never throw an error because of above check, but TypeScript doesn't know that
+        assert(this.access.page.token, "Page token is missing."); // Will never throw an error because of above check, but TypeScript doesn't know that
         const form = new FormData();
         const image = fs.readFileSync(path);
         const name = path.split("/").pop();
         const blob = new Blob([image], { type: `image/${extension}}` });
 
-        form.append("access_token", this.pageToken);
+        form.append("access_token", this.access.page.token);
         form.append("source", blob, name);
         form.append("published", "false");
         form.append("temporary", "true");
@@ -177,7 +168,7 @@ export class Facebook extends Login {
         delete options.url;
         const body = new URLSearchParams({
           ...options,
-          access_token: this.pageToken,
+          access_token: this.access.page.token,
         });
         images.forEach((image: any, i: number) => {
           body.append(
@@ -186,7 +177,7 @@ export class Facebook extends Login {
           );
         });
         return this.client
-          .post(`${this.pageId}/feed`, body, {
+          .post(`${this.info.page.id}/feed`, body, {
             "Content-Type": "application/x-www-form-urlencoded",
           })
           .then((data: Data) => new Post(data.id, this));
@@ -207,7 +198,7 @@ export class Facebook extends Login {
       try {
         return this.client.post(id, {
           message,
-          access_token: this.pageToken,
+          access_token: this.access.page.token,
         });
       } catch (error) {
         throw new PostError("Error editing post.", error);
@@ -228,7 +219,7 @@ export class Facebook extends Login {
         return this.client.post(
           id,
           {
-            access_token: this.pageToken,
+            access_token: this.access.page.token,
           },
           { "Content-Type": "application/json" },
           "DELETE"
@@ -262,7 +253,7 @@ export class Facebook extends Login {
       try {
         return this.client.post(postId, {
           message,
-          access_token: this.pageToken,
+          access_token: this.access.page.token,
         });
       } catch (error) {
         throw new PostError("Error publishing comment.", error);

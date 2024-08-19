@@ -3,159 +3,121 @@ import inquirer from "inquirer";
 import Facebook from "../index";
 import { FACEBOOK_GRAPH_API } from "../index";
 import { CredentialError } from "../index";
-import { spin, info } from "./components";
+import { App, spin, info } from "./components";
 
 export async function userIdCredential(
   facebook: Facebook,
+  app: App,
   userId: string | undefined
 ) {
-  if (userId === undefined) {
-    const spinner = spin("Authenticating user ID ...");
-
-    const appId = facebook.appId;
-    const appSecret = facebook.appSecret;
-    const userToken = facebook.userToken;
-
-    if (userToken === undefined) {
-      throw new CredentialError(
-        "User token is required for user ID authentication."
-      );
+  return facebook.info.user.validate(userId).then((valid: boolean) => {
+    if (valid) {
+      return facebook.info.user.id;
+    } else {
+      const spinner = spin("Authenticating User ID", app);
+      return facebook.info.user
+        .generate(facebook.id, facebook.secret, facebook.access.user.token)
+        .then(() => {
+          spinner.succeed("User ID Authenticated.");
+          return facebook.info.user.id;
+        })
+        .catch((e) => {
+          spinner.fail("User ID Authentication Failed.");
+          throw new CredentialError("Error generating user ID.", e);
+        });
     }
-
-    await facebook.generateUserId(appId, appSecret, userToken);
-    return await facebook.verifyUserId().then((valid: boolean) => {
-      if (valid) {
-        spinner.succeed(" User ID authenticated.");
-        info("success", "User ID authenticated.");
-        return facebook.userId;
-      } else {
-        spinner.fail("User ID authentication failed.");
-        throw new CredentialError("Invalid user ID.");
-      }
-    });
-  } else {
-    return await facebook.verifyUserId(userId).then((valid: boolean) => {
-      if (valid) {
-        info("success", "User ID authenticated.");
-        return userId;
-      } else {
-        throw new CredentialError("Invalid user ID.");
-      }
-    });
-  }
+  });
 }
 
 export async function pageIdCredential(
   facebook: Facebook,
+  app: App,
   pageId: string | undefined,
   pageIndex: number | undefined
 ) {
-  if (pageId === undefined) {
-    const spinner = spin("Authenticating page ID ...");
-
-    const userId = facebook.userId;
-    const userToken = facebook.userToken;
-
-    if (userToken === undefined) {
-      throw new CredentialError(
-        "User token is required for page ID authentication."
-      );
-    }
-
-    if (userId === undefined) {
-      throw new CredentialError(
-        "User ID is required for page ID authentication."
-      );
-    }
-
-    interface Data {
-      data: {
-        access_token: string;
-        category: string;
-        category_list: {
-          id: string;
+  return facebook.info.page.validate(pageId).then((valid: boolean) => {
+    if (valid) {
+      return facebook.info.page.id;
+    } else {
+      interface Data {
+        data: {
+          access_token: string;
+          category: string;
+          category_list: {
+            id: string;
+            name: string;
+          }[];
           name: string;
+          id: string;
+          tasks: string[];
         }[];
-        name: string;
-        id: string;
-        tasks: string[];
-      }[];
-      paging: {
-        cursors: {
-          before: string;
-          after: string;
+        paging: {
+          cursors: {
+            before: string;
+            after: string;
+          };
         };
-      };
-    }
-
-    spinner.stop();
-    const data: Data = await fetch(
-      `${FACEBOOK_GRAPH_API}/${userId}/accounts?access_token=${userToken}`
-    ).then((r) => r.json());
-
-    if (data.data.length === 0) {
-      throw new CredentialError("No pages found.");
-    }
-
-    if (data.data.length === 1) {
-      pageIndex = 0;
-    }
-
-    if (pageIndex === undefined) {
-      const questions: any = [
-        {
-          type: "list",
-          name: "page",
-          message: "Select a Page:",
-          choices: data.data.map((d, i) => {
-            return {
-              name: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
-                d.category
-              }\n    ${d.tasks.join(",\n    ")}`,
-              value: i,
-            };
-          }),
-        },
-      ];
-      await inquirer.prompt(questions).then((answers: any) => {
-        const { page } = answers;
-        pageIndex = Number(page);
-      });
-    }
-
-    spinner.start();
-    if (pageIndex === undefined) {
-      throw new CredentialError("Invalid page index.");
-    }
-
-    const appId = facebook.appId;
-    const appSecret = facebook.appSecret;
-
-    await facebook.generatePageId(
-      appId,
-      appSecret,
-      userId,
-      userToken,
-      pageIndex
-    );
-    return await facebook.verifyPageId().then((valid: boolean) => {
-      if (valid) {
-        spinner.succeed(" Page ID authenticated.");
-        info("success", "Page ID authenticated.");
-        return facebook.pageId;
-      } else {
-        spinner.fail("Page ID authentication failed.");
-        throw new CredentialError("Invalid page ID.");
       }
-    });
-  } else {
-    return await facebook.verifyPageId(pageId).then((valid: boolean) => {
-      if (valid) {
-        info("success", "Page ID authenticated.");
-        return facebook.pageId;
-      } else {
-        throw new CredentialError("Invalid page ID.");
-      }
-    });
-  }
+      return fetch(
+        `${FACEBOOK_GRAPH_API}/${facebook.info.user.id}/accounts?access_token=${facebook.access.user.token}`
+      )
+        .then((r) => r.json())
+        .then((data: Data) => {
+          const spinner = spin("Authenticating Page ID", app);
+
+          if (data.data.length === 0) {
+            throw new CredentialError("No pages found.");
+          }
+          if (data.data.length === 1) {
+            pageIndex = 0;
+          }
+
+          const questions: any = [
+            {
+              type: "list",
+              name: "page",
+              message: "Select a Page:",
+              choices: data.data.map((d, i) => {
+                return {
+                  name: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
+                    d.category
+                  }\n    ${d.tasks.join(",\n    ")}`,
+                  value: i,
+                };
+              }),
+            },
+          ];
+
+          return new Promise(
+            pageIndex
+              ? () =>
+                  facebook.info.page.generate(
+                    facebook.id,
+                    facebook.secret,
+                    facebook.info.user.id,
+                    facebook.access.user.token,
+                    pageIndex
+                  )
+              : () =>
+                  inquirer.prompt(questions).then((answers: any) => {
+                    return facebook.info.page.generate(
+                      facebook.id,
+                      facebook.secret,
+                      facebook.info.user.id,
+                      facebook.access.user.token,
+                      Number(answers.page)
+                    );
+                  })
+          )
+            .then(() => {
+              spinner.succeed("Page ID Authenticated.");
+              return facebook.info.page.id;
+            })
+            .catch((e) => {
+              spinner.fail("Page ID Authentication Failed.");
+              throw new CredentialError("Error generating page ID.", e);
+            });
+        });
+    }
+  });
 }

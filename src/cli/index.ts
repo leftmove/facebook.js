@@ -17,7 +17,7 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { loginStart, loginSuccess } from "./components";
+import { App, LoginStart, LoginSuccess } from "./components";
 
 const program = new Command();
 
@@ -36,19 +36,20 @@ program
   .option("--pageId", "Facebook Page ID.")
   .option("--pageIndex", "Facebook Page Index.")
   .option("--pageToken", "Facebook Page Token.")
-  .option(
-    "--scope",
-    "Facebook permissions scope, given as a JSON string.",
-    JSON.stringify(DEFAULT_SCOPE)
-  )
+  .option("--scope", "Facebook permissions scope, given as a JSON string.")
   .option("--credentials", "Facebook credentials.", DEFAULT_FILE_PATH)
   .option("--path", "Path to the credentials file.")
   .action(async (options) => {
     const credentials = readFromJSONCredentials(options.credentials);
     const scope =
-      credentials.scope || JSON.parse(options.scope || "{}") || undefined;
+      (options.scope ? JSON.parse(options.scope) : undefined) ||
+      (Object.keys(credentials.scope as Object).length === 0
+        ? undefined
+        : credentials.scope) ||
+      DEFAULT_SCOPE;
 
-    loginStart();
+    const app = new App();
+    app.render(LoginStart);
 
     const { appId, appSecret } = await appCredentials(
       options.appId || credentials.appId || undefined,
@@ -63,8 +64,8 @@ program
     let pageToken = options.pageToken || credentials.pageToken || undefined;
 
     const facebook = new Facebook({
-      appId,
-      appSecret,
+      id: appId,
+      secret: appSecret,
       ...(appToken ? appToken : null),
       ...(userToken ? userToken : null),
       ...(userId ? userId : null),
@@ -74,11 +75,11 @@ program
       scope,
     });
 
-    appToken = await appTokenCredential(facebook, appToken);
-    userToken = await userTokenCredential(facebook, scope, userToken);
-    userId = await userIdCredential(facebook, userId);
-    pageId = await pageIdCredential(facebook, pageId, pageIndex);
-    pageToken = await pageTokenCredential(facebook, pageToken);
+    appToken = await appTokenCredential(facebook, app, appToken);
+    userToken = await userTokenCredential(facebook, app, scope, userToken);
+    userId = await userIdCredential(facebook, app, userId);
+    pageId = await pageIdCredential(facebook, app, pageId, pageIndex);
+    pageToken = await pageTokenCredential(facebook, app, pageToken);
 
     const path = options.path || DEFAULT_FILE_PATH;
     writeToJSONCredentials(
@@ -86,76 +87,7 @@ program
       path
     );
 
-    loginSuccess();
-  });
-
-program
-  .command("relogin")
-  .description(
-    "Authenticate Facebook credentials, regardless of if they are already there. Reloads ALL credentials"
-  )
-  .option("--appId", "Facebook App ID.")
-  .option("--appSecret", "Facebook App Secret.")
-  .option(
-    "--scope",
-    "Facebook permissions scope, given as a JSON string.",
-    JSON.stringify(DEFAULT_SCOPE)
-  )
-  .option("--credentials", "Facebook credentials.", DEFAULT_FILE_PATH)
-  .option("--path", "Path to the credentials file.")
-  .action(async (options) => {
-    const credentials = readFromJSONCredentials(options.credentials);
-    const scope =
-      credentials.scope || JSON.parse(options.scope || "{}") || undefined;
-
-    loginStart();
-
-    const { appId, appSecret } = await appCredentials(
-      options.appId || credentials.appId || undefined,
-      options.appSecret || credentials.appSecret || undefined
-    );
-
-    let appToken = undefined;
-    let userToken = undefined;
-    let userId = undefined;
-    let pageId = undefined;
-    let pageIndex = undefined;
-    let pageToken = undefined;
-
-    const facebook = new Facebook({
-      appId,
-      appSecret,
-      appToken,
-      userToken,
-      userId,
-      pageId,
-      pageIndex,
-      pageToken,
-      scope,
-    });
-
-    appToken = await appTokenCredential(facebook, appToken);
-    userToken = await userTokenCredential(facebook, scope, userToken);
-    userId = await userIdCredential(facebook, userId);
-    pageId = await pageIdCredential(facebook, pageId, pageIndex);
-    pageToken = await pageTokenCredential(facebook, pageToken);
-
-    const path = options.path || DEFAULT_FILE_PATH;
-    writeToJSONCredentials(
-      {
-        appId,
-        appSecret,
-        appToken,
-        userToken,
-        userId,
-        pageIndex,
-        pageId,
-        pageToken,
-      },
-      path
-    );
-
-    loginSuccess();
+    app.render(LoginSuccess);
   });
 
 program.parse();
