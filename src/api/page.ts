@@ -12,12 +12,14 @@ export function validate(
 ): Promise<boolean> {
   if (pageToken === undefined) {
     this.stale = [...this.stale, token];
+    this.access.page.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
   const now = Date.now() / 1000;
   if (pageTokenExpires && now - pageTokenExpires >= this.expireTime) {
     this.stale = [...this.stale, token];
+    this.access.page.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -51,9 +53,11 @@ export function validate(
     .get("debug_token", { input_token: pageToken, access_token: pageToken })
     .then((data: Data) => {
       if (data.data.is_valid) {
-        const pageTokenExpires = data.data.data_access_expires_at;
         this.access.page.token = pageToken;
-        this.access.page.expires = pageTokenExpires;
+        this.access.page.expires =
+          data.data.data_access_expires_at ||
+          Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
+        this.access.page.valid = true;
         this.writeCredentials({
           pageToken,
           pageTokenExpires,
@@ -61,6 +65,7 @@ export function validate(
         return true;
       } else {
         this.stale = [...this.stale, token];
+        this.access.page.valid = false;
         return false;
       }
     })
@@ -69,6 +74,7 @@ export function validate(
       const code = data.data.error.code || 400;
       if (code === 190) {
         this.stale = [...this.stale, token];
+        this.access.page.valid = false;
         return false;
       } else {
         const error = new Error();
@@ -88,7 +94,7 @@ export function generate(
     id: string;
   }
 
-  if (valid) {
+  if (valid || this.access.page.valid) {
     return new Promise((resolve) => resolve(this.access.page.token));
   }
 
@@ -127,7 +133,7 @@ export function refresh(
   this: Login,
   pageToken: string | undefined = this.access.page.token,
   pageTokenExpires: number | undefined = this.access.page.expires
-) {
+): Promise<string | undefined> {
   if (pageToken === undefined) {
     const error = new Error();
     throw new CredentialError("Page token is required.", error);
@@ -143,11 +149,13 @@ export function refresh(
     .then((valid) => this.access.page.generate(valid));
 }
 
-export function page(t: Login): Token {
+export function page(t: Login) {
   return {
     ...DEFAULT_TOKEN,
     validate: validate.bind(t),
     generate: generate.bind(t),
     refresh: refresh.bind(t),
-  } as Token;
+  };
 }
+
+export type Page = ReturnType<typeof page>;

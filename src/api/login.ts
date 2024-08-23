@@ -12,11 +12,11 @@ import type {
   readCredentials,
 } from "../credentials";
 
-import { user } from "./user";
-import { app } from "./app";
-import { page } from "./page";
-import { uid } from "./uid";
-import { pid } from "./pid";
+import * as app from "./app";
+import * as user from "./user";
+import * as page from "./page";
+import * as uid from "./uid";
+import * as pid from "./pid";
 
 export interface Permissions {
   [key: string]: boolean | undefined;
@@ -154,14 +154,14 @@ export const DEFAULT_INFO: Id = {
 export const DEFAULT_INDEX = 0;
 
 export interface Access {
-  app: Token;
-  user: Token;
-  page: Token;
+  app: app.App;
+  user: user.User;
+  page: page.Page;
 }
 
 export interface Info {
-  page: Id;
-  user: Id;
+  page: pid.Pid;
+  user: uid.Uid;
   index: number;
 }
 
@@ -187,13 +187,13 @@ export class Login {
   expireTime: number = DEFAULT_EXPIRE_TIME;
 
   access: Access = {
-    app: app(this),
-    user: user(this),
-    page: page(this),
+    app: app.app(this),
+    user: user.user(this),
+    page: page.page(this),
   };
   info: Info = {
-    page: pid(this),
-    user: uid(this),
+    page: pid.pid(this),
+    user: uid.uid(this),
     index: DEFAULT_INDEX,
   };
 

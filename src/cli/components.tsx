@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { render, Box, Text } from "ink";
+import figures from "figures";
 import type { ReactNode } from "react";
 
 export const yellow = "\x1b[43m";
@@ -117,7 +118,7 @@ export const spin = (message: string, app: App) => {
       app.elements = this.elements;
       app.render(
         <Box justifyContent="center">
-          <Text color="green">{success} </Text>
+          <Text color="green">{figures.tick} </Text>
           <Text>{msg}</Text>
         </Box>
       );
@@ -127,7 +128,7 @@ export const spin = (message: string, app: App) => {
       app.elements = this.elements;
       app.render(
         <Box justifyContent="center">
-          <Text color="red">{failure} </Text>
+          <Text color="red">{figures.cross} </Text>
           <Text>{msg}</Text>
         </Box>
       );
@@ -188,21 +189,16 @@ export function centerText(text: string): string {
   return " ".repeat(padding) + text;
 }
 
-export const log = "ℹ";
-export const failure = "×";
-export const warn = "⚠";
-export const success = "✔";
-
 export function Info(emoji: string, message: string, color = "yellow") {
   switch (emoji) {
     case "success":
-      emoji = success;
+      emoji = figures.tick;
       break;
     case "error":
-      emoji = failure;
+      emoji = figures.cross;
       break;
     case "info":
-      emoji = log;
+      emoji = figures.info;
       break;
     default:
       emoji = emoji;

@@ -9,7 +9,7 @@ export { DEFAULT_SCOPE } from "./api";
 export { FACEBOOK_GRAPH_API } from "./api";
 export { DEFAULT_EXPIRE_TIME } from "./api";
 
-export { CredentialError, UnauthorizedError } from "./errors";
+export { GraphError, CredentialError, UnauthorizedError } from "./errors";
 
 export { Client } from "./api";
 export type { Permissions, Authentication } from "./api";

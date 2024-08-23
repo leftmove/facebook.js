@@ -14,11 +14,13 @@ export function validate(
 
   if (userToken === undefined || userId === undefined) {
     this.stale = [...this.stale, token];
+    this.info.user.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
   if (userIdExpires && Date.now() / 1000 - userIdExpires >= this.expireTime) {
     this.stale = [...this.stale, token];
+    this.info.user.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -41,6 +43,7 @@ export function validate(
     .then((data: Data) => {
       const userId = data.id;
       this.info.user.id = userId;
+      this.info.user.valid = true;
       this.writeCredentials({ userId });
       return true;
     })
@@ -49,6 +52,7 @@ export function validate(
       const code = data.error.code || 400;
       if (code === 190) {
         this.stale = [...this.stale, token];
+        this.info.user.valid = false;
         return false;
       } else {
         const error = new Error();
@@ -67,7 +71,7 @@ export function generate(
     id: string;
   }
 
-  if (valid) {
+  if (valid || this.info.user.valid) {
     return new Promise((resolve) => resolve(this.info.user.id));
   }
 
@@ -96,12 +100,12 @@ export function generate(
     });
 }
 
-export function resfresh(
+export function refresh(
   this: Login,
   userId: string | undefined = this.info.user.id,
   userIdExpires: number | undefined = this.info.user.expires,
   userToken: string | undefined = this.access.user.token
-) {
+): Promise<string | undefined> {
   if (userId === undefined) {
     const error = new Error();
     throw new CredentialError("User ID is required.", error);
@@ -119,19 +123,15 @@ export function resfresh(
 
   return this.info.user
     .validate(userId, userIdExpires, userToken)
-    .then((valid: boolean) => {
-      if (valid) {
-        return this;
-      } else {
-        return this.info.user.generate(valid, userToken);
-      }
-    });
+    .then((valid: boolean) => this.info.user.generate(valid, userToken));
 }
 
-export function uid(t: Login): Id {
+export function uid(t: Login) {
   return {
     ...DEFAULT_INFO,
     validate: validate.bind(t),
     generate: generate.bind(t),
-  } as Id;
+    refresh: refresh.bind(t),
+  };
 }
+export type Uid = ReturnType<typeof uid>;

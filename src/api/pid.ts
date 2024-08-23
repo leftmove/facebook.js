@@ -14,11 +14,13 @@ export function validate(
 
   if (userToken === undefined || pageId === undefined) {
     this.stale = [...this.stale, token];
+    this.info.page.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
   if (pageIdExpires && Date.now() / 1000 - pageIdExpires >= this.expireTime) {
     this.stale = [...this.stale, token];
+    this.info.page.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -41,6 +43,7 @@ export function validate(
     .then((data: Data) => {
       const pageId = data.id;
       this.info.page.id = pageId;
+      this.info.page.valid = true;
       this.writeCredentials({ pageId });
       return true;
     })
@@ -49,6 +52,7 @@ export function validate(
       const code = data?.error?.code || 400;
       if (code === 190) {
         this.stale = [...this.stale, token];
+        this.info.page.valid = false;
         return false;
       } else {
         const error = new Error();
@@ -135,7 +139,7 @@ export function refresh(
   userId: string | undefined = this.info.user.id,
   userToken: string | undefined = this.access.user.token,
   pageIndex: number | undefined = this.info.index
-) {
+): Promise<string | undefined> {
   if (pageId === undefined) {
     const error = new Error();
     throw new CredentialError("Page ID is required.", error);
@@ -163,20 +167,15 @@ export function refresh(
 
   return this.info.page
     .validate(pageId, pageIdExpires, userToken)
-    .then((valid: boolean) => {
-      if (valid) {
-        return this;
-      } else {
-        return this.info.page.generate(valid, userId, userToken, pageIndex);
-      }
-    });
+    .then((valid: boolean) => this.info.page.generate(valid));
 }
 
-export function pid(t: Login): Id {
+export function pid(t: Login) {
   return {
     ...DEFAULT_INFO,
     validate: validate.bind(t),
     generate: generate.bind(t),
     refresh: refresh.bind(t),
-  } as Id;
+  };
 }
+export type Pid = ReturnType<typeof pid>;

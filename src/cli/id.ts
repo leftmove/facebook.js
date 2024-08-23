@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 
-import Facebook from "../index";
-import { FACEBOOK_GRAPH_API } from "../index";
+import Facebook, { GraphError } from "../index";
+import { Client } from "../index";
 import { CredentialError } from "../index";
 import { App, spin, info } from "./components";
 
@@ -16,12 +16,12 @@ export async function userIdCredential(
     } else {
       const spinner = spin("Authenticating User ID", app);
       return facebook.info.user
-        .generate(facebook.id, facebook.secret, facebook.access.user.token)
+        .generate(valid, facebook.access.user.token)
         .then(() => {
           spinner.succeed("User ID Authenticated.");
           return facebook.info.user.id;
         })
-        .catch((e) => {
+        .catch((e: GraphError) => {
           spinner.fail("User ID Authentication Failed.");
           throw new CredentialError("Error generating user ID.", e);
         });
@@ -39,6 +39,7 @@ export async function pageIdCredential(
     if (valid) {
       return facebook.info.page.id;
     } else {
+      const client = new Client();
       interface Data {
         data: {
           access_token: string;
@@ -58,19 +59,20 @@ export async function pageIdCredential(
           };
         };
       }
-      return fetch(
-        `${FACEBOOK_GRAPH_API}/${facebook.info.user.id}/accounts?access_token=${facebook.access.user.token}`
-      )
-        .then((r) => r.json())
+
+      return client
+        .get(`${facebook.info.user.id}/accounts`, {
+          access_token: facebook.access.user.token,
+        })
         .then((data: Data) => {
           const spinner = spin("Authenticating Page ID", app);
 
           if (data.data.length === 0) {
             throw new CredentialError("No pages found.");
           }
-          if (data.data.length === 1) {
-            pageIndex = 0;
-          }
+          // if (data.data.length === 1) {
+          //   pageIndex = 0;
+          // }
 
           const questions: any = [
             {
@@ -89,25 +91,30 @@ export async function pageIdCredential(
           ];
 
           return new Promise(
-            pageIndex
-              ? () =>
-                  facebook.info.page.generate(
-                    facebook.id,
-                    facebook.secret,
-                    facebook.info.user.id,
-                    facebook.access.user.token,
-                    pageIndex
-                  )
-              : () =>
-                  inquirer.prompt(questions).then((answers: any) => {
-                    return facebook.info.page.generate(
-                      facebook.id,
-                      facebook.secret,
+            pageIndex === 0 || pageIndex
+              ? (resolve, reject) =>
+                  facebook.info.page
+                    .generate(
+                      valid,
                       facebook.info.user.id,
                       facebook.access.user.token,
-                      Number(answers.page)
-                    );
-                  })
+                      pageIndex
+                    )
+                    .then(resolve)
+                    .catch(reject)
+              : (resolve, reject) =>
+                  inquirer
+                    .prompt(questions)
+                    .then((answers: any) => {
+                      return facebook.info.page.generate(
+                        valid,
+                        facebook.info.user.id,
+                        facebook.access.user.token,
+                        Number(answers.page)
+                      );
+                    })
+                    .then(resolve)
+                    .catch(reject)
           )
             .then(() => {
               spinner.succeed("Page ID Authenticated.");

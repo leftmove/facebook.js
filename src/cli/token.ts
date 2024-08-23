@@ -6,7 +6,7 @@ import inquirer from "inquirer";
 
 import Facebook, { CredentialError } from "../index";
 import { App, spin, info } from "./components";
-import { UnauthorizedError } from "../index";
+import { UnauthorizedError, GraphError } from "../index";
 import type { Permissions } from "../index";
 
 export async function appCredentials(
@@ -51,12 +51,12 @@ export async function appTokenCredential(
     } else {
       const spinner = spin("Authenticating App Token", app);
       return facebook.access.app
-        .generate()
+        .generate(valid)
         .then(() => {
           spinner.succeed(" App Token Authenticated");
           return facebook.access.app.token;
         })
-        .catch((e) => {
+        .catch((e: GraphError) => {
           spinner.fail("App Token Authentication Failed");
           throw new UnauthorizedError("Error generating app token.", e);
         });
@@ -90,6 +90,23 @@ export async function timeoutCallback(
   });
 }
 
+const successHTML = `
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Facebook Authentication</title>
+  </head>
+  <body>
+    <h1 style="text-align: center;">Success!</h1>
+    <hr>
+    <div style="text-align: center;">
+      <p>Facebook was successfully authenticated.</p>
+      <p>You may now close this tab and return to the terminal.</p>
+    </div>
+  </body>
+</html>
+`;
+
 export async function userTokenCredential(
   facebook: Facebook,
   app: App,
@@ -101,7 +118,6 @@ export async function userTokenCredential(
       return facebook.access.user.token;
     } else {
       const appId = facebook.id;
-      const appSecret = facebook.secret;
 
       const port = 2279;
       const host = "localhost";
@@ -148,10 +164,7 @@ export async function userTokenCredential(
                     resolve(query.code as string);
 
                     res.writeHead(200);
-                    res.end(
-                      "Success! Your Facebook instance has been authenticated, you may now close this tab.",
-                      () => server.close()
-                    );
+                    res.end(successHTML, () => server.close());
                     break;
                   default:
                     res.writeHead(404);
@@ -165,12 +178,12 @@ export async function userTokenCredential(
       ).then((code: string) => {
         const spinner = spin("Authenticating User Token", app);
         return facebook.access.user
-          .generate(appId, appSecret, redirect.href, code)
+          .generate(valid, redirect.href, code)
           .then(() => {
             spinner.succeed(" User Token Authenticated.");
             return facebook.access.user.token;
           })
-          .catch((e) => {
+          .catch((e: GraphError) => {
             spinner.fail("User Token Authentication Failed.");
             throw new CredentialError("Error generating user token.", e);
           });
@@ -190,17 +203,12 @@ export async function pageTokenCredential(
     } else {
       const spinner = spin("Authenticating Page Token", app);
       return facebook.access.page
-        .generate(
-          facebook.id,
-          facebook.secret,
-          facebook.info.page.id,
-          facebook.access.user.token
-        )
+        .generate(valid, facebook.info.page.id, facebook.access.user.token)
         .then(() => {
           spinner.succeed(" Page Token Authenticated.");
           return facebook.access.page.token;
         })
-        .catch((e) => {
+        .catch((e: GraphError) => {
           spinner.fail("Page Token Authentication Failed.");
           throw new CredentialError("Error generating page token.", e);
         });

@@ -14,12 +14,14 @@ export function validate(
 
   if (userToken === undefined) {
     this.stale = [...this.stale, token];
+    this.access.user.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
   const now = Date.now() / 1000;
   if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
     this.stale = [...this.stale, token];
+    this.access.user.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -52,33 +54,35 @@ export function validate(
   return this.client
     .get("debug_token", { input_token: userToken, access_token: userToken })
     .then((data: Data) => {
-      const scopes = data.data.granular_scopes.map((scope) => scope.scope);
-      const scopes2 = data.data.scopes;
-      const scopes3 = Object.keys(this.scope)
-        .filter((key) => this.scope[key] === true)
-        .sort()
-        .join(",");
-      const scopes4 = scopes.sort().join(",");
-      const scopes5 = Object.keys(DEFAULT_SCOPE).sort().join(",");
-      console.log(
-        "1\n",
-        scopes,
-        "2\n",
-        scopes2,
-        "3\n",
-        scopes3,
-        "4\n",
-        scopes4,
-        "5\n",
-        scopes5
-      );
-      if (data.data.is_valid && data.data.scopes.sort().join(",") === scopes3) {
+      // const scopes = data.data.granular_scopes.map((scope) => scope.scope);
+      // const scopes2 = data.data.scopes;
+      // const scopes3 = Object.keys(this.scope)
+      //   .filter((key) => this.scope[key] === true)
+      //   .sort()
+      //   .join(",");
+      // const scopes4 = scopes.sort().join(",");
+      // const scopes5 = Object.keys(DEFAULT_SCOPE).sort().join(",");
+      // console.log(
+      //   "1\n",
+      //   scopes,
+      //   "2\n",
+      //   scopes2,
+      //   "3\n",
+      //   scopes3,
+      //   "4\n",
+      //   scopes4,
+      //   "5\n",
+      //   scopes5
+      // );
+      if (data.data.is_valid) {
         const userId = data.data.user_id;
         const userTokenExpires = data.data.data_access_expires_at;
 
         this.info.user.id = userId;
         this.access.user.token = userToken;
-        this.access.user.expires = userTokenExpires;
+        this.access.user.expires =
+          userTokenExpires || Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
+        this.access.user.valid = true;
         this.writeCredentials({
           userId,
           userToken,
@@ -87,6 +91,7 @@ export function validate(
         return true;
       } else {
         this.stale = [...this.stale, token];
+        this.access.user.valid = false;
         return false;
       }
     })
@@ -96,6 +101,7 @@ export function validate(
         const code = data?.error?.code || 400;
         if (code === 190) {
           this.stale = [...this.stale, token];
+          this.access.user.valid = false;
           return false;
         } else {
           const error = new Error();
@@ -119,7 +125,7 @@ export function generate(
     expires_in: number;
   }
 
-  if (valid) {
+  if (valid || this.access.user.valid) {
     return new Promise((resolve) => resolve(this.access.user.token));
   }
 
@@ -132,7 +138,8 @@ export function generate(
     })
     .then((data: Data) => {
       const userToken = data.access_token;
-      const userTokenExpires = data.expires_in;
+      const userTokenExpires =
+        data.expires_in || Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
       this.access.user.token = userToken;
       this.access.user.expires = userTokenExpires;
       this.writeCredentials({
@@ -148,39 +155,40 @@ export function generate(
     });
 }
 
-export function refresh(
-  this: Login,
-  userToken: string | undefined = this.access.user.token,
-  userTokenExpires: number | undefined = this.access.user.expires
-) {
-  if (userToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("User token is required.", error);
-  }
+// export function refresh(
+//   this: Login,
+//   userToken: string | undefined = this.access.user.token,
+//   userTokenExpires: number | undefined = this.access.user.expires
+// ): Promise<string | undefined> {
+//   if (userToken === undefined) {
+//     const error = new Error();
+//     throw new CredentialError("User token is required.", error);
+//   }
 
-  if (userTokenExpires === undefined) {
-    const error = new Error();
-    throw new CredentialError("User token expiration is required.", error);
-  }
+//   if (userTokenExpires === undefined) {
+//     const error = new Error();
+//     throw new CredentialError("User token expiration is required.", error);
+//   }
 
-  return this.access.user
-    .validate(userToken, userTokenExpires)
-    .then((valid: boolean) => {
-      if (valid) {
-        return this;
-      } else {
-        throw new CredentialError(
-          "User token is required. Since user tokens cannot be generated automatically, you must login again using the login command."
-        );
-      }
-    });
-}
+//   return this.access.user
+//     .validate(userToken, userTokenExpires)
+//     .then((valid: boolean) => {
+//       if (valid) {
+//         return this.access.user.generate(valid);
+//       } else {
+//         throw new CredentialError(
+//           "User token is required. Since user tokens cannot be generated automatically, you must login again using the login command."
+//         );
+//       }
+//     });
+// }
 
-export function user(t: Login): Token {
+export function user(t: Login) {
   return {
     ...DEFAULT_TOKEN,
     validate: validate.bind(t),
     generate: generate.bind(t),
-    refresh: refresh.bind(t),
-  } as Token;
+  };
 }
+
+export type User = ReturnType<typeof user>;

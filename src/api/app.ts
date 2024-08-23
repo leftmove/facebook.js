@@ -16,6 +16,7 @@ export function validate(
 
   if (appToken === undefined) {
     this.stale = [...this.stale, token];
+    this.access.app.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -24,6 +25,7 @@ export function validate(
     Date.now() / 1000 - appTokenExpires >= this.expireTime
   ) {
     this.stale = [...this.stale, token];
+    this.access.app.valid = false;
     return new Promise((resolve) => resolve(false));
   }
 
@@ -52,9 +54,11 @@ export function validate(
     })
     .then((data: Data) => {
       if (data.data.is_valid) {
+        this.access.app.valid = true;
         return true;
       } else {
         this.stale = [...this.stale, token];
+        this.access.app.valid = false;
         return false;
       }
     })
@@ -63,6 +67,7 @@ export function validate(
       const code = data.error.code || 400;
       if (code === 190) {
         this.stale = [...this.stale, token];
+        this.access.app.valid = false;
         return false;
       } else {
         const error = new Error();
@@ -71,13 +76,13 @@ export function validate(
     });
 }
 
-export function generate(this: Login) {
+export function generate(this: Login, valid: boolean = false) {
   interface Data {
     access_token: string;
     token_type: string;
   }
 
-  if (this.access.app.valid) {
+  if (valid || this.access.app.valid) {
     return new Promise((resolve) => resolve(this.access.app.token));
   }
 
@@ -107,7 +112,7 @@ export function refresh(
   this: Login,
   appToken: string | undefined = this.access.app.token,
   appTokenExpires: number | undefined = this.access.app.expires
-) {
+): Promise<string | undefined> {
   if (appToken === undefined) {
     const error = new Error();
     throw new CredentialError("App token is required.", error);
@@ -120,18 +125,16 @@ export function refresh(
 
   return this.access.app
     .validate(appToken, appTokenExpires)
-    .then((valid: boolean) =>
-      valid
-        ? undefined
-        : this.access.app.generate(valid).then(() => this.access.app.token)
-    );
+    .then((valid: boolean) => this.access.app.generate(valid));
 }
 
-export function app(t: Login): Token {
+export function app(t: Login) {
   return {
     ...DEFAULT_TOKEN,
     validate: validate.bind(t),
     generate: generate.bind(t),
     refresh: refresh.bind(t),
-  } as Token;
+  };
 }
+
+export type App = ReturnType<typeof app>;
