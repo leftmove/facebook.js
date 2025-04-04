@@ -70,6 +70,7 @@ export const DEFAULT_SCOPE: Permissions = {
   pages_read_user_content: true,
   pages_show_list: true,
   publish_video: true,
+  publish_to_groups: true,
   read_insights: true,
   business_management: true,
 };
@@ -202,15 +203,7 @@ export class Login {
   };
 
   overrideLocal = true;
-  scope: Permissions = {
-    pages_manage_engagement: true,
-    pages_manage_posts: true,
-    pages_read_engagement: true,
-    pages_read_user_content: true,
-    pages_show_list: true,
-    read_insights: true,
-    business_management: true,
-  };
+  scope: Permissions = DEFAULT_SCOPE;
 
   constructor(config: Config = {}) {
     const readCredentials = config.readCredentials || readFromJSONCredentials;

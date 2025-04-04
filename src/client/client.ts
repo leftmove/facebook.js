@@ -4,7 +4,7 @@ import { CredentialError, PostError } from "../errors";
 import type { writeCredentials, readCredentials } from "../credentials";
 import type { Permissions, Info, Access, Profile } from "../api";
 
-import { posts, uposts, pposts } from "./posts";
+import { Posts, UserPosts, PagePosts } from "./posts";
 
 // Optional config for the Facebook client. Don't know how to include without adding clutter.
 
@@ -70,50 +70,67 @@ export class Facebook extends Login {
 
   /**
    * Returns an object with methods for interacting with Facebook posts.
-   * @returns An object with methods for interacting with Facebook posts
-   **/
-  posts = posts(this);
+   * @type {Posts}
+   */
+  posts = new Posts(this);
 
+  /**
+   * User-specific operations
+   * @property {UserPosts} posts - Methods for interacting with posts on a user profile
+   */
   user = {
-    posts: uposts(this),
+    /**
+     * Methods for interacting with posts on a user profile
+     * @type {UserPosts}
+     */
+    posts: new UserPosts(this),
   };
+
+  /**
+   * Page-specific operations
+   * @property {PagePosts} posts - Methods for interacting with posts on a Facebook page
+   */
   page = {
-    posts: pposts(this),
+    /**
+     * Methods for interacting with posts on a Facebook page
+     * @type {PagePosts}
+     */
+    posts: new PagePosts(this),
   };
 
   /**
    * Switches the profile type for API methods.
    * @param profile Type of profile to use for API methods, takes either "user" or "page".
-   * @returns Client instance, used for chaining methods.
+   * @returns {this} Client instance, used for chaining methods.
    */
   switch(profile: Profile) {
     this.profile = profile;
     return this;
   }
 
-  /**
-   * Retrieves a comment by its ID.
-   * @param postId - The ID of the post or comment to reply to. If the comment is a reply, this should be the ID of the parent comment.
-   * @returns The comment data.
-   * @throws {PostError} If there is an error getting the comment.
-   **/
-  publishComment(postId: string, message: string) {
-    return this.refresh(["pageToken"]).then(() => {
-      try {
-        return this.client.post(postId, {
-          message,
-          access_token: this.access.page.token,
-        });
-      } catch (error) {
-        throw new PostError("Error publishing comment.", error);
-      }
-    });
-  }
+  // /**
+  //  * Retrieves a comment by its ID.
+  //  * @param postId - The ID of the post or comment to reply to. If the comment is a reply, this should be the ID of the parent comment.
+  //  * @returns The comment data.
+  //  * @throws {PostError} If there is an error getting the comment.
+  //  **/
+  // publishComment(postId: string, message: string) {
+  //   return this.refresh(["pageToken"]).then(() => {
+  //     try {
+  //       return this.client.post(postId, {
+  //         message,
+  //         access_token: this.access.page.token,
+  //       });
+  //     } catch (error) {
+  //       throw new PostError("Error publishing comment.", error);
+  //     }
+  //   });
+  // }
 
   /**
    * Returns an object with methods for interacting with Facebook comments.
-   * @returns An object with methods for interacting with Facebook comments
-   **/
+   * @returns {object} An object with methods for interacting with Facebook comments
+   */
   comments() {
     return {};
   }

@@ -2,19 +2,14 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import Facebook from "../../src";
+import type { Authentication } from "../../src";
 
-export const REQUIRED_CREDENTIALS = [
-  "appId", "appSecret", "appToken", "userToken", "pageId", "pageToken"
-]
-
-if (!REQUIRED_CREDENTIALS.every((cred) => process.env[cred])) {
-  throw new Error(
-    "Facebook credentials not found in environment variables. " +
-    `Please set ${REQUIRED_CREDENTIALS.join(", ")} before running tests.`
-  );
-}
-
+// Initialize the client, and authenticate with credentials.
 const facebook = new Facebook();
+const auth: Authentication = {};
+await facebook
+  .login(auth)
+  .credentials()
 
 describe('Facebook client initialization', () => {
   it('should have correct app credentials', () => {

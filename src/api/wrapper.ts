@@ -112,7 +112,7 @@ export default class Client extends Queue {
           } else {
             const error = new Error(r.statusText);
             const graph = new GraphError(error, r, data);
-            reject(graph);
+            throw graph;
           }
         });
         resolve(response);

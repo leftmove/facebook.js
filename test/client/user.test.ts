@@ -1,21 +1,37 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { REQUIRED_CREDENTIALS } from "./client.test";
 import Facebook from "../../src";
+import type { Authentication } from "../../src";
 
-if (!REQUIRED_CREDENTIALS.every((cred) => process.env[cred])) {
-  throw new Error(
-    "Facebook credentials not found in environment variables. " +
-    `Please set ${REQUIRED_CREDENTIALS.join(", ")} before running tests.`
-  );
-}
+// Initialize the client, and authenticate with credentials.
+const facebook = new Facebook();
+const auth: Authentication = {
+  profile: "user",
+};
+await facebook
+  .login(auth)
+  .credentials()
 
 // Example Code
 
-const facebook = new Facebook();
-
-facebook.user.posts.publish({
+// Publish a text post to the user's profile.
+const response = await facebook.user.posts.publish({
   message: "Hello, world!",
 });
+
+console.log(response);
+console.log("done")
+
+// // Publish a link post to the user's profile.
+// facebook.user.posts.publish({
+//   link: "https://www.google.com",
+// });
+
+// // Publish a video post to the user's profile.
+// facebook.user.posts.upload({
+//   path: "https://example.com/video.mp4",
+// });
+
+
 
