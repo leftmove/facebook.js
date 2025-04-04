@@ -7,4 +7,10 @@ export { DEFAULT_EXPIRE_ADD } from "./login";
 
 export { Client };
 export { Login } from "./login";
-export type { Permissions, Authentication, Access, Info } from "./login";
+export type {
+  Permissions,
+  Authentication,
+  Access,
+  Info,
+  Profile,
+} from "./login";

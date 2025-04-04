@@ -93,7 +93,7 @@ export default class Client extends Queue {
 
   post(
     path: string,
-    body: any,
+    body: Object | FormData,
     headers: { "Content-Type"?: string } = {
       "Content-Type": "application/json",
     },
@@ -104,7 +104,7 @@ export default class Client extends Queue {
         const response = await fetch(`${this.url}/${path}`, {
           method,
           headers,
-          body,
+          body: body instanceof FormData ? body : JSON.stringify(body),
         }).then(async (r) => {
           const data = await r.json();
           if (r.ok) {

@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "TSX Debug CLI",
+      "name": "TSX Debug CLI Login",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/src/cli/index.ts",
@@ -16,10 +16,21 @@
       "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
     },
     {
-      "name": "TSX Debug File",
+      "name": "TSX Debug CLI Relogin",
       "type": "node",
       "request": "launch",
-      "program": "${file}",
+      "program": "${workspaceFolder}/src/cli/index.ts",
+      "args": ["relogin"],
+      "runtimeExecutable": "tsx",
+      "console": "externalTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      "name": "TSX Debug Test",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/test/index.ts",
       "runtimeExecutable": "tsx",
       "console": "externalTerminal",
       "internalConsoleOptions": "neverOpen",

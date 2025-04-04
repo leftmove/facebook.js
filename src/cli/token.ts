@@ -9,6 +9,8 @@ import { App, spin, info } from "./components";
 import { UnauthorizedError, GraphError } from "../index";
 import type { Permissions } from "../index";
 
+import successHTML from "./success.html" with { type: "text" };
+
 export async function appCredentials(
   appId: string | undefined,
   appSecret: string | undefined
@@ -53,7 +55,7 @@ export async function appTokenCredential(
       return facebook.access.app
         .generate(valid)
         .then(() => {
-          spinner.succeed(" App Token Authenticated");
+          spinner.succeed("App Token Authenticated");
           return facebook.access.app.token;
         })
         .catch((e: GraphError) => {
@@ -90,22 +92,22 @@ export async function timeoutCallback(
   });
 }
 
-const successHTML = `
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Facebook Authentication</title>
-  </head>
-  <body>
-    <h1 style="text-align: center;">Success!</h1>
-    <hr>
-    <div style="text-align: center;">
-      <p>Facebook was successfully authenticated.</p>
-      <p>You may now close this tab and return to the terminal.</p>
-    </div>
-  </body>
-</html>
-`;
+// const successHTML = `
+// <html lang="en">
+//   <head>
+//     <meta charset="utf-8">
+//     <title>Facebook Authentication</title>
+//   </head>
+//   <body>
+//     <h1 style="text-align: center;">Success!</h1>
+//     <hr>
+//     <div style="text-align: center;">
+//       <p>Facebook was successfully authenticated.</p>
+//       <p>You may now close this tab and return to the terminal.</p>
+//     </div>
+//   </body>
+// </html>
+// `;
 
 export async function userTokenCredential(
   facebook: Facebook,

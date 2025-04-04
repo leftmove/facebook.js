@@ -42,9 +42,11 @@ export function validate(
     .get(pageId, { access_token: userToken })
     .then((data: Data) => {
       const pageId = data.id;
+      const pageIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
       this.info.page.id = pageId;
+      this.info.page.expires = pageIdExpires;
       this.info.page.valid = true;
-      this.writeCredentials({ pageId });
+      this.writeCredentials({ pageId, pageIdExpires });
       return true;
     })
     .catch((e: GraphError) => {
@@ -112,6 +114,7 @@ export function generate(
     })
     .then((data: Data) => {
       const pageId = data.data[pageIndex].id;
+      const pageIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
       this.info.page.id = pageId;
       this.info.index = pageIndex;
       this.writeCredentials({
@@ -119,7 +122,7 @@ export function generate(
         appSecret: this.secret,
         pageIndex,
         pageId,
-        pageIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
+        pageIdExpires,
       });
     })
     .catch((e: any) => {

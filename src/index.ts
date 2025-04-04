@@ -12,4 +12,5 @@ export { DEFAULT_EXPIRE_TIME } from "./api";
 export { GraphError, CredentialError, UnauthorizedError } from "./errors";
 
 export { Client } from "./api";
-export type { Permissions, Authentication } from "./api";
+export type { Permissions, Authentication, Profile } from "./api";
+export type { Config } from "./client/client";

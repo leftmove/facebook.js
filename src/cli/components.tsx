@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { render, Box, Text } from "ink";
 import figures from "figures";
+import { render, Box, Text } from "ink";
 import type { ReactNode } from "react";
+
+import SelectInput from "ink-select-input";
 
 export const yellow = "\x1b[43m";
 export const blue = "\x1b[44m";
@@ -144,6 +146,16 @@ export function info(
   app.render(<Text color={color}>{message}</Text>);
 }
 
+export type handleInput = (item: Item<any>) => void;
+export type Item<V> = {
+  key?: string;
+  label: string;
+  value: V;
+};
+export function input(items: Item<any>[], handleInput: handleInput, app: App) {
+  app.render(<SelectInput items={items} onSelect={handleInput} />);
+}
+
 export const LoginStart = (
   <Box
     flexDirection="column"
@@ -154,6 +166,28 @@ export const LoginStart = (
     <Box flexDirection="column" alignItems="center">
       <Box flexDirection="column" alignItems="center" marginBottom={2}>
         <Text color="yellow">Logging In</Text>
+      </Box>
+      <Text>
+        To View Your App Credentials, visit https://developers.facebook.com/apps
+        and select/create your app.
+      </Text>
+      <Text>
+        Then, copy the app ID and secret from App Settings &gt; Basic.
+      </Text>
+    </Box>
+  </Box>
+);
+
+export const ReloginStart = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Box flexDirection="column" alignItems="center" marginBottom={2}>
+        <Text color="yellow">Logging In Again</Text>
       </Box>
       <Text>
         To View Your App Credentials, visit https://developers.facebook.com/apps

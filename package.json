@@ -1,9 +1,8 @@
 {
-  "name": "facebook.js",
-  "version": "1.0.0",
+  "name": "@anonyo/facebook.js",
+  "version": "0.8.0",
   "author": {
     "name": "Anonyo Noor",
-    "email": "100anonyo@gmail.com",
     "url": "https://anonyonoor.com"
   },
   "module": "index.ts",
@@ -35,8 +34,8 @@
     "commander": "^12.1.0",
     "figures": "^6.1.0",
     "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
     "inquirer": "^10.1.0",
-    "lodash": "^4.17.21",
     "open": "^10.1.0",
     "ora": "^8.0.1",
     "react": "^18.3.1"

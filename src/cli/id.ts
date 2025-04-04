@@ -1,9 +1,9 @@
-import inquirer from "inquirer";
-
+import { info } from "console";
 import Facebook, { GraphError } from "../index";
 import { Client } from "../index";
 import { CredentialError } from "../index";
-import { App, spin, info } from "./components";
+import { App, spin, input } from "./components";
+import type { Item } from "./components";
 
 export async function userIdCredential(
   facebook: Facebook,
@@ -70,52 +70,34 @@ export async function pageIdCredential(
           if (data.data.length === 0) {
             throw new CredentialError("No pages found.");
           }
-          // if (data.data.length === 1) {
-          //   pageIndex = 0;
-          // }
+          if (data.data.length === 1) {
+            pageIndex = 0;
+          }
 
-          const questions: any = [
-            {
-              type: "list",
-              name: "page",
-              message: "Select a Page:",
-              choices: data.data.map((d, i) => {
-                return {
-                  name: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
-                    d.category
-                  }\n    ${d.tasks.join(",\n    ")}`,
-                  value: i,
-                };
-              }),
-            },
-          ];
+          const questions: Item<any>[] = data.data.map((d, i) => {
+            return {
+              label: `(${i}):\n  ${d.name}\n  ${d.id}\n  ${
+                d.category
+              }\n    ${d.tasks.join(",\n    ")}`,
+              value: i,
+            };
+          });
 
-          return new Promise(
-            pageIndex === 0 || pageIndex
-              ? (resolve, reject) =>
-                  facebook.info.page
-                    .generate(
-                      valid,
-                      facebook.info.user.id,
-                      facebook.access.user.token,
-                      pageIndex
-                    )
-                    .then(resolve)
-                    .catch(reject)
-              : (resolve, reject) =>
-                  inquirer
-                    .prompt(questions)
-                    .then((answers: any) => {
-                      return facebook.info.page.generate(
-                        valid,
-                        facebook.info.user.id,
-                        facebook.access.user.token,
-                        Number(answers.page)
-                      );
-                    })
-                    .then(resolve)
-                    .catch(reject)
-          )
+          return new Promise<number>((resolve) => {
+            if (pageIndex === 0 || pageIndex) {
+              resolve(pageIndex);
+            } else {
+              input(questions, (item: Item<any>) => resolve(item.value), app);
+            }
+          })
+            .then((pageIndex: number) =>
+              facebook.info.page.generate(
+                valid,
+                facebook.info.user.id,
+                facebook.access.user.token,
+                pageIndex
+              )
+            )
             .then(() => {
               spinner.succeed("Page ID Authenticated.");
               return facebook.info.page.id;

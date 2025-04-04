@@ -1,11 +1,12 @@
 import fs from "fs";
 
 import { CredentialError } from "../errors";
-import type { Permissions } from "../api";
+import type { Permissions, Profile } from "../api";
 
 export interface Credentials {
   appId?: string;
   appSecret?: string;
+  profile?: Profile;
   appToken?: string;
   appTokenExpires?: number;
   userToken?: string;
@@ -24,6 +25,22 @@ export const DEFAULT_FILE_PATH = "./credentials.json";
 export const DEFAULT_CONFIG: Credentials = {
   appId: undefined,
   appSecret: undefined,
+};
+export const DEFAULT_CREDENTIAL_TEMPLATE: Credentials = {
+  appId: undefined,
+  appSecret: undefined,
+  profile: undefined,
+  appToken: undefined,
+  appTokenExpires: undefined,
+  userToken: undefined,
+  userId: undefined,
+  userIdExpires: undefined,
+  userTokenExpires: undefined,
+  pageId: undefined,
+  pageIdExpires: undefined,
+  pageIndex: undefined,
+  pageToken: undefined,
+  pageTokenExpires: undefined,
 };
 
 export type writeCredentials = (credentials: Credentials) => void;
@@ -50,7 +67,10 @@ export function writeToJSONCredentials(
   const oldData = fs.readFileSync(filePath, "utf8");
   const oldCredentials: Credentials = JSON.parse(oldData);
 
-  const newCredentials: Credentials = { ...oldCredentials, ...credentials };
+  const newCredentials: Credentials = Object.assign(
+    DEFAULT_CREDENTIAL_TEMPLATE,
+    { ...oldCredentials, ...credentials }
+  ); // Object.assign orders the keys for readability, not required.
   const data = JSON.stringify(newCredentials, null, 2);
   try {
     fs.writeFileSync(filePath, data, "utf8");

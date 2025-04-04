@@ -42,9 +42,11 @@ export function validate(
     .get(userId, { access_token: userToken })
     .then((data: Data) => {
       const userId = data.id;
+      const userIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
       this.info.user.id = userId;
+      this.info.user.expires = userIdExpires;
       this.info.user.valid = true;
-      this.writeCredentials({ userId });
+      this.writeCredentials({ userId, userIdExpires });
       return true;
     })
     .catch((e: GraphError) => {
@@ -86,12 +88,13 @@ export function generate(
     })
     .then((data: Data) => {
       const userId = data.id;
+      const userIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
       this.info.user.id = userId;
       this.writeCredentials({
         appId: this.id,
         appSecret: this.secret,
         userId,
-        userIdExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
+        userIdExpires,
       });
     })
     .catch((e: GraphError) => {

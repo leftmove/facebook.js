@@ -77,10 +77,13 @@ export const DEFAULT_SCOPE: Permissions = {
 export const DEFAULT_EXPIRE_TIME = 60;
 export const DEFAULT_EXPIRE_ADD = 60 * 60 * 72;
 
+export type Profile = "page" | "user";
+
 export interface Authentication {
+  profile?: Profile;
   path?: string;
   expireTime?: number;
-  scope: Permissions;
+  scope?: Permissions;
   writeCredentials?: writeCredentials;
   readCredentials?: readCredentials;
 }
@@ -178,6 +181,7 @@ export const credentialOptions = [
 export class Login {
   id: string;
   secret: string;
+  profile: Profile;
 
   stale: Array<string> = credentialOptions;
   client = new Client();
@@ -215,6 +219,7 @@ export class Login {
 
     const appId = config.id || credentials.appId || undefined;
     const appSecret = config.secret || credentials.appSecret || undefined;
+    const profile = config.profile || credentials.profile || "page";
 
     if (appId === undefined || appSecret === undefined) {
       throw new CredentialError(
@@ -233,54 +238,51 @@ export class Login {
     // Basic credentials
     this.id = appId;
     this.secret = appSecret;
+    this.profile = profile;
 
     // App token
     this.access.app.token =
-      config?.access?.app?.token ||
-      credentials.appToken ||
-      this.access.app.token;
+      config?.appToken || credentials.appToken || this.access.app.token;
     this.access.app.expires =
-      config?.access?.app?.expires ||
+      config?.appTokenExpires ||
       credentials.appTokenExpires ||
       this.access.app.expires;
 
     // User token
     this.access.user.token =
-      config?.access?.user?.token ||
-      credentials.userToken ||
-      this.access.user.token;
+      config.userToken || credentials.userToken || this.access.user.token;
     this.access.user.expires =
-      config?.access?.user?.expires ||
+      config?.userIdExpires ||
       credentials.userTokenExpires ||
       this.access.user.expires;
 
     // Page token
     this.access.page.token =
-      config?.access?.page?.token ||
-      credentials.pageToken ||
-      this.access.page.token;
+      config?.pageToken || credentials.pageToken || this.access.page.token;
     this.access.page.expires =
-      config?.access?.page?.expires ||
+      config?.pageTokenExpires ||
       credentials.pageTokenExpires ||
       this.access.page.expires;
 
     // User ID
     this.info.user.id =
-      config?.info?.user?.id || credentials.userId || this.info.user.id;
+      config?.userId || credentials.userId || this.info.user.id;
     this.info.user.expires =
-      config?.info?.user?.expires || this.info.user.expires;
+      config?.userIdExpires ||
+      credentials.userIdExpires ||
+      this.info.user.expires;
 
     // Page ID
     this.info.page.id =
-      config?.info?.page?.id || credentials.pageId || this.info.page.id;
+      config?.pageId || credentials.pageId || this.info.page.id;
     this.info.page.expires =
-      config?.info?.page?.expires ||
+      config?.pageIdExpires ||
       credentials.pageIdExpires ||
       this.info.page.expires;
 
     // Page index
     this.info.index =
-      config?.info?.index || credentials.pageIndex || this.info.index;
+      config?.pageIndex || credentials.pageIndex || this.info.index;
 
     this.scope = scope;
     this.writeCredentials = writeCredentials;
@@ -291,6 +293,7 @@ export class Login {
       writeCredentials({
         appId,
         appSecret,
+        profile,
         appToken: this.access.app.token,
         userToken: this.access.user.token,
         userId: this.info.user.id,
@@ -358,8 +361,8 @@ export class Login {
           return new Promise((resolve) => resolve(this.access.app.refresh()));
         case "userId":
           return new Promise((resolve) => resolve(this.info.user.refresh()));
-        case "userToken":
-          return new Promise((resolve) => resolve(this.access.user.refresh()));
+        // case "userToken":
+        //   return new Promise((resolve) => resolve(this.access.user.refresh()));
         case "pageId":
           return new Promise((resolve) => resolve(this.info.page.refresh()));
         case "pageToken":

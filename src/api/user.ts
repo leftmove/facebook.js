@@ -3,8 +3,6 @@ import { DEFAULT_EXPIRE_ADD, DEFAULT_SCOPE } from "./login";
 
 import { GraphError, UnauthorizedError, CredentialError } from "../errors";
 
-import type { Token } from "./login";
-
 export function validate(
   this: Login,
   userToken: string | undefined = this.access.user.token,
@@ -77,6 +75,18 @@ export function validate(
       if (data.data.is_valid) {
         const userId = data.data.user_id;
         const userTokenExpires = data.data.data_access_expires_at;
+
+        const scopes = Object.keys(this.scope).filter(
+          (key: string) => this.scope[key]
+        );
+        if (
+          scopes.filter((scope) => data.data.scopes.includes(scope) === false)
+            .length
+        ) {
+          this.stale = [...this.stale, token];
+          this.access.user.valid = false;
+          return false;
+        }
 
         this.info.user.id = userId;
         this.access.user.token = userToken;
