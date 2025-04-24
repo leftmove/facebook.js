@@ -1,204 +1,199 @@
-import { DEFAULT_TOKEN, Login } from "./login";
-import { DEFAULT_EXPIRE_ADD, DEFAULT_SCOPE } from "./login";
+import { Login } from "./login";
+import { DEFAULT_EXPIRE_ADD, expire } from "./login";
+import {
+  GraphError,
+  UnauthorizedError,
+  CredentialError,
+  warnConsole,
+} from "../errors";
 
-import { GraphError, UnauthorizedError, CredentialError } from "../errors";
+export class User {
+  facebook: Login;
+  token: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
 
-export function validate(
-  this: Login,
-  userToken: string | undefined = this.access.user.token,
-  userTokenExpires: number | undefined = this.access.user.expires
-): Promise<boolean> {
-  const token = "userToken";
-
-  if (userToken === undefined) {
-    this.stale = [...this.stale, token];
-    this.access.user.valid = false;
-    return new Promise((resolve) => resolve(false));
+  constructor(facebook: Login) {
+    this.facebook = facebook;
+    this.token = undefined;
+    this.expires = undefined;
+    this.valid = false;
   }
 
-  const now = Date.now() / 1000;
-  if (userTokenExpires && now - userTokenExpires >= this.expireTime) {
-    this.stale = [...this.stale, token];
-    this.access.user.valid = false;
-    return new Promise((resolve) => resolve(false));
-  }
+  async validate(
+    token: string | undefined = this.token,
+    expires: number | undefined = this.expires,
+    bypass: boolean = false,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<boolean> {
+    if (token === undefined) {
+      this.valid = false;
+      return false;
+    }
 
-  interface Data {
-    data: {
-      app_id: string;
-      type: string;
-      application: string;
-      data_access_expires_at: number;
-      expires_at: number;
-      is_valid: boolean;
-      issued_at: number;
-      scopes: Array<string>;
-      granular_scopes: Array<{
-        scope: string;
-        target_ids?: Array<string>;
-      }>;
-      user_id: string;
-    };
-  }
-  interface Error {
-    error: {
-      message: string;
-      type: string;
-      code: number;
-      fbtrace_id: string;
-    };
-  }
+    const appAccessToken = `${this.facebook.id}|${this.facebook.secret}`;
+    const scope = this.facebook.scope;
 
-  return this.client
-    .get("debug_token", { input_token: userToken, access_token: userToken })
-    .then((data: Data) => {
-      // const scopes = data.data.granular_scopes.map((scope) => scope.scope);
-      // const scopes2 = data.data.scopes;
-      // const scopes3 = Object.keys(this.scope)
-      //   .filter((key) => this.scope[key] === true)
-      //   .sort()
-      //   .join(",");
-      // const scopes4 = scopes.sort().join(",");
-      // const scopes5 = Object.keys(DEFAULT_SCOPE).sort().join(",");
-      // console.log(
-      //   "1\n",
-      //   scopes,
-      //   "2\n",
-      //   scopes2,
-      //   "3\n",
-      //   scopes3,
-      //   "4\n",
-      //   scopes4,
-      //   "5\n",
-      //   scopes5
-      // );
-      if (data.data.is_valid) {
-        const userId = data.data.user_id;
-        const userTokenExpires = data.data.data_access_expires_at;
+    try {
+      const response = await this.facebook.client.get("debug_token", {
+        input_token: token,
+        access_token: appAccessToken,
+      });
 
-        const scopes = Object.keys(this.scope).filter(
-          (key: string) => this.scope[key]
-        );
-        if (
-          scopes.filter((scope) => data.data.scopes.includes(scope) === false)
-            .length
-        ) {
-          this.stale = [...this.stale, token];
-          this.access.user.valid = false;
-          return false;
-        }
+      const data: {
+        is_valid: boolean;
+        scopes: string[];
+      } = response.data;
+      const required = Object.keys(scope).filter((key) => scope[key] === true);
+      const check = (key: string) => data.scopes.includes(key);
 
-        this.info.user.id = userId;
-        this.access.user.token = userToken;
-        this.access.user.expires =
-          userTokenExpires || Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
-        this.access.user.valid = true;
-        this.writeCredentials({
-          userId,
-          userToken,
-          userTokenExpires: data.data.data_access_expires_at,
-        });
-        return true;
+      if (data.is_valid) {
+        this.token = token;
+        this.expires = expires;
+        this.valid = true;
       } else {
-        this.stale = [...this.stale, token];
-        this.access.user.valid = false;
-        return false;
-      }
-    })
-    .catch((e: any) => {
-      if (e instanceof GraphError) {
-        const data: Error = e.data;
-        const code = data?.error?.code || 400;
-        if (code === 190) {
-          this.stale = [...this.stale, token];
-          this.access.user.valid = false;
+        this.valid = false;
+        if (bypass) {
           return false;
         } else {
           const error = new Error();
-          throw new UnauthorizedError("Error verifying user token.", error, e);
+          throw new CredentialError(
+            "User token is not valid. You must re-authorize the app.",
+            error
+          );
         }
+      }
+
+      if (required.every(check)) {
+        this.token = token;
+        this.expires = expires;
+        this.valid = true;
       } else {
+        this.valid = false;
+        if (bypass) {
+          return false;
+        } else {
+          if (warn) {
+            warnConsole(
+              "Permission scope mismatch for user token. You are missing the following scopes: " +
+                required.filter((r) => !check(r)).join(", ") +
+                "\nAlthough you can ignore this warning, if you encounter any unauthorized errors, the app must be re-authorized in order to get the correct scopes." +
+                "\nTo resolve the issue, add the missing scopes to your `credentials.json` file and re-authorize the app."
+            );
+          } else {
+            const error = new Error();
+            throw new CredentialError(
+              "Permission scope mismatch for user token. You are missing the following scopes: " +
+                required.filter((r) => !check(r)).join(", ") +
+                "\nAlthough you can ignore this warning, if you encounter any unauthorized errors, the app must be re-authorized in order to get the correct scopes." +
+                "\nTo resolve the issue, add the missing scopes to your `credentials.json` file and re-authorize the app.",
+              error
+            );
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+        is_valid: boolean;
+        scopes: any[];
+      };
+      const code = data?.error?.code || 400;
+      if (code === 190) {
+        this.valid = false;
+        return false;
+      } else if (error instanceof CredentialError) {
         throw e;
+      } else {
+        const error = new Error();
+        throw new UnauthorizedError(
+          "Error verifying user token.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async generate(code: string, redirect: string): Promise<string | undefined> {
+    try {
+      const data = await this.facebook.client.get("oauth/access_token", {
+        code,
+        redirect_uri: redirect,
+        client_id: this.facebook.id,
+        client_secret: this.facebook.secret,
+      });
+
+      if (data.access_token) {
+        this.token = data.access_token;
+        this.expires = expire();
+        this.valid = true;
+
+        this.facebook.writeCredentials({
+          userToken: this.token,
+          userTokenExpires: this.expires,
+        });
+
+        return this.token;
+      } else {
+        this.valid = false;
+        return undefined;
+      }
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+        is_valid: boolean;
+        scopes: any[];
+      };
+      const code = data?.error?.code || 400;
+      if (code === 190) {
+        this.valid = false;
+        return undefined;
+      } else {
+        const error = new Error();
+        throw new UnauthorizedError(
+          "Error generating user token.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async refresh(
+    token: string | undefined = this.token,
+    expires: number | undefined = this.expires,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<{ token: string | undefined; expires: number | undefined }> {
+    if (token === undefined) {
+      const error = new Error();
+      throw new CredentialError("User token is missing.", error);
+    }
+
+    if (expires === undefined) {
+      if (warn) {
+        warnConsole("User token may be expired.");
+        this.expires = expire();
+      } else {
+        const error = new Error();
+        throw new CredentialError("User token expiration is missing.", error);
+      }
+    }
+
+    return this.validate(token, expires).then((valid) => {
+      if (valid) {
+        return {
+          token: token,
+          expires: this.expires,
+        };
+      } else {
+        const error = new Error();
+        throw new CredentialError("User token is not valid.", error);
       }
     });
-}
-
-export function generate(
-  this: Login,
-  valid: boolean = false,
-  redirect: string,
-  code: string
-) {
-  interface Data {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
   }
-
-  if (valid || this.access.user.valid) {
-    return new Promise((resolve) => resolve(this.access.user.token));
-  }
-
-  return this.client
-    .get("oauth/access_token", {
-      code,
-      client_id: this.id,
-      client_secret: this.secret,
-      redirect_uri: redirect,
-    })
-    .then((data: Data) => {
-      const userToken = data.access_token;
-      const userTokenExpires =
-        data.expires_in || Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
-      this.access.user.token = userToken;
-      this.access.user.expires = userTokenExpires;
-      this.writeCredentials({
-        appId: this.id,
-        appSecret: this.secret,
-        userToken,
-        userTokenExpires,
-      });
-    })
-    .catch((e: GraphError) => {
-      const error = new Error();
-      throw new UnauthorizedError("Error getting user token.", error, e);
-    });
 }
-
-// export function refresh(
-//   this: Login,
-//   userToken: string | undefined = this.access.user.token,
-//   userTokenExpires: number | undefined = this.access.user.expires
-// ): Promise<string | undefined> {
-//   if (userToken === undefined) {
-//     const error = new Error();
-//     throw new CredentialError("User token is required.", error);
-//   }
-
-//   if (userTokenExpires === undefined) {
-//     const error = new Error();
-//     throw new CredentialError("User token expiration is required.", error);
-//   }
-
-//   return this.access.user
-//     .validate(userToken, userTokenExpires)
-//     .then((valid: boolean) => {
-//       if (valid) {
-//         return this.access.user.generate(valid);
-//       } else {
-//         throw new CredentialError(
-//           "User token is required. Since user tokens cannot be generated automatically, you must login again using the login command."
-//         );
-//       }
-//     });
-// }
-
-export function user(t: Login) {
-  return {
-    ...DEFAULT_TOKEN,
-    validate: validate.bind(t),
-    generate: generate.bind(t),
-  };
-}
-
-export type User = ReturnType<typeof user>;

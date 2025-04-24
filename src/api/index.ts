@@ -7,6 +7,8 @@ export { DEFAULT_EXPIRE_ADD } from "./login";
 
 export { Client };
 export { Login } from "./login";
+export { Uid } from "./uid";
+export { Pid } from "./pid";
 export type {
   Permissions,
   Authentication,

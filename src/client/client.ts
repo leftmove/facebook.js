@@ -1,9 +1,13 @@
 import { Client, Login } from "../api";
-import { writeToJSONCredentials, readFromJSONCredentials } from "../credentials";
+import {
+  writeToJSONCredentials,
+  readFromJSONCredentials,
+} from "../credentials";
 import { CredentialError, PostError } from "../errors";
 import type { writeCredentials, readCredentials } from "../credentials";
 import type { Permissions, Info, Access, Profile } from "../api";
 
+import { Uid, Pid } from "../api";
 import { Posts, UserPosts, PagePosts } from "./posts";
 
 // Optional config for the Facebook client. Don't know how to include without adding clutter.
@@ -17,11 +21,10 @@ import { Posts, UserPosts, PagePosts } from "./posts";
 // * @internal @param config.userId - Facebook user ID.
 // * @internal @param config.userIdExpires - Expiration time for user ID. Set automatically by the client.
 // * @internal @param config.pageId - Facebook page ID.
-// * @internal @param config.pageIdExpires - Expiration time for page ID. Set automatically by the client.  
+// * @internal @param config.pageIdExpires - Expiration time for page ID. Set automatically by the client.
 // * @internal @param config.pageIndex - Index of the page to use if user manages multiple pages.
 // * @internal @param config.pageToken - Facebook page access token.
 // * @internal @param config.pageTokenExpires - Expiration time for page access token. Set automatically by the client.
-
 
 export interface Config {
   id?: string;
@@ -47,6 +50,7 @@ export interface Config {
   writeCredentials?: writeCredentials;
   readCredentials?: readCredentials;
   overrideLocal?: boolean;
+  warnExpired?: boolean;
 }
 
 export class Facebook extends Login {
@@ -58,7 +62,7 @@ export class Facebook extends Login {
    * @param config.id - Facebook app ID
    * @param config.secret - Facebook app secret
    * @param config.profile - Profile type to use for API methods ("user" or "page"). Default is "user".
-   * 
+   *
    * @param config.scope - Permission scopes to request during authentication. For more information, see the {@link Permissions} interface and the {@link https://developers.facebook.com/docs/permissions/reference Facebook Graph API documentation}.
    * @param config.writeCredentials - Function to write credentials to storage. Default is to write to a local JSON file through {@link writeToJSONCredentials}.
    * @param config.readCredentials - Function to read credentials from storage. Default is to read from a local JSON file through {@link readFromJSONCredentials}.

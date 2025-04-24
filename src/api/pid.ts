@@ -1,184 +1,173 @@
 import { Login } from "./login";
-import { DEFAULT_INFO, DEFAULT_EXPIRE_ADD } from "./login";
-import type { Id } from "./login";
+import { DEFAULT_EXPIRE_ADD, expire } from "./login";
+import {
+  GraphError,
+  UnauthorizedError,
+  CredentialError,
+  warnConsole,
+} from "../errors";
 
-import { GraphError, UnauthorizedError, CredentialError } from "../errors";
+import type { Debug } from "./login";
 
-export function validate(
-  this: Login,
-  pageId: string | undefined = this.info.page.id,
-  pageIdExpires: number | undefined = this.info.page.expires,
-  userToken: string | undefined = this.access.user.token
-): Promise<boolean> {
-  const token = "pageId";
+export class Pid {
+  private facebook: Login;
+  id: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
 
-  if (userToken === undefined || pageId === undefined) {
-    this.stale = [...this.stale, token];
-    this.info.page.valid = false;
-    return new Promise((resolve) => resolve(false));
+  constructor(facebook: Login) {
+    this.facebook = facebook;
+    this.id = undefined;
+    this.expires = undefined;
+    this.valid = false;
   }
 
-  if (pageIdExpires && Date.now() / 1000 - pageIdExpires >= this.expireTime) {
-    this.stale = [...this.stale, token];
-    this.info.page.valid = false;
-    return new Promise((resolve) => resolve(false));
-  }
+  async validate(
+    id?: string,
+    expires?: number,
+    token?: string
+  ): Promise<boolean> {
+    if (id === undefined || expires === undefined || token === undefined) {
+      this.valid = false;
+      return false;
+    }
 
-  interface Data {
-    name: string;
-    id: string;
-  }
-  interface Error {
-    error: {
-      message: string;
-      type: string;
-      code: number;
-      error_subcode: number;
-      fbtrace_id: string;
-    };
-  }
+    try {
+      const response: Debug = await this.facebook.client.get("debug_token", {
+        input_token: token,
+        access_token: token,
+      });
+      const data = response.data;
 
-  return this.client
-    .get(pageId, { access_token: userToken })
-    .then((data: Data) => {
-      const pageId = data.id;
-      const pageIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
-      this.info.page.id = pageId;
-      this.info.page.expires = pageIdExpires;
-      this.info.page.valid = true;
-      this.writeCredentials({ pageId, pageIdExpires });
+      const scope = this.facebook.scope;
+      const required = Object.keys(scope).filter((key) => scope[key] === true);
+      const check = (key: string) => data.scopes.includes(key);
+
+      if (data.is_valid) {
+        this.id = id;
+        this.expires = expires;
+        this.valid = true;
+      } else {
+        this.valid = false;
+        return false;
+      }
+
+      if (required.every(check)) {
+        this.id = id;
+        this.expires = expires;
+        this.valid = true;
+      } else {
+        this.valid = false;
+        return false;
+      }
+
       return true;
-    })
-    .catch((e: GraphError) => {
-      const data: Error = e.data;
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+      };
       const code = data?.error?.code || 400;
       if (code === 190) {
-        this.stale = [...this.stale, token];
-        this.info.page.valid = false;
+        this.valid = false;
         return false;
       } else {
         const error = new Error();
-        throw new UnauthorizedError("Error verifying page ID.", error, e);
+        throw new UnauthorizedError(
+          "Error verifying page ID.",
+          error,
+          e as GraphError
+        );
       }
-    });
-}
-
-export function generate(
-  this: Login,
-  valid: boolean = false,
-  userId: string | undefined = this.info.user.id,
-  userToken: string | undefined = this.access.user.token,
-  pageIndex: number | undefined = this.info.index
-) {
-  interface Data {
-    data: {
-      access_token: string;
-      category: string;
-      category_list: {
-        id: string;
-        name: string;
-      }[];
-      name: string;
-      id: string;
-      tasks: string[];
-    }[];
-    paging: {
-      cursors: {
-        before: string;
-        after: string;
-      };
-    };
+    }
   }
 
-  if (valid) {
-    return new Promise((resolve) => resolve(this.info.page.id));
-  }
+  async generate(
+    index: number = this.facebook.info.index
+  ): Promise<string | undefined> {
+    if (this.facebook.access.user.token === undefined) {
+      const error = new Error();
+      throw new CredentialError("User token is required.", error);
+    }
 
-  if (pageIndex === undefined) {
-    pageIndex = 0;
-  }
-
-  if (userId === undefined) {
-    const error = new Error();
-    throw new CredentialError("User ID is required.", error);
-  }
-
-  if (userToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("User token is required.", error);
-  }
-
-  return this.client
-    .get(`${userId}/accounts`, {
-      access_token: userToken,
-    })
-    .then((data: Data) => {
-      const pageId = data.data[pageIndex].id;
-      const pageIdExpires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
-      this.info.page.id = pageId;
-      this.info.index = pageIndex;
-      this.writeCredentials({
-        appId: this.id,
-        appSecret: this.secret,
-        pageIndex,
-        pageId,
-        pageIdExpires,
+    try {
+      const data = await this.facebook.client.get("me/accounts", {
+        access_token: this.facebook.access.user.token,
       });
-    })
-    .catch((e: any) => {
-      if (e instanceof GraphError) {
-        const error = new Error();
-        throw new UnauthorizedError("Error verifying page token.", error, e);
+
+      if (data.data && data.data.length > 0) {
+        const page = data.data[index];
+        if (page) {
+          this.id = page.id;
+          this.expires = expire();
+          this.valid = true;
+
+          this.facebook.writeCredentials({
+            pageId: this.id,
+            pageIdExpires: this.expires,
+          });
+
+          return this.id;
+        }
       } else {
-        throw new UnauthorizedError("Error verifying page token.", e);
+        this.valid = false;
+        return undefined;
+      }
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+      };
+      const code = data?.error?.code || 400;
+      if (code === 190) {
+        this.valid = false;
+        return undefined;
+      } else {
+        const error = new Error();
+        throw new UnauthorizedError(
+          "Error generating page ID.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async refresh(
+    id: string | undefined = this.id,
+    expires: number | undefined = this.expires,
+    token: string | undefined = this.facebook.access.user.token,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<{ id: string | undefined; expires: number | undefined }> {
+    if (id === undefined || token === undefined) {
+      throw new CredentialError("Page ID is missing.");
+    }
+
+    if (expires === undefined) {
+      if (warn) {
+        warnConsole("Page ID may be expired.");
+        this.expires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
+      } else {
+        const error = new Error();
+        throw new CredentialError("Page ID expiration is missing.", error);
+      }
+    }
+
+    return this.validate(id, expires, token).then((valid) => {
+      if (valid) {
+        return {
+          id: id,
+          expires: this.expires,
+        };
+      } else {
+        return this.generate().then((id) => {
+          if (id === undefined) {
+            const error = new Error();
+            throw new CredentialError("Error refreshing page ID.", error);
+          }
+          return { id: id, expires: this.expires };
+        });
       }
     });
+  }
 }
-
-export function refresh(
-  this: Login,
-  pageId: string | undefined = this.info.page.id,
-  pageIdExpires: number | undefined = this.info.page.expires,
-  userId: string | undefined = this.info.user.id,
-  userToken: string | undefined = this.access.user.token,
-  pageIndex: number | undefined = this.info.index
-): Promise<string | undefined> {
-  if (pageId === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page ID is required.", error);
-  }
-
-  if (pageIdExpires === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page ID expiration is required.", error);
-  }
-
-  if (userId === undefined) {
-    const error = new Error();
-    throw new CredentialError("User ID is required.", error);
-  }
-
-  if (userToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("User token is required.", error);
-  }
-
-  if (pageIndex === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page index is required.", error);
-  }
-
-  return this.info.page
-    .validate(pageId, pageIdExpires, userToken)
-    .then((valid: boolean) => this.info.page.generate(valid));
-}
-
-export function pid(t: Login) {
-  return {
-    ...DEFAULT_INFO,
-    validate: validate.bind(t),
-    generate: generate.bind(t),
-    refresh: refresh.bind(t),
-  };
-}
-export type Pid = ReturnType<typeof pid>;

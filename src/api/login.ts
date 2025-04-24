@@ -12,11 +12,11 @@ import type {
   readCredentials,
 } from "../credentials";
 
-import * as app from "./app";
-import * as user from "./user";
-import * as page from "./page";
-import * as uid from "./uid";
-import * as pid from "./pid";
+import { User } from "./user";
+import { App } from "./app";
+import { Page } from "./page";
+import { Pid } from "./pid";
+import { Uid } from "./uid";
 
 export interface Permissions {
   [key: string]: boolean | undefined;
@@ -58,6 +58,7 @@ export interface Permissions {
   manage_fundraisers?: boolean;
   publish_video?: boolean;
   read_insights?: boolean;
+  user_posts?: boolean;
   whatsapp_business_management?: boolean;
   whatsapp_business_messaging?: boolean;
 }
@@ -70,13 +71,15 @@ export const DEFAULT_SCOPE: Permissions = {
   pages_read_user_content: true,
   pages_show_list: true,
   publish_video: true,
-  publish_to_groups: true,
   read_insights: true,
   business_management: true,
 };
 
 export const DEFAULT_EXPIRE_TIME = 60;
-export const DEFAULT_EXPIRE_ADD = 60 * 60 * 72;
+export const DEFAULT_EXPIRE_ADD = 60 * 60 * 2;
+
+export const expire = (time: number = Date.now() / 1000) =>
+  time + DEFAULT_EXPIRE_ADD;
 
 export type Profile = "page" | "user";
 
@@ -155,17 +158,18 @@ export const DEFAULT_INFO: Id = {
   expires: undefined,
   valid: false,
 };
+
 export const DEFAULT_INDEX = 0;
 
 export interface Access {
-  app: app.App;
-  user: user.User;
-  page: page.Page;
+  app: App;
+  user: User;
+  page: Page;
 }
 
 export interface Info {
-  page: pid.Pid;
-  user: uid.Uid;
+  page: Pid;
+  user: Uid;
   index: number;
 }
 
@@ -192,17 +196,18 @@ export class Login {
   expireTime: number = DEFAULT_EXPIRE_TIME;
 
   access: Access = {
-    app: app.app(this),
-    user: user.user(this),
-    page: page.page(this),
+    app: new App(this),
+    user: new User(this),
+    page: new Page(this),
   };
   info: Info = {
-    page: pid.pid(this),
-    user: uid.uid(this),
+    page: new Pid(this),
+    user: new Uid(this),
     index: DEFAULT_INDEX,
   };
 
   overrideLocal = true;
+  warnExpired = true;
   scope: Permissions = DEFAULT_SCOPE;
 
   constructor(config: Config = {}) {
@@ -215,13 +220,15 @@ export class Login {
     const profile = config.profile || credentials.profile || "page";
 
     if (appId === undefined || appSecret === undefined) {
-      throw new CredentialError(
-        "Empty credentials provided. App ID and App Secret are required."
+      throw new Error(
+        "Empty credentials provided. App ID and App Secret are required. You should login first.\n" +
+          "You can do this by calling the login command: `npx facebook login`."
       );
     }
 
     const scope = config.scope || credentials.scope || this.scope;
     const overrideLocal = config.overrideLocal || this.overrideLocal;
+    const warnExpired = config.warnExpired || this.warnExpired;
 
     // If the credentials/config object doesn't have all the correct properties (a likely
     // problem), the following variables will still be filled because of the fallbacks.
@@ -281,7 +288,7 @@ export class Login {
     this.writeCredentials = writeCredentials;
     this.readCredentials = readCredentials;
     this.overrideLocal = overrideLocal;
-
+    this.warnExpired = warnExpired;
     if (overrideLocal) {
       writeCredentials({
         appId,
@@ -346,24 +353,55 @@ export class Login {
       "userToken",
       "pageId",
       "pageToken",
-    ]
-  ) {
-    const promises = credentials.map((c) => {
-      switch (c) {
-        case "appToken":
-          return new Promise((resolve) => resolve(this.access.app.refresh()));
-        case "userId":
-          return new Promise((resolve) => resolve(this.info.user.refresh()));
-        // case "userToken":
-        //   return new Promise((resolve) => resolve(this.access.user.refresh()));
-        case "pageId":
-          return new Promise((resolve) => resolve(this.info.page.refresh()));
-        case "pageToken":
-          return new Promise((resolve) => resolve(this.access.page.refresh()));
-        default:
-          break;
-      }
-    });
+    ],
+    permissions: string[] = []
+  ): Promise<unknown[]> {
+    const promises = [
+      ...credentials.map((c) => {
+        switch (c) {
+          case "appToken":
+            return new Promise((resolve) => resolve(this.access.app.refresh()));
+          case "userId":
+            return new Promise((resolve) => resolve(this.info.user.refresh()));
+          case "userToken":
+            return new Promise((resolve) =>
+              resolve(this.access.user.refresh())
+            );
+          case "pageId":
+            return new Promise((resolve) => resolve(this.info.page.refresh()));
+          case "pageToken":
+            return new Promise((resolve) =>
+              resolve(this.access.page.refresh())
+            );
+          default:
+            break;
+        }
+      }),
+      ...permissions.map(
+        (p) =>
+          new Promise((resolve) => {
+            if (p in this.scope) {
+              resolve(null);
+            } else {
+              let message =
+                `Permission '${p}' is required, but is currently missing from the permission scope. Try adding to the scope object in your config, and then refreshing your credentials (usually through the command line).\n` +
+                `Some permissions require special approval from Facebook. For more information about the '${p}' permission, see https://developers.facebook.com/docs/permissions/reference/${p}`;
+              switch (p) {
+                case "user_posts":
+                  message =
+                    "Although reading user posts (even your own) is a fairly basic function, Facebook requires the 'user_posts' permission to do so, and your current scope does not include 'user_posts'.\n" +
+                    "In order to add the `user_posts` permission, you must get special approval from Facebook. This is a manual process, and can take a few days to complete.\n" +
+                    "You can do it by reading the instructions on their documentation, and reaching out to Facebook manually through their specified channels (usually a form you submit through their developer portal).\n" +
+                    "For more information about the `user_posts` permission, and how to get it, see https://developers.facebook.com/docs/permissions/reference/user_posts\n";
+                  break;
+                default:
+                  break;
+              }
+              throw new UnauthorizedError(message);
+            }
+          })
+      ),
+    ];
     return Promise.all(promises);
   }
 
@@ -454,34 +492,34 @@ export class Login {
     return this;
   }
 
-  login(config: Authentication = DEFAULT_CONFIG) {
+  async login(
+    config: Authentication = DEFAULT_CONFIG
+  ): Promise<{ credentials: Credentials; scope: Permissions }> {
     const writeCredentials = config.writeCredentials || writeToJSONCredentials;
     const readCredentials = config.readCredentials || readFromJSONCredentials;
     const expireTime = config.expireTime || DEFAULT_EXPIRE_TIME;
 
-    // These don't really do anything since they are asynchronous.
-    // They're just there to make sure that credentials are generated
-    // at some point in the future.
-    // Even though this function returns `this`, it doesn't wait for
-    // the following promises to resolve before returning.
-    // The real verification/generation happens in the `credentials` function
-    // or (more importantly) before the program even runs in the login CLI.
-    this.generate(this.stale).verify(
+    // Permission scope check
+    return this.verify(
       this.stale,
       readCredentials,
       writeCredentials,
       expireTime
-    );
+    )
+      .refresh(["appToken", "userId", "userToken", "pageId", "pageToken"])
+      .then(() => {
+        if (this.stale.length >= 1) {
+          console.warn(
+            "Error generating credentials, some credentials were unable to be generated: " +
+              this.stale
+          );
+        }
 
-    // Will not work because the promises are not awaited.
-    // if (this.stale.length > 0) {
-    //   console.warn(
-    //     "Error generateing credentials, some credentials were unable to be generateed: " +
-    //       this.stale
-    //   );
-    // }
+        const credentials = this.credentials();
+        const scope = this.scope;
 
-    return this;
+        return { credentials, scope };
+      });
   }
 
   credentials(
@@ -490,100 +528,98 @@ export class Login {
       expirations: true,
       index: true,
     }
-  ) {
-    return new Promise((resolve) => {
-      const {
-        id: appId,
-        secret: appSecret,
-        access: {
-          app: { token: appToken, expires: appTokenExpires },
-          user: { token: userToken, expires: userTokenExpires },
-          page: { token: pageToken, expires: pageTokenExpires },
-        },
-        info: {
-          user: { id: userId, expires: userIdExpires },
-          page: { id: pageId, expires: pageIdExpires },
-          index: pageIndex,
-        },
-      }: { id: string; secret: string; access: Access; info: Info } = this;
+  ): Credentials {
+    const {
+      id: appId,
+      secret: appSecret,
+      access: {
+        app: { token: appToken, expires: appTokenExpires },
+        user: { token: userToken, expires: userTokenExpires },
+        page: { token: pageToken, expires: pageTokenExpires },
+      },
+      info: {
+        user: { id: userId, expires: userIdExpires },
+        page: { id: pageId, expires: pageIdExpires },
+        index: pageIndex,
+      },
+    }: { id: string; secret: string; access: Access; info: Info } = this;
 
-      const warn = (message: string) => {
-        if (options.error) {
-          const error = new Error();
-          throw new CredentialError(message, error);
-        } else {
-          console.warn(message);
-        }
-      };
-
-      // This will never happen
-      if (appId === undefined) {
-        warn("App ID is missing.");
+    const warn = (message: string) => {
+      if (options.error) {
+        const error = new Error();
+        throw new CredentialError(message, error);
+      } else {
+        console.warn(message);
       }
+    };
 
-      if (appSecret === undefined) {
-        warn("App secret is missing.");
-      }
+    // This will never happen
+    if (appId === undefined) {
+      warn("App ID is missing.");
+    }
 
-      if (appToken === undefined) {
-        warn("App token is missing.");
-      }
+    if (appSecret === undefined) {
+      warn("App secret is missing.");
+    }
 
-      if (options.expirations && appTokenExpires === undefined) {
-        warn("App token expiration is missing.");
-      }
+    if (appToken === undefined) {
+      warn("App token is missing.");
+    }
 
-      if (userToken === undefined) {
-        warn("User token is missing.");
-      }
+    if (options.expirations && appTokenExpires === undefined) {
+      warn("App token expiration is missing.");
+    }
 
-      if (options.expirations && userTokenExpires === undefined) {
-        warn("User token expiration is missing.");
-      }
+    if (userToken === undefined) {
+      warn("User token is missing.");
+    }
 
-      if (userId === undefined) {
-        warn("User ID is missing.");
-      }
+    if (options.expirations && userTokenExpires === undefined) {
+      warn("User token expiration is missing.");
+    }
 
-      if (options.expirations && userIdExpires === undefined) {
-        warn("User ID expiration is missing.");
-      }
+    if (userId === undefined) {
+      warn("User ID is missing.");
+    }
 
-      if (pageId === undefined) {
-        warn("Page ID is missing.");
-      }
+    if (options.expirations && userIdExpires === undefined) {
+      warn("User ID expiration is missing.");
+    }
 
-      if (options.expirations && pageIdExpires === undefined) {
-        warn("Page ID expiration is missing.");
-      }
+    if (pageId === undefined) {
+      warn("Page ID is missing.");
+    }
 
-      if (pageIndex === undefined) {
-        warn("Page index is missing.");
-      }
+    if (options.expirations && pageIdExpires === undefined) {
+      warn("Page ID expiration is missing.");
+    }
 
-      if (pageToken === undefined) {
-        warn("Page token is missing.");
-      }
+    if (pageIndex === undefined) {
+      warn("Page index is missing.");
+    }
 
-      if (options.index && pageTokenExpires === undefined) {
-        warn("Page token expiration is missing.");
-      }
+    if (pageToken === undefined) {
+      warn("Page token is missing.");
+    }
 
-      resolve({
-        appId,
-        appSecret,
-        appToken,
-        appTokenExpires,
-        userToken,
-        userTokenExpires,
-        userId,
-        userIdExpires,
-        pageId,
-        pageIdExpires,
-        pageIndex,
-        pageToken,
-        pageTokenExpires,
-      });
-    });
+    if (options.index && pageTokenExpires === undefined) {
+      warn("Page token expiration is missing.");
+    }
+
+    return {
+      appId,
+      appSecret,
+      appToken,
+      appTokenExpires,
+      userToken,
+      userTokenExpires,
+      userId,
+      userIdExpires,
+      pageId,
+      pageIdExpires,
+      pageIndex,
+      pageToken,
+      pageTokenExpires,
+    };
   }
 }

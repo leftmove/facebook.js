@@ -16,11 +16,11 @@
       "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
     },
     {
-      "name": "TSX Debug CLI Relogin",
+      "name": "TSX Debug CLI Refresh",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/src/cli/index.ts",
-      "args": ["relogin"],
+      "args": ["refresh"],
       "runtimeExecutable": "tsx",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -31,7 +31,7 @@
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/test/index.ts",
-      "runtimeExecutable": "tsx",
+      "runtimeExecutable": "bun",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
@@ -40,11 +40,10 @@
       "name": "TSX Debug Current",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/test/client/user.test.ts",
+      "program": "${workspaceFolder}/test/index.ts",
       "runtimeExecutable": "tsx",
-      "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
-    }
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
+    },
   ]
 }

@@ -1,4 +1,3 @@
-import { info } from "console";
 import Facebook, { GraphError } from "../index";
 import { Client } from "../index";
 import { CredentialError } from "../index";
@@ -16,7 +15,7 @@ export async function userIdCredential(
     } else {
       const spinner = spin("Authenticating User ID", app);
       return facebook.info.user
-        .generate(valid, facebook.access.user.token)
+        .generate()
         .then(() => {
           spinner.succeed("User ID Authenticated.");
           return facebook.info.user.id;
@@ -90,14 +89,7 @@ export async function pageIdCredential(
               input(questions, (item: Item<any>) => resolve(item.value), app);
             }
           })
-            .then((pageIndex: number) =>
-              facebook.info.page.generate(
-                valid,
-                facebook.info.user.id,
-                facebook.access.user.token,
-                pageIndex
-              )
-            )
+            .then((pageIndex: number) => facebook.info.page.generate(pageIndex))
             .then(() => {
               spinner.succeed("Page ID Authenticated.");
               return facebook.info.page.id;

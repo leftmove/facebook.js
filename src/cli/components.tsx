@@ -172,13 +172,20 @@ export const LoginStart = (
         and select/create your app.
       </Text>
       <Text>
-        Then, copy the app ID and secret from App Settings &gt; Basic.
+        Then, copy the app ID and secret from{" "}
+        <Text color="cyan">App Settings &gt; Basic</Text>.
       </Text>
+      <Box marginTop={0.5} justifyContent="center">
+        <Text color="gray">
+          If the prompts for your app ID/secret aren't showing up, try typing
+          some characters into your terminal.
+        </Text>
+      </Box>
     </Box>
   </Box>
 );
 
-export const ReloginStart = (
+export const RefreshStart = (
   <Box
     flexDirection="column"
     alignItems="center"

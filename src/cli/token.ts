@@ -53,7 +53,7 @@ export async function appTokenCredential(
     } else {
       const spinner = spin("Authenticating App Token", app);
       return facebook.access.app
-        .generate(valid)
+        .generate()
         .then(() => {
           spinner.succeed("App Token Authenticated");
           return facebook.access.app.token;
@@ -115,83 +115,86 @@ export async function userTokenCredential(
   scope: Permissions,
   userToken: string | undefined
 ) {
-  return facebook.access.user.validate(userToken).then((valid: boolean) => {
-    if (valid) {
-      return facebook.access.user.token;
-    } else {
-      const appId = facebook.id;
+  return facebook.access.user
+    .validate(userToken)
+    .catch(() => false)
+    .then((valid: boolean) => {
+      if (valid) {
+        return facebook.access.user.token;
+      } else {
+        const appId = facebook.id;
 
-      const port = 2279;
-      const host = "localhost";
-      const path = "/login";
-      const redirect = new URL(`http://${host}:${port}${path}`);
+        const port = 2279;
+        const host = "localhost";
+        const path = "/login";
+        const redirect = new URL(`http://${host}:${port}${path}`);
 
-      const oauth =
-        "https://facebook.com/v20.0/dialog/oauth?" +
-        new URLSearchParams({
-          client_id: appId,
-          response_type: "code",
-          auth_type: "rerequest",
-          scope: Object.keys(scope).join(","),
-          redirect_uri: redirect.href,
-        });
+        const oauth =
+          "https://facebook.com/v20.0/dialog/oauth?" +
+          new URLSearchParams({
+            client_id: appId,
+            response_type: "code",
+            auth_type: "rerequest",
+            scope: Object.keys(scope).join(","),
+            redirect_uri: redirect.href,
+          });
 
-      return timeoutCallback(
-        1000 * 60,
-        (resolve: Function) => {
-          const spinner = spin(
-            "Attempting OAuth for User Token in Default Browser",
-            app
-          );
-          const timer = setTimeout(() => {
-            spinner.fail("Attempted to Open OAuth in Default Browser.");
-            info(
-              `If OAuth did not open, you can visit the link manually:`,
+        return timeoutCallback(
+          1000 * 60,
+          (resolve: Function) => {
+            const spinner = spin(
+              "Attempting OAuth for User Token in Default Browser",
               app
             );
-            info(oauth, app, "blueBright");
-          }, 1000 * 5);
-          open(oauth);
+            const timer = setTimeout(() => {
+              spinner.fail("Attempted to Open OAuth in Default Browser.");
+              info(
+                `If OAuth did not open, you can visit the link manually:`,
+                app
+              );
+              info(oauth, app, "blueBright");
+            }, 1000 * 5);
+            open(oauth);
 
-          const server = http
-            .createServer(
-              (req: http.IncomingMessage, res: http.ServerResponse) => {
-                assert(req.url, "This request doesn't have a URL");
-                const { pathname, query } = url.parse(req.url, true);
+            const server = http
+              .createServer(
+                (req: http.IncomingMessage, res: http.ServerResponse) => {
+                  assert(req.url, "This request doesn't have a URL");
+                  const { pathname, query } = url.parse(req.url, true);
 
-                switch (pathname) {
-                  case path:
-                    clearTimeout(timer);
-                    spinner.succeed(" Opened OAuth in default browser.");
-                    resolve(query.code as string);
+                  switch (pathname) {
+                    case path:
+                      clearTimeout(timer);
+                      spinner.succeed(" Opened OAuth in default browser.");
+                      resolve(query.code as string);
 
-                    res.writeHead(200);
-                    res.end(successHTML, () => server.close());
-                    break;
-                  default:
-                    res.writeHead(404);
-                    res.end(`Not found, try querying the '${path}' path.`);
+                      res.writeHead(200);
+                      res.end(successHTML, () => server.close());
+                      break;
+                    default:
+                      res.writeHead(404);
+                      res.end(`Not found, try querying the '${path}' path.`);
+                  }
                 }
-              }
-            )
-            .listen(port, host);
-        },
-        "OAuth for user token timed out."
-      ).then((code: string) => {
-        const spinner = spin("Authenticating User Token", app);
-        return facebook.access.user
-          .generate(valid, redirect.href, code)
-          .then(() => {
-            spinner.succeed(" User Token Authenticated.");
-            return facebook.access.user.token;
-          })
-          .catch((e: GraphError) => {
-            spinner.fail("User Token Authentication Failed.");
-            throw new CredentialError("Error generating user token.", e);
-          });
-      });
-    }
-  });
+              )
+              .listen(port, host);
+          },
+          "OAuth for user token timed out."
+        ).then((code: string) => {
+          const spinner = spin("Authenticating User Token", app);
+          return facebook.access.user
+            .generate(code, redirect.href)
+            .then(() => {
+              spinner.succeed(" User Token Authenticated.");
+              return facebook.access.user.token;
+            })
+            .catch((e: GraphError) => {
+              spinner.fail("User Token Authentication Failed.");
+              throw new CredentialError("Error generating user token.", e);
+            });
+        });
+      }
+    });
 }
 
 export async function pageTokenCredential(
@@ -205,9 +208,9 @@ export async function pageTokenCredential(
     } else {
       const spinner = spin("Authenticating Page Token", app);
       return facebook.access.page
-        .generate(valid, facebook.info.page.id, facebook.access.user.token)
+        .generate()
         .then(() => {
-          spinner.succeed(" Page Token Authenticated.");
+          spinner.succeed("Page Token Authenticated.");
           return facebook.access.page.token;
         })
         .catch((e: GraphError) => {

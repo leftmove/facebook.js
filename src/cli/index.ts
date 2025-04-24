@@ -17,7 +17,7 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { App, LoginStart, ReloginStart, LoginSuccess } from "./components";
+import { App, LoginStart, RefreshStart, LoginSuccess } from "./components";
 
 const program = new Command();
 
@@ -92,7 +92,7 @@ program
   });
 
 program
-  .command("relogin")
+  .command("refresh")
   .description("Authenticate Facebook credentials.")
   .option("--appId", "Facebook App ID.")
   .option("--appSecret", "Facebook App Secret.")
@@ -115,7 +115,7 @@ program
       DEFAULT_SCOPE;
 
     const app = new App();
-    app.render(ReloginStart);
+    app.render(RefreshStart);
 
     const { appId, appSecret } = await appCredentials(
       options.appId || credentials.appId || undefined,

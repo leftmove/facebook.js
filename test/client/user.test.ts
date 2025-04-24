@@ -4,34 +4,21 @@ import { describe, it } from "mocha";
 import Facebook from "../../src";
 import type { Authentication } from "../../src";
 
-// Initialize the client, and authenticate with credentials.
+// Initialize the client
 const facebook = new Facebook();
 const auth: Authentication = {
   profile: "user",
 };
-await facebook
-  .login(auth)
-  .credentials()
 
-// Example Code
-
-// Publish a text post to the user's profile.
-const response = await facebook.user.posts.publish({
-  message: "Hello, world!",
+describe("User information", () => {
+  console.log("hello world");
+  // it("should have an ID", () => {
+  //   expect(facebook.info.user.id).to.be.a("string").and.not.empty;
+  // });
+  // it("should have an expiration date", () => {
+  //   expect(facebook.info.user.expires).to.be.a("number").and.not.empty;
+  // });
+  // it("should be valid", () => {
+  //   expect(facebook.info.user.valid).to.be.true;
+  // });
 });
-
-console.log(response);
-console.log("done")
-
-// // Publish a link post to the user's profile.
-// facebook.user.posts.publish({
-//   link: "https://www.google.com",
-// });
-
-// // Publish a video post to the user's profile.
-// facebook.user.posts.upload({
-//   path: "https://example.com/video.mp4",
-// });
-
-
-

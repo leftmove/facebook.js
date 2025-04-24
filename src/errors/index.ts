@@ -26,15 +26,19 @@ export class GraphError extends Error {
     this.status = data?.error?.code || response?.status;
 
     this.name = "GraphError";
-    this.message = `${message || ""} ${JSON.stringify(data, null, 2) || ""}
-    }`;
+    this.message =
+      message || data
+        ? `${message || ""}\n${JSON.stringify(data, null, 2) || ""}`
+        : "";
   }
 }
 
 export class CredentialError extends GraphError {
   constructor(message: string = "", error: any = {}, api: any = {}) {
     super(error, api?.response, api?.data);
-    this.message = `${this.message} ${message} Try logging in again.`;
+    this.message =
+      `${this.message} ${message}\n` +
+      "Try logging in again.\nThe command you probably need to use is `npx facebook refresh`.\n";
     this.name = "CredentialError";
   }
 }
@@ -51,4 +55,16 @@ export class UnauthorizedError extends CredentialError {
     super(...args);
     this.name = "UnauthorizedError";
   }
+}
+
+export class DeprecatedError extends GraphError {
+  constructor(message: string = "", error: any = {}, api: any = {}) {
+    super(error, api?.response, api?.data);
+    this.message = `${this.message} ${message}`;
+    this.name = "DeprecatedError";
+  }
+}
+
+export function warnConsole(message: string) {
+  console.warn(`[Warning] ${message}`);
 }

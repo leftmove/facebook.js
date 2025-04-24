@@ -1,161 +1,236 @@
 import { Login } from "./login";
-import { DEFAULT_TOKEN, DEFAULT_EXPIRE_ADD } from "./login";
-import type { Token } from "./login";
-import { GraphError, UnauthorizedError, CredentialError } from "../errors";
+import { DEFAULT_EXPIRE_ADD, expire } from "./login";
+import {
+  GraphError,
+  UnauthorizedError,
+  CredentialError,
+  warnConsole,
+} from "../errors";
+import type { Permissions } from "./login";
+export class Page {
+  facebook: Login;
+  token: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
 
-export const token = "pageToken";
-
-export function validate(
-  this: Login,
-  pageToken: string | undefined = this.access.page.token,
-  pageTokenExpires: number | undefined = this.access.page.expires
-): Promise<boolean> {
-  if (pageToken === undefined) {
-    this.stale = [...this.stale, token];
-    this.access.page.valid = false;
-    return new Promise((resolve) => resolve(false));
+  constructor(facebook: Login) {
+    this.facebook = facebook;
+    this.token = undefined;
+    this.expires = undefined;
+    this.valid = false;
   }
 
-  const now = Date.now() / 1000;
-  if (pageTokenExpires && now - pageTokenExpires >= this.expireTime) {
-    this.stale = [...this.stale, token];
-    this.access.page.valid = false;
-    return new Promise((resolve) => resolve(false));
-  }
+  async validate(
+    token?: string,
+    expires?: number,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<boolean> {
+    if (token === undefined || expires === undefined) {
+      this.valid = false;
+      return false;
+    }
 
-  interface Data {
-    data: {
-      app_id: string;
-      type: string;
-      application: string;
-      data_access_expires_at: number;
-      expires_at: number;
-      is_valid: boolean;
-      issued_at: number;
-      profile_id: string;
-      scopes: string[];
-      granular_scopes: Array<null[]>;
-      user_id: string;
-    };
-  }
-  interface Error {
-    data: {
-      error: {
-        code: number;
-        message: string;
-      };
-      is_valid: boolean;
-      scopes: any[];
-    };
-  }
+    const appAccessToken = `${this.facebook.id}|${this.facebook.secret}`;
 
-  return this.client
-    .get("debug_token", { input_token: pageToken, access_token: pageToken })
-    .then((data: Data) => {
-      if (data.data.is_valid) {
-        this.access.page.token = pageToken;
-        this.access.page.expires =
-          data.data.data_access_expires_at ||
-          Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
-        this.access.page.valid = true;
-        this.writeCredentials({
-          pageToken,
-          pageTokenExpires,
-        });
-        return true;
+    try {
+      const response = await this.facebook.client.get("debug_token", {
+        input_token: token,
+        access_token: appAccessToken,
+      });
+      const data: {
+        is_valid: boolean;
+        scopes: string[];
+      } = response.data;
+
+      const scope = this.facebook.scope;
+      const required = Object.keys(scope).filter((key) => scope[key] === true);
+      const check = (key: string) => data.scopes.includes(key);
+
+      if (data.is_valid) {
+        this.token = token;
+        this.expires = expires;
+        this.valid = true;
       } else {
-        this.stale = [...this.stale, token];
-        this.access.page.valid = false;
+        this.valid = false;
         return false;
       }
-    })
-    .catch((e: GraphError) => {
-      const data: Error = e.data;
-      const code = data.data.error.code || 400;
+
+      if (required.every(check)) {
+        this.token = token;
+        this.expires = expires;
+        this.valid = true;
+      } else {
+        this.valid = false;
+        if (warn) {
+          warnConsole(
+            "Permission scope mismatch for page token. You are missing the following scopes: " +
+              required.filter((r) => !check(r)).join(", ") +
+              "Although you can ignore this warning, if you encounter any unauthorized errors, the app must be re-authorized in order to get the correct scopes." +
+              "\nTo resolve the issue, add the missing scopes to your `credentials.json` file and re-authorize the app."
+          );
+        } else {
+          throw new CredentialError(
+            "Permission scope mismatch for page token. You are missing the following scopes: " +
+              required.filter((r) => !check(r)).join(", ") +
+              "\nThe app must be re-authorized in order to get the correct scopes. Although this error is caused by the page token not having the correct permissions, the page token inherits permissions from the user token." +
+              "\nTo resolve the issue, add the missing scopes to your `credentials.json` file and re-authorize the app."
+          );
+        }
+      }
+
+      return true;
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+        is_valid: boolean;
+        scopes: any[];
+      };
+      const code = data?.error?.code || 400;
       if (code === 190) {
-        this.stale = [...this.stale, token];
-        this.access.page.valid = false;
+        this.valid = false;
         return false;
       } else {
         const error = new Error();
-        throw new UnauthorizedError("Error verifying page token.", error, e);
+        throw new UnauthorizedError(
+          "Error verifying page token.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async generate(
+    id: string | undefined = this.facebook.info.user.id,
+    token: string | undefined = this.facebook.access.user.token
+  ): Promise<string | undefined> {
+    interface GenerateResponse {
+      data: Array<{
+        access_token: string;
+        category: string;
+        category_list: Array<{
+          id: string;
+          name: string;
+        }>;
+        name: string;
+        id: string;
+        tasks: Array<string>;
+      }>;
+      paging: {
+        cursors: {
+          before: string;
+          after: string;
+        };
+      };
+    }
+    return this.facebook.client
+      .get(`${id}/accounts`, {
+        access_token: token,
+      })
+      .then((response: GenerateResponse) => {
+        const data = response.data.at(0);
+
+        if (data === undefined) {
+          this.valid = false;
+          return undefined;
+        }
+
+        if (data.access_token) {
+          this.token = data.access_token;
+          this.expires = expire();
+          this.valid = true;
+
+          this.facebook.writeCredentials({
+            pageToken: this.token,
+            pageTokenExpires: this.expires,
+          });
+
+          return this.token;
+        } else {
+          this.valid = false;
+          return undefined;
+        }
+      })
+      .catch((e: GraphError) => {
+        const error = e as GraphError;
+        const data = error.data as {
+          error: { code: number; message: string };
+          is_valid: boolean;
+          scopes: any[];
+        };
+        const code = data?.error?.code || 400;
+        if (code === 190) {
+          this.valid = false;
+          return undefined;
+        } else {
+          const error = new Error();
+          throw new UnauthorizedError(
+            "Error generating page token.",
+            error,
+            e as GraphError
+          );
+        }
+      })
+      .then((token: string | undefined) => {
+        if (token === undefined) {
+          this.valid = false;
+          return undefined;
+        }
+        return this.facebook.client
+          .get("oauth/access_token", {
+            client_id: this.facebook.id,
+            client_secret: this.facebook.secret,
+            grant_type: "fb_exchange_token",
+            fb_exchange_token: token,
+          })
+          .then((response: any) => {
+            console.log(response);
+          });
+      });
+  }
+
+  async refresh(
+    token: string | undefined = this.token,
+    expires: number | undefined = this.expires,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<{ token: string | undefined; expires: number | undefined }> {
+    if (token === undefined) {
+      const error = new Error();
+      throw new CredentialError("Page token is missing.", error);
+    }
+
+    if (expires === undefined) {
+      if (warn) {
+        warnConsole("Page token may be expired.");
+        this.expires = expire();
+      } else {
+        const error = new Error();
+        throw new CredentialError("Page token expiration is missing.", error);
+      }
+    }
+
+    return this.validate(token, expires).then((valid) => {
+      if (valid) {
+        return {
+          token,
+          expires: this.expires,
+        };
+      } else {
+        return this.generate(
+          this.facebook.info.user.id,
+          this.facebook.access.user.token
+        ).then((token) => {
+          if (token === undefined) {
+            const error = new Error();
+            throw new CredentialError("Error refreshing page token.", error);
+          }
+          return {
+            token,
+            expires: this.expires,
+          };
+        });
       }
     });
+  }
 }
-
-export function generate(
-  this: Login,
-  valid: boolean = false,
-  pageId: string | undefined = this.info.page.id,
-  userToken: string | undefined = this.access.user.token
-) {
-  interface Data {
-    access_token: string;
-    id: string;
-  }
-
-  if (valid || this.access.page.valid) {
-    return new Promise((resolve) => resolve(this.access.page.token));
-  }
-
-  if (pageId === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page ID is required.", error);
-  }
-
-  if (userToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("User token is required.", error);
-  }
-
-  return this.client
-    .get(`${pageId}`, {
-      access_token: userToken,
-      fields: "access_token",
-    })
-    .then((data: Data) => {
-      const accessToken = data.access_token;
-      this.access.page.token = accessToken;
-      this.writeCredentials({
-        appId: this.id,
-        appSecret: this.secret,
-        pageToken: accessToken,
-        pageTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-      });
-    })
-    .catch((e: GraphError) => {
-      const error = new Error();
-      throw new UnauthorizedError("Error verifying page token.", error, e);
-    });
-}
-
-export function refresh(
-  this: Login,
-  pageToken: string | undefined = this.access.page.token,
-  pageTokenExpires: number | undefined = this.access.page.expires
-): Promise<string | undefined> {
-  if (pageToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page token is required.", error);
-  }
-
-  if (pageTokenExpires === undefined) {
-    const error = new Error();
-    throw new CredentialError("Page token expiration is required.", error);
-  }
-
-  return this.access.page
-    .validate(pageToken, pageTokenExpires)
-    .then((valid) => this.access.page.generate(valid));
-}
-
-export function page(t: Login) {
-  return {
-    ...DEFAULT_TOKEN,
-    validate: validate.bind(t),
-    generate: generate.bind(t),
-    refresh: refresh.bind(t),
-  };
-}
-
-export type Page = ReturnType<typeof page>;

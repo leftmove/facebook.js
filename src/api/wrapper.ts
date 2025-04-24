@@ -1,6 +1,6 @@
 import { GraphError } from "../errors";
 
-export const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v20.0";
+export const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v22.0";
 
 export interface Response {
   response: Response;
@@ -112,7 +112,7 @@ export default class Client extends Queue {
           } else {
             const error = new Error(r.statusText);
             const graph = new GraphError(error, r, data);
-            throw graph;
+            reject(graph);
           }
         });
         resolve(response);

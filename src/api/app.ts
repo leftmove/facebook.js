@@ -1,140 +1,155 @@
 import { Login } from "./login";
-import { DEFAULT_TOKEN, DEFAULT_EXPIRE_ADD } from "./login";
-import type { Token } from "./login";
+import { DEFAULT_EXPIRE_ADD } from "./login";
+import {
+  GraphError,
+  UnauthorizedError,
+  CredentialError,
+  warnConsole,
+} from "../errors";
 
-import { GraphError, UnauthorizedError, CredentialError } from "../errors";
+export class App {
+  facebook: Login;
+  token: string | undefined;
+  expires: number | undefined;
+  valid: boolean;
 
-export const token = "appToken";
-
-export function validate(
-  this: Login,
-  appToken: string | undefined = this.access.app.token,
-  appTokenExpires: number | undefined = this.access.app.expires
-): Promise<boolean> {
-  const appId = this.id;
-  const appSecret = this.secret;
-
-  if (appToken === undefined) {
-    this.stale = [...this.stale, token];
-    this.access.app.valid = false;
-    return new Promise((resolve) => resolve(false));
+  constructor(facebook: Login) {
+    this.facebook = facebook;
+    this.token = undefined;
+    this.expires = undefined;
+    this.valid = false;
   }
 
-  if (
-    appTokenExpires &&
-    Date.now() / 1000 - appTokenExpires >= this.expireTime
-  ) {
-    this.stale = [...this.stale, token];
-    this.access.app.valid = false;
-    return new Promise((resolve) => resolve(false));
-  }
+  async validate(token?: string, expires?: number): Promise<boolean> {
+    if (token === undefined || expires === undefined) {
+      this.valid = false;
+      return false;
+    }
 
-  interface Data {
-    data: {
-      app_id: string;
-      type: string;
-      application: string;
-      is_valid: boolean;
-      scopes: Array<any>;
-    };
-  }
-  interface Error {
-    error: {
-      message: string;
-      type: string;
-      code: number;
-      fbtrace_id: string;
-    };
-  }
+    const appAccessToken = `${this.facebook.id}|${this.facebook.secret}`;
 
-  return this.client
-    .get("debug_token", {
-      input_token: appToken,
-      access_token: `${appId}|${appSecret}`,
-    })
-    .then((data: Data) => {
+    try {
+      const data = await this.facebook.client.get("debug_token", {
+        input_token: token,
+        access_token: appAccessToken,
+      });
+
       if (data.data.is_valid) {
-        this.access.app.valid = true;
+        this.token = token;
+        this.expires = expires;
+        this.valid = true;
         return true;
       } else {
-        this.stale = [...this.stale, token];
-        this.access.app.valid = false;
+        this.valid = false;
         return false;
       }
-    })
-    .catch((e: GraphError) => {
-      const data: Error = e.data;
-      const code = data.error.code || 400;
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+        is_valid: boolean;
+        scopes: any[];
+      };
+      const code = data?.error?.code || 400;
       if (code === 190) {
-        this.stale = [...this.stale, token];
-        this.access.app.valid = false;
+        this.valid = false;
         return false;
       } else {
         const error = new Error();
-        throw new UnauthorizedError("Error verifying app token.", error, e);
+        throw new UnauthorizedError(
+          "Error verifying app token.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async generate(): Promise<string | undefined> {
+    const appAccessToken = `${this.facebook.id}|${this.facebook.secret}`;
+    try {
+      const data = await this.facebook.client.get("debug_token", {
+        input_token: appAccessToken,
+        access_token: appAccessToken,
+      });
+
+      if (data.data.is_valid) {
+        this.token = appAccessToken;
+        this.expires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
+        this.valid = true;
+
+        this.facebook.writeCredentials({
+          appToken: this.token,
+          appTokenExpires: this.expires,
+        });
+
+        return this.token;
+      } else {
+        this.valid = false;
+        this.expires = Date.now() / 1000;
+        return undefined;
+      }
+    } catch (e) {
+      const error = e as GraphError;
+      const data = error.data as {
+        error: { code: number; message: string };
+        is_valid: boolean;
+        scopes: any[];
+      };
+      const code = data?.error?.code || 400;
+      if (code === 190) {
+        this.valid = false;
+        return undefined;
+      } else {
+        const error = new Error();
+        throw new UnauthorizedError(
+          "Error verifying app token.",
+          error,
+          e as GraphError
+        );
+      }
+    }
+  }
+
+  async refresh(
+    token: string | undefined = this.token,
+    expires: number | undefined = this.expires,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<{ token: string | undefined; expires: number | undefined }> {
+    if (token === undefined) {
+      const error = new Error();
+      throw new CredentialError("App token is missing.", error);
+    }
+
+    if (expires === undefined) {
+      if (warn) {
+        warnConsole("App token may be expired.");
+        this.expires = Date.now() / 1000 + DEFAULT_EXPIRE_ADD;
+      } else {
+        const error = new Error();
+        throw new CredentialError("App token expiration is missing.", error);
+      }
+    }
+
+    return this.validate(token, expires).then((valid) => {
+      if (valid) {
+        return {
+          token: token,
+          expires: this.expires,
+        };
+      } else {
+        return this.generate().then((token) => {
+          if (token === undefined) {
+            const error = new Error();
+            throw new CredentialError("Error refreshing app token.", error);
+          } else {
+            return {
+              token,
+              expires: this.expires,
+            };
+          }
+        });
       }
     });
-}
-
-export function generate(this: Login, valid: boolean = false) {
-  interface Data {
-    access_token: string;
-    token_type: string;
   }
-
-  if (valid || this.access.app.valid) {
-    return new Promise((resolve) => resolve(this.access.app.token));
-  }
-
-  return this.client
-    .get("oauth/access_token", {
-      client_id: this.id,
-      client_secret: this.secret,
-      grant_type: "client_credentials",
-    })
-    .then((data: Data) => {
-      const accessToken = data.access_token;
-      this.access.app.token = accessToken;
-      this.writeCredentials({
-        appId: this.id,
-        appSecret: this.secret,
-        appToken: accessToken,
-        appTokenExpires: Date.now() / 1000 + DEFAULT_EXPIRE_ADD,
-      });
-    })
-    .catch((e: GraphError) => {
-      const error = new Error();
-      throw new UnauthorizedError("Error verifying page token.", error, e);
-    });
 }
-
-export function refresh(
-  this: Login,
-  appToken: string | undefined = this.access.app.token,
-  appTokenExpires: number | undefined = this.access.app.expires
-): Promise<string | undefined> {
-  if (appToken === undefined) {
-    const error = new Error();
-    throw new CredentialError("App token is required.", error);
-  }
-
-  if (appTokenExpires === undefined) {
-    const error = new Error();
-    throw new CredentialError("App token expiration is required.", error);
-  }
-
-  return this.access.app
-    .validate(appToken, appTokenExpires)
-    .then((valid: boolean) => this.access.app.generate(valid));
-}
-
-export function app(t: Login) {
-  return {
-    ...DEFAULT_TOKEN,
-    validate: validate.bind(t),
-    generate: generate.bind(t),
-    refresh: refresh.bind(t),
-  };
-}
-
-export type App = ReturnType<typeof app>;
