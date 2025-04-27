@@ -78,8 +78,8 @@ export const DEFAULT_SCOPE: Permissions = {
 export const DEFAULT_EXPIRE_TIME = 60;
 export const DEFAULT_EXPIRE_ADD = 60 * 60 * 2;
 
-export const expire = (time: number = Date.now() / 1000) =>
-  time + DEFAULT_EXPIRE_ADD;
+export const expire = (time: number = DEFAULT_EXPIRE_TIME) =>
+  Date.now() / 1000 + time;
 
 export type Profile = "page" | "user";
 

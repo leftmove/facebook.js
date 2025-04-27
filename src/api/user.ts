@@ -118,50 +118,159 @@ export class User {
     }
   }
 
-  async generate(code: string, redirect: string): Promise<string | undefined> {
-    try {
-      const data = await this.facebook.client.get("oauth/access_token", {
+  async generate(
+    code: string,
+    redirect: string,
+    id: string = this.facebook.id,
+    secret: string = this.facebook.secret
+  ): Promise<string | undefined> {
+    interface GenerateResponse {
+      access_token: string;
+      token_type: string;
+    }
+
+    if (code === undefined) {
+      const error = new Error();
+      throw new CredentialError(
+        "Cannot generate user token because code is missing.",
+        error
+      );
+    }
+
+    if (redirect === undefined) {
+      const error = new Error();
+      throw new CredentialError(
+        "Cannot generate user token because redirect is missing.",
+        error
+      );
+    }
+
+    return this.facebook.client
+      .get("oauth/access_token", {
         code,
         redirect_uri: redirect,
-        client_id: this.facebook.id,
-        client_secret: this.facebook.secret,
+        client_id: id,
+        client_secret: secret,
+      })
+      .then((data: GenerateResponse) => {
+        if (data.access_token) {
+          this.token = data.access_token;
+          this.expires = expire();
+          this.valid = true;
+
+          this.facebook.writeCredentials({
+            userToken: this.token,
+            userTokenExpires: this.expires,
+          });
+
+          return this.token;
+        } else {
+          this.valid = false;
+          this.expires = expire(0);
+          return undefined;
+        }
+      })
+      .catch((e: GraphError) => {
+        const error = e as GraphError;
+        const data = error.data as {
+          error: { code: number; message: string };
+          is_valid: boolean;
+          scopes: any[];
+        };
+        const code = data?.error?.code || 400;
+        if (code === 190) {
+          this.valid = false;
+          this.expires = expire(0);
+          return undefined;
+        } else {
+          const error = new Error();
+          throw new UnauthorizedError(
+            "Error generating user token.",
+            error,
+            e as GraphError
+          );
+        }
       });
+  }
 
-      if (data.access_token) {
-        this.token = data.access_token;
-        this.expires = expire();
-        this.valid = true;
-
-        this.facebook.writeCredentials({
-          userToken: this.token,
-          userTokenExpires: this.expires,
-        });
-
-        return this.token;
-      } else {
-        this.valid = false;
-        return undefined;
-      }
-    } catch (e) {
-      const error = e as GraphError;
-      const data = error.data as {
-        error: { code: number; message: string };
-        is_valid: boolean;
-        scopes: any[];
-      };
-      const code = data?.error?.code || 400;
-      if (code === 190) {
-        this.valid = false;
-        return undefined;
-      } else {
-        const error = new Error();
-        throw new UnauthorizedError(
-          "Error generating user token.",
-          error,
-          e as GraphError
-        );
-      }
+  async extend(
+    token: string | undefined = this.token,
+    id: string = this.facebook.id,
+    secret: string = this.facebook.secret,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<string | undefined> {
+    interface ExtendTokenResponse {
+      access_token: string;
+      token_type: string;
+      expires_in: number;
     }
+
+    if (token === undefined) {
+      const error = new Error();
+      throw new CredentialError(
+        "Cannot extend user token because it is missing.",
+        error
+      );
+    }
+
+    return this.facebook.client
+      .get("oauth/access_token", {
+        client_id: id,
+        client_secret: secret,
+        grant_type: "fb_exchange_token",
+        fb_exchange_token: token,
+      })
+      .then((data: ExtendTokenResponse) => {
+        if (data.access_token) {
+          this.token = data.access_token;
+          this.expires = data.expires_in ? expire(data.expires_in) : expire();
+          this.valid = true;
+
+          this.facebook.writeCredentials({
+            userToken: this.token,
+            userTokenExpires: this.expires,
+          });
+
+          return this.token;
+        } else {
+          this.valid = false;
+          this.expires = expire(0);
+
+          this.facebook.writeCredentials({
+            userToken: this.token,
+            userTokenExpires: this.expires,
+          });
+
+          if (warn) {
+            warnConsole("User token may expire prematurely.");
+          } else {
+            const error = new Error();
+            throw new CredentialError(
+              "Error extending user token lifespan.",
+              error
+            );
+          }
+        }
+      })
+      .catch((e: GraphError) => {
+        if (warnConsole) {
+          warnConsole("User token may expire prematurely.");
+        } else {
+          throw new CredentialError("Error extending user token lifespan.", e);
+        }
+      });
+  }
+
+  async fulfill(
+    code: string,
+    redirect: string,
+    id: string = this.facebook.id,
+    secret: string = this.facebook.secret,
+    warn: boolean = this.facebook.warnExpired
+  ): Promise<string | undefined> {
+    const short = await this.generate(code, redirect, id, secret);
+    const token = await this.extend(short, id, secret, warn);
+    return token;
   }
 
   async refresh(

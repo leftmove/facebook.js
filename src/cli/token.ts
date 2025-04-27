@@ -183,7 +183,7 @@ export async function userTokenCredential(
         ).then((code: string) => {
           const spinner = spin("Authenticating User Token", app);
           return facebook.access.user
-            .generate(code, redirect.href)
+            .fulfill(code, redirect.href, facebook.id, facebook.secret)
             .then(() => {
               spinner.succeed(" User Token Authenticated.");
               return facebook.access.user.token;

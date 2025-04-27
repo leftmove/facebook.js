@@ -9,16 +9,16 @@ A Facebook API wrapper that's _not_ from 2011.
 
 ### Short Term
 
-- Seperate login flow from main app, minimum setup
-- Allow for login programmatically
+- Separate login flow from main app, minimum setup
 - Better error handling with more specific error types
 - Flesh out README.md with minimal examples/use-cases (i.e. quickstart section)
-- Troubleshooting section for bad logins
-- JSON credential login flow
 - Native function for every major use-case
   - Posting
   - Commenting
   - Etc.
+- Make all methods available synchronously
+- Consistency across parameters for different methods
+- Support for videos
 
 ### Long Term
 

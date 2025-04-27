@@ -30,11 +30,10 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // const userToken = facebook.access.user.token;
 // console.log({ userID, userExpires, userValid, userToken });
 
-//
 // Publishing
 // Publish posts to the current profile.
 
-// // Page history.
+// Page history.
 // const pagePosts = await facebook.page.posts.read();
 // console.log({ pagePosts });
 
@@ -55,12 +54,12 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // console.log({ userPost });
 
 // // Publishing media to a page.
-const pagePost = await facebook.page.posts.upload({
-  // Change the variable name to pageMedia later
-  message: "Hello, world!",
-  path: "/Users/anonyo/Downloads/Images/Miscellaneous/fb.png",
-});
-console.log({ pagePost });
+// const pagePost = await facebook.page.posts.upload({
+//   // Change the variable name to pageMedia later
+//   message: "Hello, world!",
+//   path: "/Users/anonyo/Downloads/Images/Miscellaneous/fb.png",
+// });
+// console.log({ pagePost });
 
 // // Publishing media to a user (deprecated).
 // const userMedia = await facebook.user.media.publish({
@@ -70,27 +69,72 @@ console.log({ pagePost });
 // console.log({ userMedia });
 
 // // Editing a page post.
-const pagePostEdited = await facebook.page.posts.edit({
-  id: pagePost.id,
-  message: "Hello, world! edited",
-});
-console.log({ pagePostEdited });
+// const pagePostEdited = await facebook.page.posts.edit({
+//   // id: pagePost.id,
+//   id: "122172361214285076",
+//   message: "Hello, world! (edited 2)",
+// });
+// console.log({ pagePostEdited });
 
 // // Editing a user post (deprecated).
 // const userPost = await facebook.user.posts.edit({
 //   id: "1234567890",
-//   message: "Hello, world! edited",
+//   message: "Hello, world! (edited)",
 // });
 // console.log({ userPost });
 
 // // Removing a page post.
-const pagePostResult = await facebook.page.posts.remove({
-  id: pagePost.id,
-});
-console.log({ pagePostResult });
+// const pagePostResult = await facebook.page.posts.remove({
+//   // id: pagePost.id,
+//   id: "122172361214285076",
+// });
+// console.log({ pagePostResult });
 
 // // Removing a user post (deprecated).
 // const userPost = await facebook.user.posts.remove({
 //   id: "1234567890",
 // });
 // console.log({ userPost });
+
+// // Publishing a link to a page.
+// const pagePost = await facebook.page.posts.publish({
+//   message: "Hello, world!",
+//   link: "https://www.google.com",
+// });
+// console.log({ pagePost });
+
+// // Publishing a link to a user (deprecated).
+// const userPost = await facebook.user.posts.publish({
+//   message: "Hello, world!",
+//   link: "https://www.google.com",
+// });
+// console.log({ userPost });
+
+// // Scheduling a post to a page.
+// const later = new Date(Date.now() + 10 * 60 * 1000 + 1000).toISOString();
+// const pagePost = await facebook.page.posts.publish({
+//   message: "Hello, world!",
+//   link: "https://www.google.com",
+//   schedule: later,
+// });
+// console.log({ pagePost });
+
+// // Scheduling a post to a user (deprecated).
+// const userPost = await facebook.user.posts.publish({
+//   message: "Hello, world!",
+//   link: "https://www.google.com",
+// });
+// console.log({ userPost });
+
+// Comments
+// Read comments from a page post.
+// const comments = await facebook.page.posts.comments.read({
+//   id: "122172361214285076",
+// });
+// console.log({ comments });
+
+// Read comments from a user post.
+// const comments = await facebook.user.posts.comments.read({
+//   id: "1234567890",
+// });
+// console.log({ comments });

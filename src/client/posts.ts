@@ -2,82 +2,64 @@ import fs, { access } from "fs";
 import assert from "node:assert";
 
 import { Facebook } from "./client";
-import { DeprecatedError, PostError } from "../errors";
+import { DeprecatedError, PostError, warnConsole } from "../errors";
+import { stringify } from "../api";
+import { FACEBOOK_URL } from "../api";
 import type { Profile } from "../api";
 
-/**
-/**
- * A post object with methods for interacting with the post.
- * 
- * @property {string} id - The unique identifier for the post.
- * @property {string} user - The ID of the user who created the post.
- * @property {Date} [created_at] - The date and time when the post was created. Note that when this is returned from the {@link Posts#publish} method, it is automatically set to the current date and time, which is not the way Facebook (or any of the other methods) returns the property.
- * @property {string} [message] - The content of the post.
- * @property {boolean} [success] - Whether the action which was performed on the post was successful.
- */
-export class Post {
-  private client: Facebook;
-
-  id: string;
-  user?: string;
-
-  created_at?: Date;
+type id = string;
+interface CreatedPost {
+  id?: id;
   message?: string;
-
+  created_time?: string;
   success?: boolean;
+  scheduled?: boolean;
+}
 
-  constructor(post: CreatedPost, facebook: Facebook) {
-    if (post.id === undefined) {
-      throw new PostError("Post ID is required.");
-    }
+interface EditPost extends CreatedPost {
+  id: string;
+  message: string;
+}
 
-    const ids = post.id.split("_");
-    const userID = ids.length > 1 ? ids[0] : undefined;
-    const postID = ids.length > 1 ? ids[1] : ids[0];
+interface EditPostEmbedded extends Omit<EditPost, "id"> {
+  id?: string;
+}
 
-    this.id = postID;
-    this.user = userID;
+interface RemovePost extends CreatedPost {
+  id: string;
+}
+interface RemovePostEmbedded extends Omit<RemovePost, "id"> {
+  // Completely useless but it's here for the sake of completeness/consistency.
+  id?: string;
+}
 
-    this.created_at = post.created_time
-      ? new Date(post.created_time)
-      : undefined;
-    this.message = post.message || undefined;
-    this.success = post.success || undefined;
+interface Success {
+  success: boolean;
+}
 
-    this.client = facebook;
-  }
-
-  /**
-   * @see {@link Facebook["remove"]}
-   * @extends {Facebook["remove"]}
-   **/
-  remove() {
-    return this.client.posts.remove({ id: this.id });
-  }
-
-  /**
-   * @see {@link Facebook["edit"]}
-   * @param message - The new message for the post.
-   * @extends {Facebook["edit"]}
-   **/
-  edit({ message }: { message: string }) {
-    return this.client.posts.edit({ id: this.id, message });
-  }
+interface Targeting {
+  [key: string]: any;
+  targeting: {
+    geo_locations: {
+      countries: Array<string>;
+      cities: Array<{
+        key: string;
+        name: string;
+      }>;
+    };
+  };
 }
 
 interface PostRegular {
   message: string;
   link?: string;
   published?: boolean;
-  targeting?: {
-    countries: string[];
-    cities: string[];
-  };
+  targeting?: Targeting;
 }
 
 interface PostScheduled extends PostRegular {
-  published: boolean;
-  scheduled_publish_time: number;
+  schedule: string | Date;
+  bypass?: boolean;
 }
 
 interface PostLink extends Omit<PostRegular, "message"> {
@@ -86,8 +68,8 @@ interface PostLink extends Omit<PostRegular, "message"> {
 }
 
 interface PostLinkScheduled extends PostLink {
-  published: boolean;
-  scheduled_publish_time: number;
+  schedule: string | Date;
+  bypass?: boolean;
 }
 
 interface PostMedia extends Omit<PostRegular, "message"> {
@@ -98,8 +80,6 @@ interface PostMedia extends Omit<PostRegular, "message"> {
 interface PostMediaScheduled extends Omit<PostScheduled, "message"> {
   message?: string;
   path: string | string[];
-  published: boolean;
-  scheduled_publish_time: number;
 }
 
 interface PostMediaLink extends Omit<PostRegular, "message"> {
@@ -108,25 +88,12 @@ interface PostMediaLink extends Omit<PostRegular, "message"> {
 }
 
 interface PostMediaLinkScheduled extends PostMediaLink {
-  published: boolean;
-  scheduled_publish_time: number;
+  schedule: string | Date;
 }
 
-type id = string;
-interface CreatedPost {
-  id?: id;
-  message?: string;
-  created_time?: string;
-  success?: boolean;
-}
-
-interface EditPost extends CreatedPost {
-  message: string;
-}
-
-interface Success {
-  success: boolean;
-}
+const defaultConfig: PostRegular = {
+  message: "",
+};
 
 // Very unnecessary, but less verbose. Nearing on abstraction hell.
 
@@ -138,11 +105,155 @@ function t(profile: Profile, t: Facebook) {
   return profile === "user" ? t.access.user.token : t.access.page.token;
 }
 
+function toUNIXTime(input: string | Date | number) {
+  return parseInt((new Date(input).getTime() / 1000).toFixed(0));
+}
+
+function validateSchedule(
+  schedule: string | Date | number,
+  bypass?: boolean,
+  minimum: number = 10 * 60 * 1000,
+  threshold: number = 1000,
+  warn: boolean = true
+) {
+  if (bypass) {
+    return true;
+  }
+
+  // Validate that the schedule is at least 10 minutes from now.
+  const now = new Date();
+  const later = new Date(schedule);
+  const difference = later.getTime() - now.getTime();
+
+  // If the schedule is in the past, return false.
+  if (difference < 0) {
+    return false;
+  }
+
+  if (warn && Math.abs(minimum - difference) <= threshold) {
+    warnConsole(
+      "The scheduled date is especially close to the current date. This may cause issues with the API.\n" +
+        "The threshold of 10 minutes has been roughly met, but consider setting a schedule date later than it is now to prevent issues."
+    );
+  }
+
+  // If the schedule is less than the threshold, return false.
+  // The reason there is a threshold is because when you get `new Date()` to calculate if it's later than ten minutes from now, the instant in which the user (the developer running the API function from the wrapper) runs the function, is different from the instant when this code gets the current time to see if the inputted time is later then ten minutes.
+  // Because of this very small difference, you can't input a time that is exactly ten minutes from now.
+  // You could possibly fix this better with a floor, but I'm lazy.
+  // This is still the lesser of two evils though, because rather than have the problem of not being able to schedule a post exactly ten minutes from now, there's now a chance that the API will throw an error the inputted time is too close to exactly ten minutes.
+  // Hacky and long explanation, I know, but this extra function seems to be the best solution.
+  return minimum - difference <= threshold;
+}
+
+/**
+/**
+ * A post object with methods for interacting with the post.
+ * 
+ * @property {string} id - The unique identifier for the post.
+ * @property {string} user - The ID of the user who created the post.
+ * @property {Date} [created] - The date and time when the post was created. Note that when this is returned from the {@link Posts#publish} method, it is automatically set to the current date and time, which is not the way Facebook (or any of the other methods) returns the property.
+ * @property {string} [message] - The content of the post.
+ * @property {boolean} [success] - Whether the action which was performed on the post was successful.
+ */
+export class Post {
+  private client: Facebook;
+
+  id: string;
+  user?: string;
+
+  created?: Date;
+  message?: string;
+  link?: string;
+
+  success?: boolean;
+  scheduled?: boolean;
+
+  constructor(
+    post: CreatedPost,
+    facebook: Facebook,
+    config:
+      | PostRegular
+      | PostLink
+      | PostScheduled
+      | PostLinkScheduled
+      | PostMedia
+      | PostMediaScheduled
+      | PostMediaLink
+      | PostMediaLinkScheduled
+      | EditPost
+      | EditPostEmbedded
+      | RemovePost
+      | RemovePostEmbedded = defaultConfig
+  ) {
+    if (post.id === undefined) {
+      throw new PostError("Post ID is required.");
+    }
+
+    const ids = post.id.split("_");
+    const userID = ids.length > 1 ? ids[0] : undefined;
+    const postID = ids.length > 1 ? ids[1] : ids[0];
+    const scheduled = "schedule" in config;
+
+    this.id = postID;
+    this.user = userID;
+
+    this.created = post.created_time
+      ? new Date(post.created_time)
+      : scheduled
+      ? new Date(config.schedule)
+      : undefined;
+    this.message = post.message || config.message || undefined;
+    this.link = `${FACEBOOK_URL}/${postID}`;
+
+    this.success = post.success || true;
+    this.scheduled = scheduled || undefined;
+
+    this.client = facebook;
+  }
+
+  /**
+   * @description Checks if the post has been published. Useful for scheduled posts.
+   * @returns {boolean} Whether the post has been published.
+   */
+  ready() {
+    if (this.created === undefined) {
+      return false;
+    } else {
+      return this.created < new Date();
+    }
+  }
+
+  /**
+   * @description Deletes the post.
+   * @see {@link Facebook["remove"]}
+   * @param config - The configuration object for deleting the post.
+   * @param config.id - The ID of the post to delete. By default, this is the ID of the current post. Ideally, you shouldn't change this — if you want to delete a different post, best practice is to use the {@link Posts#remove} method.
+   * @see {@link Posts#remove}
+   * @extends {Facebook["remove"]}
+   **/
+  remove(config: RemovePostEmbedded) {
+    return this.client.posts.remove({ id: this.id, ...config });
+  }
+
+  /**
+   * @description Edits the post.
+   * @see {@link Facebook["edit"]}
+   * @param config - The configuration object for editing the post.
+   * @param config.id - The ID of the post to edit. By default, this is the ID of the current post. Ideally, you shouldn't change this — if you want to edit a different post, best practice is to use the {@link Posts#edit} method.
+   * @see {@link Posts#edit}
+   * @extends {Facebook["edit"]}
+   **/
+  edit(config: EditPostEmbedded) {
+    return this.client.posts.edit({ id: this.id, ...config });
+  }
+}
+
 export class Posts {
   constructor(public facebook: Facebook) {}
 
   /**
-   * Retrieves a post by its ID.
+   * @description Retrieves a post by its ID.
    * @param config - The post ID, or a post object.
    * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
@@ -209,10 +320,10 @@ export class Posts {
    * @param config - The configuration object for the post.
    * @param config.message - The caption of the post.
    * @param config.link - The link of the post, if the post is a link post.
-   * @param config.published - Whether the post is published now or scheduled.
-   * @param config.scheduled_publish_time - The time to publish the post, if scheduled.
+   * @param config.schedule - The time to publish the post, if scheduled.
    * @param config.targeting - The targeting options for the post.
-   * @returns A post object with methods for interacting with the post. Note that the `created_at` property is automatically set to the current date and time, this is not the way Facebook (or any of the other methods) returns it.
+   * @param config.bypass - Bypass schedule validation and enter any date as the schedule.
+   * @returns A post object with methods for interacting with the post. Note that the `created` property is automatically set to the current date and time, this is not the way Facebook (or any of the other methods) returns it.
    */
   async publish(
     config: PostRegular | PostLink | PostScheduled | PostLinkScheduled,
@@ -228,23 +339,36 @@ export class Posts {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
 
-      return this.facebook.client
-        .post(`${id}/feed`, {
-          ...config,
-          access_token: token,
-        })
-        .then(
-          (data: CreatedPost) =>
-            new Post(
-              {
-                created_time: data.created_time || new Date().toISOString(),
-                message: data.message || config.message || undefined,
-                success: true,
-                ...data,
-              },
-              this.facebook
-            )
+      if (
+        "schedule" in config &&
+        validateSchedule(config.schedule, config.bypass) === false
+      ) {
+        throw new PostError(
+          "Schedule date cannot be less than 10 minutes from now."
         );
+      }
+
+      const scheduling =
+        "schedule" in config
+          ? {
+              published: false,
+              scheduled_publish_time: toUNIXTime(config.schedule),
+            }
+          : { published: true };
+
+      return this.facebook.client
+        .post(
+          `${id}/feed`,
+          stringify({
+            ...config,
+            ...scheduling,
+            access_token: token,
+          })
+        )
+        .then((data: CreatedPost) => new Post(data, this.facebook, config))
+        .catch((e: PostError) => {
+          throw e;
+        });
     });
   }
 
@@ -273,6 +397,12 @@ export class Posts {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
       let imagePromises;
+
+      if ("schedule" in config && new Date(config.schedule) < new Date()) {
+        throw new PostError(
+          "Schedule date cannot be in the past, or be less than 10 minutes from now."
+        );
+      }
 
       if ("path" in config) {
         interface Data {
@@ -345,19 +475,27 @@ export class Posts {
           const body = new URLSearchParams();
           body.append("message", config.message || "");
           body.append("access_token", token!);
-          // body.append("published", "true");
           images.forEach((image: { id: string }, i) => {
             body.append(
               `attached_media[${i}]`,
               `{"media_fbid": "${image.id}"}`
             );
           });
+          if ("schedule" in config) {
+            body.append(
+              "scheduled_publish_time",
+              toUNIXTime(config.schedule).toString()
+            );
+            body.append("published", "false");
+          } else {
+            body.append("published", "true");
+          }
 
           return this.facebook.client
-            .post(`me/feed`, body, {
+            .post(`${id}/feed`, body, {
               "Content-Type": "application/x-www-form-urlencoded",
             })
-            .then((data: CreatedPost) => new Post(data, this.facebook))
+            .then((data: CreatedPost) => new Post(data, this.facebook, config))
             .catch((e: PostError) => {
               throw e;
             });
@@ -386,23 +524,18 @@ export class Posts {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
       return this.facebook.client
-        .post(`${id}_${config.id}`, {
-          message: config.message,
-          access_token: token,
-        })
+        .post(
+          `${id}_${config.id}`,
+          stringify({
+            message: config.message,
+            access_token: token,
+          })
+        )
         .then((data: Success) => {
           if (data.success === false) {
             throw new PostError("Failed to edit post.");
           }
-          return new Post(
-            {
-              id: config.id,
-              message: config.message,
-              ...data,
-              success: true,
-            },
-            this.facebook
-          );
+          return new Post(data, this.facebook, config);
         });
     });
   }
@@ -414,7 +547,7 @@ export class Posts {
    * @returns Success status.
    */
   async remove(
-    config: CreatedPost | id,
+    config: RemovePost,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -427,28 +560,17 @@ export class Posts {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
 
-      if (typeof config === "string") {
-        config = { id: config };
-      }
-
       return this.facebook.client
         .post(
           `${id}_${config.id}`,
-          {
+          stringify({
             access_token: token,
-          },
+          }),
           { "Content-Type": "application/json" },
           "DELETE"
         )
         .then((data: Success) => {
-          return new Post(
-            {
-              // @ts-ignore TypeScript is stupid.
-              id: config.id,
-              success: data.success,
-            },
-            this.facebook
-          );
+          return new Post(data, this.facebook, config);
         });
     });
   }
@@ -606,8 +728,7 @@ export class PagePosts extends Posts {
    * @param config - The configuration object for the post.
    * @param config.message - The caption of the post.
    * @param config.link - The link of the post, if the post is a link post.
-   * @param config.published - Whether the post is published now or scheduled.
-   * @param config.scheduled_publish_time - The time to publish the post, if scheduled.
+   * @param config.schedule - The time to publish the post, if scheduled. Accepts anything that can be parsed by the `Date` constructor.
    * @param config.targeting - The targeting options for the post.
    * @returns {Post} A post object with methods for interacting with the post.
    */
@@ -666,7 +787,7 @@ export class PagePosts extends Posts {
    * @param config.id - The ID of the post to delete.
    * @returns {Post} A post object with methods for interacting with the post.
    */
-  async remove(config: CreatedPost) {
+  async remove(config: RemovePost) {
     return super.remove(
       config,
       "page",

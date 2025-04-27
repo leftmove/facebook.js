@@ -1,6 +1,7 @@
 import { GraphError } from "../errors";
 
 export const FACEBOOK_GRAPH_API = "https://graph.facebook.com/v22.0";
+export const FACEBOOK_URL = "https://www.facebook.com";
 
 export interface Response {
   response: Response;
@@ -93,8 +94,8 @@ export default class Client extends Queue {
 
   post(
     path: string,
-    body: Object | FormData,
-    headers: { "Content-Type"?: string } = {
+    body: string | FormData | URLSearchParams,
+    headers: HeadersInit = {
       "Content-Type": "application/json",
     },
     method = "POST"
@@ -104,7 +105,7 @@ export default class Client extends Queue {
         const response = await fetch(`${this.url}/${path}`, {
           method,
           headers,
-          body: body instanceof FormData ? body : JSON.stringify(body),
+          body,
         }).then(async (r) => {
           const data = await r.json();
           if (r.ok) {
@@ -120,3 +121,12 @@ export default class Client extends Queue {
     return this.enqueue(helper) as any;
   }
 }
+
+/**
+ * Stringify the body of the request
+ * @param body - The body of the request
+ * @returns The JSON stringified body
+ */
+export const stringify = (body: any) => {
+  return JSON.stringify(body);
+};

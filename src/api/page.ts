@@ -171,45 +171,13 @@ export class Page {
             e as GraphError
           );
         }
-      })
-      .then((token: string | undefined) => {
-        if (token === undefined) {
-          this.valid = false;
-          return undefined;
-        }
-        return this.facebook.client
-          .get("oauth/access_token", {
-            client_id: this.facebook.id,
-            client_secret: this.facebook.secret,
-            grant_type: "fb_exchange_token",
-            fb_exchange_token: token,
-          })
-          .then((response: any) => {
-            console.log(response);
-          });
       });
   }
 
   async refresh(
     token: string | undefined = this.token,
-    expires: number | undefined = this.expires,
-    warn: boolean = this.facebook.warnExpired
+    expires: number | undefined = this.expires
   ): Promise<{ token: string | undefined; expires: number | undefined }> {
-    if (token === undefined) {
-      const error = new Error();
-      throw new CredentialError("Page token is missing.", error);
-    }
-
-    if (expires === undefined) {
-      if (warn) {
-        warnConsole("Page token may be expired.");
-        this.expires = expire();
-      } else {
-        const error = new Error();
-        throw new CredentialError("Page token expiration is missing.", error);
-      }
-    }
-
     return this.validate(token, expires).then((valid) => {
       if (valid) {
         return {
