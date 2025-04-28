@@ -4,7 +4,12 @@ import {
   readFromJSONCredentials,
   DEFAULT_FILE_PATH,
 } from "../credentials";
-import { CredentialError, UnauthorizedError, GraphError } from "../errors";
+import {
+  CredentialError,
+  UnauthorizedError,
+  GraphError,
+  warnConsole,
+} from "../errors";
 import type { Config } from "../client/client";
 import type {
   Credentials,
@@ -354,7 +359,8 @@ export class Login {
       "pageId",
       "pageToken",
     ],
-    permissions: string[] = []
+    permissions: string[] = [],
+    warn: boolean = this.warnExpired
   ): Promise<unknown[]> {
     const promises = [
       ...credentials.map((c) => {
@@ -397,7 +403,11 @@ export class Login {
                 default:
                   break;
               }
-              throw new UnauthorizedError(message);
+              if (warn) {
+                warnConsole(message);
+              } else {
+                throw new UnauthorizedError(message);
+              }
             }
           })
       ),

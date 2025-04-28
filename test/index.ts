@@ -1,4 +1,5 @@
 import Facebook from "../src";
+import { Post } from "../src";
 import type { Authentication } from "../src";
 
 // This file is used to test the general functionality of the library.
@@ -30,16 +31,31 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // const userToken = facebook.access.user.token;
 // console.log({ userID, userExpires, userValid, userToken });
 
-// Publishing
-// Publish posts to the current profile.
+// // Publishing
+// // Publish posts to the current profile.
 
-// Page history.
+// // Page history.
 // const pagePosts = await facebook.page.posts.read();
 // console.log({ pagePosts });
 
 // // User history. Doesn't work for now, because special approval is required.
 // const userPosts = await facebook.user.posts.read();
 // console.log({ userPosts });
+
+// // Get a post.
+// // Gets page posts.
+
+// // Get a page post.
+// const pagePost = await facebook.page.posts.get({
+//   id: "122172394406285076",
+// });
+// console.log({ pagePost });
+
+// // Get a user post.
+// const userPost = await facebook.user.posts.get({
+//   id: "1234567890",
+// });
+// console.log({ userPost });
 
 // // Publishing to a page.
 // const pagePost = await facebook.page.posts.publish({
@@ -127,14 +143,43 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // console.log({ userPost });
 
 // Comments
-// Read comments from a page post.
-// const comments = await facebook.page.posts.comments.read({
-//   id: "122172361214285076",
-// });
+// Read comments from a page profile.
+// const post = new Post({ id: "122172395366285076" }, facebook);
+// const comments = await facebook.page.comments.read(post);
 // console.log({ comments });
 
-// Read comments from a user post.
-// const comments = await facebook.user.posts.comments.read({
-//   id: "1234567890",
-// });
+// // Read comments from a user profile.
+// const comments = await facebook.user.posts.comments.read(post);
 // console.log({ comments });
+
+// // Get comments.
+// // Get a comment from a page post.
+// const comment = await facebook.page.comments.get({
+//   id: "1446136966366636",
+//   post: "122172395366285076",
+// });
+// console.log({ comment });
+
+// // Get a comment from a user post.
+// const userComment = await facebook.user.comments.get({
+//   id: "1446136966366636",
+//   post: "1234567890",
+// });
+// console.log({ userComment });
+
+// // Publishing comments.
+// Publish a comment to a page post.
+const pageComment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "Hello, world!",
+});
+console.log({ pageComment });
+
+// // Publishing comments to a user post.
+// const userComment = await facebook.user.comments.publish({
+//   post: "1234567890",
+//   user: "10039207206110825",
+//   message: "Hello, world!",
+// });
+// console.log({ userComment });

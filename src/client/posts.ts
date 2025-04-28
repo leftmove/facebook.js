@@ -1,14 +1,14 @@
-import fs, { access } from "fs";
+import fs from "fs";
 import assert from "node:assert";
 
-import { Facebook } from "./client";
+import { Facebook, i, t } from "./client";
 import { DeprecatedError, PostError, warnConsole } from "../errors";
 import { stringify } from "../api";
 import { FACEBOOK_URL } from "../api";
 import type { Profile } from "../api";
 
 type id = string;
-interface CreatedPost {
+export interface CreatedPost {
   id?: id;
   message?: string;
   created_time?: string;
@@ -16,28 +16,28 @@ interface CreatedPost {
   scheduled?: boolean;
 }
 
-interface EditPost extends CreatedPost {
+export interface EditPost extends CreatedPost {
   id: string;
   message: string;
 }
 
-interface EditPostEmbedded extends Omit<EditPost, "id"> {
+export interface EditPostEmbedded extends Omit<EditPost, "id"> {
   id?: string;
 }
 
-interface RemovePost extends CreatedPost {
+export interface RemovePost extends CreatedPost {
   id: string;
 }
-interface RemovePostEmbedded extends Omit<RemovePost, "id"> {
+export interface RemovePostEmbedded extends Omit<RemovePost, "id"> {
   // Completely useless but it's here for the sake of completeness/consistency.
   id?: string;
 }
 
-interface Success {
+export interface Success {
   success: boolean;
 }
 
-interface Targeting {
+export interface Targeting {
   [key: string]: any;
   targeting: {
     geo_locations: {
@@ -50,60 +50,39 @@ interface Targeting {
   };
 }
 
-interface PostRegular {
+export interface PostRegular {
   message: string;
-  link?: string;
-  published?: boolean;
   targeting?: Targeting;
 }
 
-interface PostScheduled extends PostRegular {
+export interface PostScheduled extends PostRegular {
   schedule: string | Date;
   bypass?: boolean;
 }
 
-interface PostLink extends Omit<PostRegular, "message"> {
+export interface PostLink extends Omit<PostRegular, "message"> {
   link: string;
   message?: string;
 }
 
-interface PostLinkScheduled extends PostLink {
+export interface PostLinkScheduled extends PostLink {
   schedule: string | Date;
   bypass?: boolean;
 }
 
-interface PostMedia extends Omit<PostRegular, "message"> {
+export interface PostMedia extends Omit<PostRegular, "message"> {
   message?: string;
-  path: string | string[];
+  media: string | string[];
 }
 
-interface PostMediaScheduled extends Omit<PostScheduled, "message"> {
+export interface PostMediaScheduled extends Omit<PostScheduled, "message"> {
   message?: string;
-  path: string | string[];
+  media: string | string[];
 }
 
-interface PostMediaLink extends Omit<PostRegular, "message"> {
-  message?: string;
-  url: string | string[];
-}
-
-interface PostMediaLinkScheduled extends PostMediaLink {
-  schedule: string | Date;
-}
-
-const defaultConfig: PostRegular = {
+export const defaultConfig: PostRegular = {
   message: "",
 };
-
-// Very unnecessary, but less verbose. Nearing on abstraction hell.
-
-function i(profile: Profile, t: Facebook) {
-  return profile === "user" ? t.info.user.id : t.info.page.id;
-}
-
-function t(profile: Profile, t: Facebook) {
-  return profile === "user" ? t.access.user.token : t.access.page.token;
-}
 
 function toUNIXTime(input: string | Date | number) {
   return parseInt((new Date(input).getTime() / 1000).toFixed(0));
@@ -146,10 +125,12 @@ function validateSchedule(
   return minimum - difference <= threshold;
 }
 
-/**
+// Private client WeakMap to store Facebook instances
+const clientInstances = new WeakMap<Post, Facebook>();
+
 /**
  * A post object with methods for interacting with the post.
- * 
+ *
  * @property {string} id - The unique identifier for the post.
  * @property {string} user - The ID of the user who created the post.
  * @property {Date} [created] - The date and time when the post was created. Note that when this is returned from the {@link Posts#publish} method, it is automatically set to the current date and time, which is not the way Facebook (or any of the other methods) returns the property.
@@ -157,8 +138,6 @@ function validateSchedule(
  * @property {boolean} [success] - Whether the action which was performed on the post was successful.
  */
 export class Post {
-  private client: Facebook;
-
   id: string;
   user?: string;
 
@@ -179,8 +158,6 @@ export class Post {
       | PostLinkScheduled
       | PostMedia
       | PostMediaScheduled
-      | PostMediaLink
-      | PostMediaLinkScheduled
       | EditPost
       | EditPostEmbedded
       | RemovePost
@@ -209,7 +186,7 @@ export class Post {
     this.success = post.success || true;
     this.scheduled = scheduled || undefined;
 
-    this.client = facebook;
+    clientInstances.set(this, facebook);
   }
 
   /**
@@ -233,7 +210,8 @@ export class Post {
    * @extends {Facebook["remove"]}
    **/
   remove(config: RemovePostEmbedded) {
-    return this.client.posts.remove({ id: this.id, ...config });
+    const client = clientInstances.get(this);
+    return client!.posts.remove({ id: this.id, ...config });
   }
 
   /**
@@ -245,12 +223,24 @@ export class Post {
    * @extends {Facebook["edit"]}
    **/
   edit(config: EditPostEmbedded) {
-    return this.client.posts.edit({ id: this.id, ...config });
+    const client = clientInstances.get(this);
+    return client!.posts.edit({ id: this.id, ...config });
   }
 }
 
+/**
+ * Class for managing posts on a Facebook page or user profile.
+ * Provides methods for getting, publishing, editing, and deleting posts.
+ * You can use this class to manage posts on a page or user profile, but your probably shouldn't access it directly.
+ * Instead, access it through the {@link Facebook} class.
+ * @see {@link Post}
+ * @see {@link Facebook["posts"]}
+ * @see {@link Facebook["user"]["posts"]}
+ * @see {@link Facebook["page"]["posts"]}
+ * @see {@link Facebook["client"]}
+ */
 export class Posts {
-  constructor(public facebook: Facebook) {}
+  constructor(private readonly facebook: Facebook) {}
 
   /**
    * @description Retrieves a post by its ID.
@@ -259,7 +249,7 @@ export class Posts {
    * @throws {PostError} If there is an error getting the post.
    */
   async get(
-    config: CreatedPost | Post | id,
+    config: CreatedPost | Post,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -271,10 +261,6 @@ export class Posts {
     return this.facebook.refresh(credentials, permissions).then(() => {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
-
-      if (typeof config === "string") {
-        config = { id: config };
-      }
 
       return this.facebook.client
         .get(`${id}_${config.id}`, {
@@ -324,6 +310,8 @@ export class Posts {
    * @param config.targeting - The targeting options for the post.
    * @param config.bypass - Bypass schedule validation and enter any date as the schedule.
    * @returns A post object with methods for interacting with the post. Note that the `created` property is automatically set to the current date and time, this is not the way Facebook (or any of the other methods) returns it.
+   * @see {@link Post#ready} if your posting a scheduled post.
+   * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
     config: PostRegular | PostLink | PostScheduled | PostLinkScheduled,
@@ -347,7 +335,6 @@ export class Posts {
           "Schedule date cannot be less than 10 minutes from now."
         );
       }
-
       const scheduling =
         "schedule" in config
           ? {
@@ -355,6 +342,9 @@ export class Posts {
               scheduled_publish_time: toUNIXTime(config.schedule),
             }
           : { published: true };
+
+      if ("media" in config) {
+      }
 
       return this.facebook.client
         .post(
@@ -377,14 +367,12 @@ export class Posts {
    * @param config - The configuration object for the photo post.
    * @param config.path - The path of the photo(s) to upload.
    * @param config.url - The URL of the photo(s) to upload.
-   * @returns A post object with methods for interacting with the post.
+   * @returns {Post} A post object with methods for interacting with the post.
+   * @see {@link Post#ready} if your posting a scheduled post.
+   * @throws {PostError} If something goes wrong trying to upload the media.
    */
   async upload(
-    config:
-      | PostMedia
-      | PostMediaScheduled
-      | PostMediaLink
-      | PostMediaLinkScheduled,
+    config: PostMedia | PostMediaScheduled,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -398,7 +386,7 @@ export class Posts {
       const token = t(profile, this.facebook);
       let imagePromises;
 
-      if ("schedule" in config && new Date(config.schedule) < new Date()) {
+      if ("schedule" in config && validateSchedule(config.schedule) === false) {
         throw new PostError(
           "Schedule date cannot be in the past, or be less than 10 minutes from now."
         );
@@ -455,14 +443,6 @@ export class Posts {
               return file(path);
             })
           : [file(config.path)];
-      } else if ("url" in config) {
-        imagePromises = Array.isArray(config.url)
-          ? config.url.map((url) => {
-              return {
-                id: url,
-              };
-            })
-          : [{ id: config.url }];
       }
 
       assert(imagePromises, "Invalid config.");
@@ -508,7 +488,8 @@ export class Posts {
    * @param config - The configuration object for editing the post.
    * @param config.id - The ID of the post to edit.
    * @param config.message - The new message for the post.
-   * @returns Success status.
+   * @returns {Post} A post object with methods for interacting with the post.
+   * @throws {PostError} If something goes wrong trying to edit the post.
    */
   async edit(
     config: EditPost,
@@ -544,7 +525,8 @@ export class Posts {
    * Deletes a post on Facebook.
    * @param config - The configuration object for deleting the post.
    * @param config.id - The ID of the post to delete.
-   * @returns Success status.
+   * @returns {Post} A post object with methods for interacting with the post.
+   * @throws {PostError} If something goes wrong trying to delete the post.
    */
   async remove(
     config: RemovePost,
@@ -591,7 +573,7 @@ export class UserPosts extends Posts {
    * Retrieves a post by its ID from the user's profile.
    * @param config - The configuration object containing the post ID.
    * @param config.id - The ID of the post to retrieve.
-   * @returns The post data.
+   * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
    */
   async get(config: CreatedPost) {
@@ -600,7 +582,7 @@ export class UserPosts extends Posts {
 
   /**
    * Reads all posts from the profile. Usually not accessible since it requires the `user_posts` permission, which requires special approval from Facebook.
-   * @returns User post history.
+   * @returns {Post[]} An array of post objects.
    * @throws {PostError} If there is an error getting the posts.
    */
   async read(): Promise<Post[]> {
@@ -698,7 +680,7 @@ export class PagePosts extends Posts {
    * Retrieves a post by its ID from the page.
    * @param config - The configuration object containing the post ID.
    * @param config.id - The ID of the post to retrieve.
-   * @returns The post data.
+   * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
    */
   async get(config: CreatedPost) {
@@ -712,7 +694,7 @@ export class PagePosts extends Posts {
 
   /**
    * Reads all posts from the page.
-   * @returns Page post history.
+   * @returns {Post[]} An array of post objects.
    * @throws {PostError} If there is an error getting the posts.
    */
   async read(): Promise<Post[]> {
@@ -731,6 +713,8 @@ export class PagePosts extends Posts {
    * @param config.schedule - The time to publish the post, if scheduled. Accepts anything that can be parsed by the `Date` constructor.
    * @param config.targeting - The targeting options for the post.
    * @returns {Post} A post object with methods for interacting with the post.
+   * @see {@link Post#ready} if your posting a scheduled post.
+   * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
     config: PostRegular | PostLink | PostScheduled | PostLinkScheduled
@@ -749,14 +733,10 @@ export class PagePosts extends Posts {
    * @param config.path - The path of the media file(s) to upload.
    * @param config.url - The URL of the media file(s) to upload.
    * @returns {Post} A post object with methods for interacting with the post.
+   * @see {@link Post#ready} if your posting a scheduled post.
+   * @throws {PostError} If something goes wrong trying to upload the media.
    */
-  async upload(
-    config:
-      | PostMedia
-      | PostMediaScheduled
-      | PostMediaLink
-      | PostMediaLinkScheduled
-  ) {
+  async upload(config: PostMedia | PostMediaScheduled) {
     return super.upload(
       config,
       "page",
@@ -771,6 +751,8 @@ export class PagePosts extends Posts {
    * @param config.id - The ID of the post to edit.
    * @param config.message - The new message for the post.
    * @returns {Post} A post object with methods for interacting with the post.
+   * @see {@link Post#ready} if your editing a scheduled post.
+   * @throws {PostError} If something goes wrong trying to edit the post.
    */
   async edit(config: EditPost) {
     return super.edit(
@@ -786,6 +768,7 @@ export class PagePosts extends Posts {
    * @param config - The configuration object for deleting the post.
    * @param config.id - The ID of the post to delete.
    * @returns {Post} A post object with methods for interacting with the post.
+   * @throws {PostError} If something goes wrong trying to delete the post.
    */
   async remove(config: RemovePost) {
     return super.remove(

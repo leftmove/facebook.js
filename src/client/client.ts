@@ -9,6 +9,7 @@ import type { Permissions, Info, Access, Profile } from "../api";
 
 import { Uid, Pid } from "../api";
 import { Posts, UserPosts, PagePosts } from "./posts";
+import { Comments, PageComments, UserComments } from "./comments";
 
 // Optional config for the Facebook client. Don't know how to include without adding clutter.
 
@@ -25,6 +26,15 @@ import { Posts, UserPosts, PagePosts } from "./posts";
 // * @internal @param config.pageIndex - Index of the page to use if user manages multiple pages.
 // * @internal @param config.pageToken - Facebook page access token.
 // * @internal @param config.pageTokenExpires - Expiration time for page access token. Set automatically by the client.
+
+// Very unnecessary, but less verbose. Nearing on abstraction hell.
+export function i(profile: Profile, t: Facebook) {
+  return profile === "user" ? t.info.user.id : t.info.page.id;
+}
+
+export function t(profile: Profile, t: Facebook) {
+  return profile === "user" ? t.access.user.token : t.access.page.token;
+}
 
 export interface Config {
   id?: string;
@@ -81,25 +91,21 @@ export class Facebook extends Login {
   /**
    * User-specific operations
    * @property {UserPosts} posts - Methods for interacting with posts on a user profile
+   * @property {UserComments} comments - Methods for interacting with comments on a user profile
    */
   user = {
-    /**
-     * Methods for interacting with posts on a user profile
-     * @type {UserPosts}
-     */
     posts: new UserPosts(this),
+    comments: new UserComments(this),
   };
 
   /**
    * Page-specific operations
    * @property {PagePosts} posts - Methods for interacting with posts on a Facebook page
+   * @property {PageComments} comments - Methods for interacting with comments on a Facebook page
    */
   page = {
-    /**
-     * Methods for interacting with posts on a Facebook page
-     * @type {PagePosts}
-     */
     posts: new PagePosts(this),
+    comments: new PageComments(this),
   };
 
   /**
