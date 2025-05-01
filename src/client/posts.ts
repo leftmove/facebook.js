@@ -1,9 +1,6 @@
-import fs from "fs";
-import assert from "node:assert";
-
 import { Facebook, i, t } from "./client";
 import { DeprecatedError, PostError, warnConsole } from "../errors";
-import { stringify } from "../api";
+import { stringify, parameterize } from "../api";
 import { FACEBOOK_URL } from "../api";
 import type { Profile } from "../api";
 
@@ -15,6 +12,12 @@ export interface CreatedPost {
   success?: boolean;
   scheduled?: boolean;
 }
+
+interface ImageId {
+  media_fbid: string;
+}
+
+type ImageUpload = ImageId | string;
 
 export interface EditPost extends CreatedPost {
   id: string;
@@ -122,7 +125,15 @@ function validateSchedule(
   // You could possibly fix this better with a floor, but I'm lazy.
   // This is still the lesser of two evils though, because rather than have the problem of not being able to schedule a post exactly ten minutes from now, there's now a chance that the API will throw an error the inputted time is too close to exactly ten minutes.
   // Hacky and long explanation, I know, but this extra function seems to be the best solution.
-  return minimum - difference <= threshold;
+  const valid = minimum - difference <= threshold;
+
+  if (valid === false) {
+    throw new PostError(
+      "Schedule date cannot be less than 10 minutes from now."
+    );
+  } else {
+    return valid;
+  }
 }
 
 // Private client WeakMap to store Facebook instances
@@ -179,12 +190,12 @@ export class Post {
       ? new Date(post.created_time)
       : scheduled
       ? new Date(config.schedule)
-      : undefined;
+      : new Date();
     this.message = post.message || config.message || undefined;
     this.link = `${FACEBOOK_URL}/${postID}`;
 
     this.success = post.success || true;
-    this.scheduled = scheduled || undefined;
+    this.scheduled = scheduled || false;
 
     clientInstances.set(this, facebook);
   }
@@ -314,65 +325,13 @@ export class Posts {
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
-    config: PostRegular | PostLink | PostScheduled | PostLinkScheduled,
-    profile: Profile = this.facebook.profile,
-    credentials: string[] = profile === "page"
-      ? ["pageId", "pageToken"]
-      : ["userId", "userToken"],
-    permissions: string[] = profile === "page"
-      ? ["pages_read_engagement", "pages_manage_posts"]
-      : []
-  ): Promise<Post> {
-    return this.facebook.refresh(credentials, permissions).then(() => {
-      const id = i(profile, this.facebook);
-      const token = t(profile, this.facebook);
-
-      if (
-        "schedule" in config &&
-        validateSchedule(config.schedule, config.bypass) === false
-      ) {
-        throw new PostError(
-          "Schedule date cannot be less than 10 minutes from now."
-        );
-      }
-      const scheduling =
-        "schedule" in config
-          ? {
-              published: false,
-              scheduled_publish_time: toUNIXTime(config.schedule),
-            }
-          : { published: true };
-
-      if ("media" in config) {
-      }
-
-      return this.facebook.client
-        .post(
-          `${id}/feed`,
-          stringify({
-            ...config,
-            ...scheduling,
-            access_token: token,
-          })
-        )
-        .then((data: CreatedPost) => new Post(data, this.facebook, config))
-        .catch((e: PostError) => {
-          throw e;
-        });
-    });
-  }
-
-  /**
-   * Publishes a media post to Facebook. For more information on uploading media as posts, see the [Facebook Graph API documentation](https://developers.facebook.com/docs/pages-api/posts/#publish-media-posts).
-   * @param config - The configuration object for the photo post.
-   * @param config.path - The path of the photo(s) to upload.
-   * @param config.url - The URL of the photo(s) to upload.
-   * @returns {Post} A post object with methods for interacting with the post.
-   * @see {@link Post#ready} if your posting a scheduled post.
-   * @throws {PostError} If something goes wrong trying to upload the media.
-   */
-  async upload(
-    config: PostMedia | PostMediaScheduled,
+    config:
+      | PostRegular
+      | PostLink
+      | PostMedia
+      | PostMediaScheduled
+      | PostScheduled
+      | PostLinkScheduled,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -384,101 +343,46 @@ export class Posts {
     return this.facebook.refresh(credentials, permissions).then(async () => {
       const id = i(profile, this.facebook);
       const token = t(profile, this.facebook);
-      let imagePromises;
 
-      if ("schedule" in config && validateSchedule(config.schedule) === false) {
-        throw new PostError(
-          "Schedule date cannot be in the past, or be less than 10 minutes from now."
-        );
-      }
-
-      if ("path" in config) {
-        interface Data {
-          id: string;
-        }
-
-        const validExtensions = ["jpg", "bmp", "png", "gif", "tiff"];
-        const file = (path: string): Promise<Data> => {
-          if (fs.existsSync(path) === false) {
-            throw new PostError(
-              `File specified at path '${path}' does not exist, cannot upload photo.`
-            );
-          }
-
-          const extension = path.split(".").pop();
-          if (
-            extension === undefined ||
-            validExtensions.includes(extension) === false
-          ) {
-            throw new PostError(
-              `File specified at path '${path}' is not a supported image. Supported extensions are: ${validExtensions}`
-            );
-          }
-
-          const form = new FormData();
-          const image = fs.readFileSync(path);
-          const name = path.split("/").pop();
-          const blob = new Blob([image], { type: `image/${extension}}` });
-          assert(token, "Token is missing.");
-
-          form.append("access_token", token);
-          form.append("source", blob, name);
-          form.append("published", "false");
-          form.append("temporary", "true");
-
-          return new Promise((resolve) => {
-            try {
-              resolve(
-                this.facebook.client
-                  .post(`me/photos`, form, {})
-                  .then((data: Data) => data)
-              );
-            } catch (error) {
-              throw new PostError("Error uploading photo.", error);
+      const scheduling =
+        "schedule" in config && validateSchedule(config.schedule, config.bypass)
+          ? {
+              published: false,
+              scheduled_publish_time: toUNIXTime(config.schedule),
             }
-          });
-        };
-        imagePromises = Array.isArray(config.path)
-          ? config.path.map((path) => {
-              return file(path);
-            })
-          : [file(config.path)];
-      }
+          : { published: true };
 
-      assert(imagePromises, "Invalid config.");
+      const media: ImageUpload[] =
+        "media" in config
+          ? await this.facebook.upload
+              .image({ media: config.media }, profile)
+              .then((images) =>
+                images.map((image) => {
+                  return stringify({ media_fbid: image.id });
+                })
+              )
+          : [];
+      const attachments =
+        "media" in config
+          ? media.reduce((acc: Record<string, ImageUpload>, mediaId, index) => {
+              acc[`attached_media[${index}]`] = mediaId;
+              return acc;
+            }, {})
+          : {};
 
-      return Promise.all(imagePromises)
+      return this.facebook.client
+        .post(
+          `${id}/feed`,
+          parameterize({
+            ...config,
+            ...scheduling,
+            ...attachments,
+            access_token: token,
+          }) // Parameterized instead of stringified because it could contain attachments.
+        )
+        .then((data: CreatedPost) => new Post(data, this.facebook, config))
         .catch((e: PostError) => {
-          throw new PostError("Error uploading media.", e);
-        })
-        .then((images: { id: string }[]) => {
-          const body = new URLSearchParams();
-          body.append("message", config.message || "");
-          body.append("access_token", token!);
-          images.forEach((image: { id: string }, i) => {
-            body.append(
-              `attached_media[${i}]`,
-              `{"media_fbid": "${image.id}"}`
-            );
-          });
-          if ("schedule" in config) {
-            body.append(
-              "scheduled_publish_time",
-              toUNIXTime(config.schedule).toString()
-            );
-            body.append("published", "false");
-          } else {
-            body.append("published", "true");
-          }
-
-          return this.facebook.client
-            .post(`${id}/feed`, body, {
-              "Content-Type": "application/x-www-form-urlencoded",
-            })
-            .then((data: CreatedPost) => new Post(data, this.facebook, config))
-            .catch((e: PostError) => {
-              throw e;
-            });
+          throw e;
         });
     });
   }
@@ -608,24 +512,6 @@ export class UserPosts extends Posts {
   }
 
   /**
-   * @description This method is deprecated since Facebook disabled the ability to upload media from user profiles. Try uploading from a page profile instead. For more information, see the links below.
-   * @deprecated
-   * @throws {DeprecatedError} If the method is called.
-   * @see {@link PagePosts#upload}
-   * @see {@link https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/}
-   * @see {@link https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes}
-   */
-  async upload() {
-    throw new DeprecatedError(
-      "Uploading media from user profiles is no longer supported. Please upload from page profiles instead.\n" +
-        "For more information, visit:\n" +
-        "https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes\n" +
-        "https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/"
-    );
-    return super.upload({ path: "" }, "user", ["userId", "userToken"], []);
-  }
-
-  /**
    * @description This method is deprecated since Facebook disabled the ability to edit posts from user profiles. Try editing from a page profile instead. For more information, see the links below.
    * @deprecated
    * @throws {DeprecatedError} If the method is called.
@@ -717,30 +603,18 @@ export class PagePosts extends Posts {
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
-    config: PostRegular | PostLink | PostScheduled | PostLinkScheduled
+    config:
+      | PostRegular
+      | PostLink
+      | PostScheduled
+      | PostLinkScheduled
+      | PostMedia
+      | PostMediaScheduled
   ) {
     return super.publish(
       config,
       "page",
       ["pageId", "pageToken"],
-      ["pages_read_engagement", "pages_manage_posts"]
-    );
-  }
-
-  /**
-   * Publishes a media post to the page.
-   * @param config - The configuration object for the media post.
-   * @param config.path - The path of the media file(s) to upload.
-   * @param config.url - The URL of the media file(s) to upload.
-   * @returns {Post} A post object with methods for interacting with the post.
-   * @see {@link Post#ready} if your posting a scheduled post.
-   * @throws {PostError} If something goes wrong trying to upload the media.
-   */
-  async upload(config: PostMedia | PostMediaScheduled) {
-    return super.upload(
-      config,
-      "page",
-      ["pageId", "userToken"],
       ["pages_read_engagement", "pages_manage_posts"]
     );
   }

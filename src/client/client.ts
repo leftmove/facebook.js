@@ -3,39 +3,57 @@ import {
   writeToJSONCredentials,
   readFromJSONCredentials,
 } from "../credentials";
-import { CredentialError, PostError } from "../errors";
+import { Posts, UserPosts, PagePosts } from "./posts";
+import { Comments, PageComments, UserComments } from "./comments";
+import { Upload } from "./upload";
+
 import type { writeCredentials, readCredentials } from "../credentials";
 import type { Permissions, Info, Access, Profile } from "../api";
 
-import { Uid, Pid } from "../api";
-import { Posts, UserPosts, PagePosts } from "./posts";
-import { Comments, PageComments, UserComments } from "./comments";
-
-// Optional config for the Facebook client. Don't know how to include without adding clutter.
-
-// * @internal @param config.access - Pre-configured access tokens and credentials.
-// * @internal @param config.info - Pre-configured profile information.
-// * @internal @param config.appToken - Facebook app access token.
-// * @internal @param config.appTokenExpires - Expiration time for app access token. Set automatically by the client.
-// * @internal @param config.userToken - Facebook user access token.
-// * @internal @param config.userTokenExpires - Expiration time for user access token. Set automatically by the client.
-// * @internal @param config.userId - Facebook user ID.
-// * @internal @param config.userIdExpires - Expiration time for user ID. Set automatically by the client.
-// * @internal @param config.pageId - Facebook page ID.
-// * @internal @param config.pageIdExpires - Expiration time for page ID. Set automatically by the client.
-// * @internal @param config.pageIndex - Index of the page to use if user manages multiple pages.
-// * @internal @param config.pageToken - Facebook page access token.
-// * @internal @param config.pageTokenExpires - Expiration time for page access token. Set automatically by the client.
-
-// Very unnecessary, but less verbose. Nearing on abstraction hell.
+/**
+ * Get the ID for the given profile.
+ * @param profile - The profile to get the ID for.
+ * @param t - The Facebook client instance.
+ * @returns The ID for the given profile.
+ */
 export function i(profile: Profile, t: Facebook) {
   return profile === "user" ? t.info.user.id : t.info.page.id;
 }
 
+/**
+ * Get the access token for the given profile.
+ * @param profile - The profile to get the access token for.
+ * @param t - The Facebook client instance.
+ * @returns The access token for the given profile.
+ */
 export function t(profile: Profile, t: Facebook) {
   return profile === "user" ? t.access.user.token : t.access.page.token;
 }
 
+/**
+ * Configuration options for the Facebook client.
+ * @see {@link Facebook}
+ * @property {string} id - Facebook app ID.
+ * @property {string} secret - Facebook app secret.
+ * @property {Profile} profile - Profile type to use for API methods ("user" or "page"). Default is "user".
+ * @property {Access} access - Pre-configured access tokens and credentials.
+ * @property {Info} info - Pre-configured profile information.
+ * @property {string} appToken - Facebook app access token.
+ * @property {number} appTokenExpires - Expiration time for app access token. Set automatically by the client.
+ * @property {string} userToken - Facebook user access token.
+ * @property {number} userTokenExpires - Expiration time for user access token. Set automatically by the client.
+ * @property {string} userId - Facebook user ID.
+ * @property {number} userIdExpires - Expiration time for user ID. Set automatically by the client.
+ * @property {string} pageId - Facebook page ID.
+ * @property {number} pageIdExpires - Expiration time for page ID. Set automatically by the client.
+ * @property {number} pageIndex - Index of the page to use if user manages multiple pages. Defaults to 0.
+ * @property {string} pageToken - Facebook page access token.
+ * @property {number} pageTokenExpires - Expiration time for page access token. Set automatically by the client.
+ * @property {Permissions} scope - Permission scopes to request during authentication.
+ * @property {writeCredentials} writeCredentials - Function to write credentials to storage.
+ * @property {readCredentials} readCredentials - Function to read credentials from storage.
+ * @property {boolean} overrideLocal - Whether to override locally stored credentials.
+ */
 export interface Config {
   id?: string;
   secret?: string;
@@ -63,6 +81,14 @@ export interface Config {
   warnExpired?: boolean;
 }
 
+/**
+ * Facebook API client class.
+ * Provides methods for interacting with Facebook's Graph API.
+ * This is the main class you'll use to interact with this library.
+ * @see {@link Posts}
+ * @see {@link Comments}
+ * @see {@link Upload}
+ */
 export class Facebook extends Login {
   client = new Client();
 
@@ -87,6 +113,12 @@ export class Facebook extends Login {
    * @type {Posts}
    */
   posts = new Posts(this);
+
+  /**
+   * Returns an object with methods for interacting with Facebook uploads.
+   * @type {Upload}
+   */
+  upload = new Upload(this);
 
   /**
    * User-specific operations
@@ -116,32 +148,5 @@ export class Facebook extends Login {
   switch(profile: Profile) {
     this.profile = profile;
     return this;
-  }
-
-  // /**
-  //  * Retrieves a comment by its ID.
-  //  * @param postId - The ID of the post or comment to reply to. If the comment is a reply, this should be the ID of the parent comment.
-  //  * @returns The comment data.
-  //  * @throws {PostError} If there is an error getting the comment.
-  //  **/
-  // publishComment(postId: string, message: string) {
-  //   return this.refresh(["pageToken"]).then(() => {
-  //     try {
-  //       return this.client.post(postId, {
-  //         message,
-  //         access_token: this.access.page.token,
-  //       });
-  //     } catch (error) {
-  //       throw new PostError("Error publishing comment.", error);
-  //     }
-  //   });
-  // }
-
-  /**
-   * Returns an object with methods for interacting with Facebook comments.
-   * @returns {object} An object with methods for interacting with Facebook comments
-   */
-  comments() {
-    return {};
   }
 }

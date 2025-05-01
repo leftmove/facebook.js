@@ -26,9 +26,25 @@ export class Image {
   }
 }
 
+/**
+ * Class for uploading media to Facebook.
+ * Provides methods for uploading images, videos, and other media types.
+ * You can use this class to upload media to Facebook, but your probably shouldn't access it directly.
+ * Instead, access it through the {@link Facebook} class.
+ * @see {@link Facebook["upload"]}
+ * @see {@link Facebook["client"]}
+ */
 export class Upload {
   constructor(private readonly facebook: Facebook) {}
 
+  /**
+   * Upload an image to Facebook.
+   * @param config.media - The path to the image file to upload.
+   * @param profile - The profile to upload the image to. This defaults to the profile set in the {@link Facebook} class — you probably shouldn't change this.
+   * @param credentials - The credentials to use for uploading the image. This defaults to the credentials set in the {@link Facebook} class — you probably shouldn't change this.
+   * @param permissions - The permissions to use for uploading the image.
+   * @returns A promise that resolves to an array of image responses.
+   */
   async image(
     config: UploadConfig,
     profile: Profile = this.facebook.profile,

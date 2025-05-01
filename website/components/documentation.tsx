@@ -9,6 +9,9 @@ import {
 } from "ts-morph";
 
 async function getGitHubCode(path: string) {
+  console.log(
+    `https://raw.githubusercontent.com/leftmove/facebook.js/main/src/${path}`
+  );
   const response = await fetch(
     `https://raw.githubusercontent.com/leftmove/facebook.js/main/src/${path}`,
     {

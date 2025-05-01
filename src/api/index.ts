@@ -1,6 +1,11 @@
 import Client from "./wrapper";
 
-export { FACEBOOK_GRAPH_API, FACEBOOK_URL, stringify } from "./wrapper";
+export {
+  FACEBOOK_GRAPH_API,
+  FACEBOOK_URL,
+  stringify,
+  parameterize,
+} from "./wrapper";
 export { DEFAULT_SCOPE } from "./login";
 export { DEFAULT_EXPIRE_TIME } from "./login";
 export { DEFAULT_EXPIRE_ADD } from "./login";

@@ -69,11 +69,11 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // });
 // console.log({ userPost });
 
-// // Publishing media to a page.
-// const pagePost = await facebook.page.posts.upload({
+// Publishing media to a page.
+// const pagePost = await facebook.page.posts.publish({
 //   // Change the variable name to pageMedia later
 //   message: "Hello, world!",
-//   path: "/Users/anonyo/Downloads/Images/Miscellaneous/fb.png",
+//   media: "/Users/anonyo/Downloads/Images/Miscellaneous/fb.png",
 // });
 // console.log({ pagePost });
 
@@ -169,12 +169,12 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 
 // // Publishing comments.
 // Publish a comment to a page post.
-const pageComment = await facebook.page.comments.publish({
-  post: "122172395366285076",
-  user: "10039207206110825",
-  message: "Hello, world!",
-});
-console.log({ pageComment });
+// const pageComment = await facebook.page.comments.publish({
+//   post: "122172395366285076",
+//   user: "10039207206110825",
+//   message: "Hello, world!",
+// });
+// console.log({ pageComment });
 
 // // Publishing comments to a user post.
 // const userComment = await facebook.user.comments.publish({

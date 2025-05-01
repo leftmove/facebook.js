@@ -123,10 +123,49 @@ export default class Client extends Queue {
 }
 
 /**
- * Stringify the body of the request
- * @param body - The body of the request
- * @returns The JSON stringified body
+ * Stringify the body of the request.
+ * @param body - The body of the request.
+ * @returns The JSON stringified body.
  */
-export const stringify = (body: any) => {
+export const stringify = (body: any): string => {
   return JSON.stringify(body);
+};
+
+/**
+ * Convert a JSON object to URLSearchParams.
+ * @param json - The JSON object to convert.
+ * @returns The URLSearchParams object.
+ */
+export const parameterize = (json: Record<string, any>): URLSearchParams => {
+  const params = new URLSearchParams();
+
+  const appendParams = (obj: Record<string, any>, prefix = "") => {
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const value = obj[key];
+        const paramKey = prefix ? `${prefix}[${key}]` : key;
+
+        if (value === null || value === undefined) {
+          continue;
+        } else if (typeof value === "object" && !Array.isArray(value)) {
+          // If value is an object, recursively process it
+          appendParams(value, paramKey);
+        } else if (Array.isArray(value)) {
+          // Handle arrays
+          value.forEach((item, index) => {
+            if (typeof item === "object" && item !== null) {
+              appendParams(item, `${paramKey}[${index}]`);
+            } else {
+              params.append(`${paramKey}[${index}]`, String(item));
+            }
+          });
+        } else {
+          params.append(paramKey, String(value));
+        }
+      }
+    }
+  };
+
+  appendParams(json);
+  return params;
 };
