@@ -1,22 +1,13 @@
+import nextra from "nextra";
 import type { NextConfig } from "next";
-import createMDX from "@next/mdx";
 
-const withMDX = createMDX({
-  options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
-  },
-});
-
+const withNextra = nextra({});
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  images: {
-    domains: ["raw.githubusercontent.com"],
-  },
-  pageExtensions: ["js", "jsx", "mdx", "ts", "tsx"],
-  experimental: {
-    optimizeCss: true,
+  turbopack: {
+    resolveAlias: {
+      "next-mdx-import-source-file": "./mdx-components.ts",
+    },
   },
 };
 
-export default withMDX(nextConfig);
+export default withNextra(nextConfig);
