@@ -6,6 +6,12 @@ import { PostError } from "../errors";
 import fs from "fs";
 import assert from "assert";
 
+export interface ImageId {
+  media_fbid: string;
+}
+
+export type ImageUpload = ImageId | string;
+
 interface UploadConfig {
   media: string | string[];
 }

@@ -2,7 +2,10 @@ import { Facebook, i, t } from "./client";
 import { DeprecatedError, PostError, warnConsole } from "../errors";
 import { stringify, parameterize } from "../api";
 import { FACEBOOK_URL } from "../api";
+
 import type { Profile } from "../api";
+import type { ImageUpload } from "./upload";
+import type { CommentRegular, CommentMedia } from "./comments";
 
 type id = string;
 export interface CreatedPost {
@@ -12,12 +15,6 @@ export interface CreatedPost {
   success?: boolean;
   scheduled?: boolean;
 }
-
-interface ImageId {
-  media_fbid: string;
-}
-
-type ImageUpload = ImageId | string;
 
 export interface EditPost extends CreatedPost {
   id: string;
@@ -53,35 +50,62 @@ export interface Targeting {
   };
 }
 
+/**
+ * Configuration object for publishing a post.
+ * @property {string} message - The message to publish.
+ * @property {Targeting} [targeting] - The targeting options for the post.
+ */
 export interface PostRegular {
   message: string;
   targeting?: Targeting;
 }
 
+/**
+ * Configuration object for publishing a scheduled post.
+ * @extends {PostRegular}
+ * @property {string} schedule - The date and time to publish the post.
+ * @property {boolean} [bypass] - Bypass schedule validation and enter any date as the schedule.
+ */
 export interface PostScheduled extends PostRegular {
   schedule: string | Date;
   bypass?: boolean;
 }
 
+/**
+ * Configuration object for publishing a link post.
+ * @extends {PostRegular}
+ * @property {string} link - The link to publish.
+ * @property {string} [message] - The message to publish.
+ */
 export interface PostLink extends Omit<PostRegular, "message"> {
   link: string;
   message?: string;
 }
 
-export interface PostLinkScheduled extends PostLink {
-  schedule: string | Date;
-  bypass?: boolean;
-}
+/**
+ * Configuration object for publishing a scheduled link post.
+ * @extends {PostLink}
+ * @property {string} schedule - The date and time to publish the post.
+ * @property {boolean} [bypass] - Bypass schedule validation and enter any date as the schedule.
+ */
+export type PostLinkScheduled = PostLink & PostScheduled;
 
+/**
+ * Configuration object for publishing a post with media.
+ * @extends {PostRegular}
+ * @property {string} media - The path of the media to upload — accepts either a single path or an array of paths.
+ */
 export interface PostMedia extends Omit<PostRegular, "message"> {
   message?: string;
   media: string | string[];
 }
 
-export interface PostMediaScheduled extends Omit<PostScheduled, "message"> {
-  message?: string;
-  media: string | string[];
-}
+/**
+ * Configuration object for publishing a scheduled post with media.
+ * @extends {PostScheduled}
+ * @property {string} media - The path of the media to upload — accepts either a single path or an array of paths.
+ */
+export type PostMediaScheduled = PostMedia & PostScheduled;
 
 export const defaultConfig: PostRegular = {
   message: "",
@@ -136,12 +160,8 @@ function validateSchedule(
   }
 }
 
-// Private client WeakMap to store Facebook instances
-const clientInstances = new WeakMap<Post, Facebook>();
-
 /**
  * A post object with methods for interacting with the post.
- *
  * @property {string} id - The unique identifier for the post.
  * @property {string} user - The ID of the user who created the post.
  * @property {Date} [created] - The date and time when the post was created. Note that when this is returned from the {@link Posts#publish} method, it is automatically set to the current date and time, which is not the way Facebook (or any of the other methods) returns the property.
@@ -149,6 +169,7 @@ const clientInstances = new WeakMap<Post, Facebook>();
  * @property {boolean} [success] - Whether the action which was performed on the post was successful.
  */
 export class Post {
+  profile: Profile;
   id: string;
   user?: string;
 
@@ -158,6 +179,16 @@ export class Post {
 
   success?: boolean;
   scheduled?: boolean;
+
+  private client: Facebook;
+
+  private _customFields: Set<string> = new Set([
+    "id",
+    "user",
+    "created",
+    "message",
+    "success",
+  ]);
 
   constructor(
     post: CreatedPost,
@@ -172,7 +203,8 @@ export class Post {
       | EditPost
       | EditPostEmbedded
       | RemovePost
-      | RemovePostEmbedded = defaultConfig
+      | RemovePostEmbedded = defaultConfig,
+    profile: Profile = facebook.profile
   ) {
     if (post.id === undefined) {
       throw new PostError("Post ID is required.");
@@ -197,11 +229,20 @@ export class Post {
     this.success = post.success || true;
     this.scheduled = scheduled || false;
 
-    clientInstances.set(this, facebook);
+    this.profile = profile;
+    this.client = facebook;
+    Object.keys(post)
+      .filter((key) => !this._customFields.has(key))
+      .forEach((key) => {
+        const postValue = post[key as keyof CreatedPost];
+        if (postValue !== undefined) {
+          (this as any)[key] = postValue;
+        }
+      });
   }
 
   /**
-   * @description Checks if the post has been published. Useful for scheduled posts.
+   * Checks if the post has been published. Useful for scheduled posts.
    * @returns {boolean} Whether the post has been published.
    */
   ready() {
@@ -213,29 +254,49 @@ export class Post {
   }
 
   /**
-   * @description Deletes the post.
+   * Deletes the post.
    * @see {@link Facebook["remove"]}
    * @param config - The configuration object for deleting the post.
    * @param config.id - The ID of the post to delete. By default, this is the ID of the current post. Ideally, you shouldn't change this — if you want to delete a different post, best practice is to use the {@link Posts#remove} method.
    * @see {@link Posts#remove}
    * @extends {Facebook["remove"]}
    **/
-  remove(config: RemovePostEmbedded) {
-    const client = clientInstances.get(this);
-    return client!.posts.remove({ id: this.id, ...config });
+  remove(config: RemovePostEmbedded, profile: Profile = this.profile) {
+    return this.client.posts.remove({ id: this.id, ...config }, profile);
   }
 
   /**
-   * @description Edits the post.
+   * Edits the post.
    * @see {@link Facebook["edit"]}
    * @param config - The configuration object for editing the post.
    * @param config.id - The ID of the post to edit. By default, this is the ID of the current post. Ideally, you shouldn't change this — if you want to edit a different post, best practice is to use the {@link Posts#edit} method.
    * @see {@link Posts#edit}
    * @extends {Facebook["edit"]}
    **/
-  edit(config: EditPostEmbedded) {
-    const client = clientInstances.get(this);
-    return client!.posts.edit({ id: this.id, ...config });
+  edit(config: EditPostEmbedded, profile: Profile = this.profile) {
+    return this.client.posts.edit({ id: this.id, ...config }, profile);
+  }
+
+  /**
+   * Retrieves comments from the post.
+   * @param config.id - The post ID.
+   * @returns {Comment[]} An array of comment objects.
+   * @throws {PostError} If there is an error reading the comments.
+   */
+  comments(config: Post) {
+    return this.client.comments.read(config, this.profile);
+  }
+
+  /**
+   * Replies a comment on the post.
+   * @param config - The configuration object for publishing a comment.
+   * @param config.post - The ID of the post to publish a comment to.
+   * @param config.user - The ID of the user to publish a comment as.
+   * @param config.message - The message of the comment.
+   * @param config.media - The path of the media to upload — only accepts a single path, as multiple uploads are not supported.
+   */
+  reply(config: CommentRegular | CommentMedia) {
+    return this.client.comments.publish(config, this.profile);
   }
 }
 
@@ -254,7 +315,7 @@ export class Posts {
   constructor(private readonly facebook: Facebook) {}
 
   /**
-   * @description Retrieves a post by its ID.
+   * Retrieves a post by its ID.
    * @param config - The post ID, or a post object.
    * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
@@ -277,7 +338,9 @@ export class Posts {
         .get(`${id}_${config.id}`, {
           access_token: token,
         })
-        .then((data: CreatedPost) => new Post(data, this.facebook))
+        .then(
+          (data: CreatedPost) => new Post(data, this.facebook, config, profile)
+        )
         .catch((e: PostError) => {
           throw e;
         });
@@ -307,7 +370,9 @@ export class Posts {
           access_token: token,
         })
         .then((posts: { data: CreatedPost[] }) => {
-          return posts.data.map((post) => new Post(post, this.facebook));
+          return posts.data.map(
+            (post) => new Post(post, this.facebook, defaultConfig, profile)
+          );
         });
     });
   }
@@ -380,7 +445,9 @@ export class Posts {
             access_token: token,
           }) // Parameterized instead of stringified because it could contain attachments.
         )
-        .then((data: CreatedPost) => new Post(data, this.facebook, config))
+        .then(
+          (data: CreatedPost) => new Post(data, this.facebook, config, profile)
+        )
         .catch((e: PostError) => {
           throw e;
         });
@@ -420,7 +487,7 @@ export class Posts {
           if (data.success === false) {
             throw new PostError("Failed to edit post.");
           }
-          return new Post(data, this.facebook, config);
+          return new Post(data, this.facebook, config, profile);
         });
     });
   }
@@ -456,7 +523,7 @@ export class Posts {
           "DELETE"
         )
         .then((data: Success) => {
-          return new Post(data, this.facebook, config);
+          return new Post(data, this.facebook, config, profile);
         });
     });
   }

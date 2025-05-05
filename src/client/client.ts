@@ -3,6 +3,7 @@ import {
   writeToJSONCredentials,
   readFromJSONCredentials,
 } from "../credentials";
+
 import { Posts, UserPosts, PagePosts } from "./posts";
 import { Comments, PageComments, UserComments } from "./comments";
 import { Upload } from "./upload";
@@ -88,6 +89,12 @@ export interface Config {
  * @see {@link Posts}
  * @see {@link Comments}
  * @see {@link Upload}
+ * @property {Posts} posts - Methods for interacting with posts on a Facebook page or user profile.
+ * @property {Upload} upload - Methods for interacting with uploads.
+ * @property {UserPosts} user.posts - Methods for interacting with posts on a user profile.
+ * @property {PagePosts} page.posts - Methods for interacting with posts on a Facebook page.
+ * @property {UserComments} user.comments - Methods for interacting with comments on a user profile.
+ * @property {PageComments} page.comments - Methods for interacting with comments on a Facebook page.
  */
 export class Facebook extends Login {
   client = new Client();
@@ -108,33 +115,15 @@ export class Facebook extends Login {
     super(config);
   }
 
-  /**
-   * Returns an object with methods for interacting with Facebook posts.
-   * @type {Posts}
-   */
   posts = new Posts(this);
-
-  /**
-   * Returns an object with methods for interacting with Facebook uploads.
-   * @type {Upload}
-   */
+  comments = new Comments(this);
   upload = new Upload(this);
 
-  /**
-   * User-specific operations
-   * @property {UserPosts} posts - Methods for interacting with posts on a user profile
-   * @property {UserComments} comments - Methods for interacting with comments on a user profile
-   */
   user = {
     posts: new UserPosts(this),
     comments: new UserComments(this),
   };
 
-  /**
-   * Page-specific operations
-   * @property {PagePosts} posts - Methods for interacting with posts on a Facebook page
-   * @property {PageComments} comments - Methods for interacting with comments on a Facebook page
-   */
   page = {
     posts: new PagePosts(this),
     comments: new PageComments(this),

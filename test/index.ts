@@ -1,5 +1,5 @@
 import Facebook from "../src";
-import { Post } from "../src";
+import { Post, Comment } from "../src";
 import type { Authentication } from "../src";
 
 // This file is used to test the general functionality of the library.
@@ -168,7 +168,7 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // console.log({ userComment });
 
 // // Publishing comments.
-// Publish a comment to a page post.
+// // Publish a comment to a page post.
 // const pageComment = await facebook.page.comments.publish({
 //   post: "122172395366285076",
 //   user: "10039207206110825",
@@ -183,3 +183,43 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 //   message: "Hello, world!",
 // });
 // console.log({ userComment });
+
+// Publishing media comments to a page.
+// const pageMedia = await facebook.page.comments.publish({
+//   post: "122172395366285076",
+//   user: "10039207206110825",
+//   message: "Hello, world!",
+//   media: "/Users/anonyo/Downloads/Images/Miscellaneous/fb.png",
+// });
+// console.log({ pageMedia });
+
+// // Publishing media comments to a user (deprecated).
+// const userMedia = await facebook.user.media.publish({
+//   message: "Hello, world!",
+//   media: "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
+// });
+// console.log({ userMedia });
+
+// // Publishing replies to a comment on a page post.
+// const comment = new Comment(
+//   {
+//     message: "Hello, world!",
+//     id: "724859936642083",
+//     post: "122172395366285076",
+//   },
+//   facebook
+// );
+// const pageReply = await comment.reply({
+//   message: "Hello, world!",
+//   id: comment.id,
+//   post: "122172395366285076",
+// });
+// console.log({ pageReply });
+
+// // Publishing replies to a comment on a user post.
+// const userReply = await facebook.user.comments.reply({
+//   message: "Hello, world!",
+//   id: comment.id,
+//   post: "122172395366285076",
+// });
+// console.log({ userReply });
