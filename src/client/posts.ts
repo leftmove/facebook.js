@@ -107,6 +107,26 @@ export interface PostMedia extends Omit<PostRegular, "message"> {
  */
 export type PostMediaScheduled = PostMedia & PostScheduled;
 
+export type PostPublish =
+  | PostRegular
+  | PostLink
+  | PostMedia
+  | PostMediaScheduled
+  | PostScheduled
+  | PostLinkScheduled;
+
+export type PostConfig =
+  | PostRegular
+  | PostLink
+  | PostScheduled
+  | PostLinkScheduled
+  | PostMedia
+  | PostMediaScheduled
+  | EditPost
+  | EditPostEmbedded
+  | RemovePost
+  | RemovePostEmbedded;
+
 export const defaultConfig: PostRegular = {
   message: "",
 };
@@ -188,22 +208,22 @@ export class Post {
     "created",
     "message",
     "success",
+  ]); // Fields that are set by the constructor, from the API response. Don't need to be set again.
+  private _dumpFields: Set<string> = new Set([
+    "id",
+    "user",
+    "profile",
+    "created",
+    "message",
+    "success",
+    "scheduled",
+    "link",
   ]);
 
   constructor(
     post: CreatedPost,
     facebook: Facebook,
-    config:
-      | PostRegular
-      | PostLink
-      | PostScheduled
-      | PostLinkScheduled
-      | PostMedia
-      | PostMediaScheduled
-      | EditPost
-      | EditPostEmbedded
-      | RemovePost
-      | RemovePostEmbedded = defaultConfig,
+    config: PostConfig = defaultConfig,
     profile: Profile = facebook.profile
   ) {
     if (post.id === undefined) {
@@ -298,6 +318,19 @@ export class Post {
   reply(config: CommentRegular | CommentMedia) {
     return this.client.comments.publish(config, this.profile);
   }
+
+  /**
+   * Dumps the post to a JSON string.
+   * @returns {string} The JSON string.
+   */
+  dump() {
+    return stringify(
+      [...this._dumpFields].reduce(
+        (obj, key) => ({ ...obj, [key]: (this as any)[key] }),
+        {}
+      )
+    );
+  }
 }
 
 /**
@@ -390,13 +423,7 @@ export class Posts {
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
-    config:
-      | PostRegular
-      | PostLink
-      | PostMedia
-      | PostMediaScheduled
-      | PostScheduled
-      | PostLinkScheduled,
+    config: PublishConfig,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -669,15 +696,7 @@ export class PagePosts extends Posts {
    * @see {@link Post#ready} if your posting a scheduled post.
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
-  async publish(
-    config:
-      | PostRegular
-      | PostLink
-      | PostScheduled
-      | PostLinkScheduled
-      | PostMedia
-      | PostMediaScheduled
-  ) {
+  async publish(config: PublishConfig) {
     return super.publish(
       config,
       "page",

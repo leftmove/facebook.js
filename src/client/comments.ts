@@ -1,5 +1,5 @@
 import { i, t } from "./client";
-import { FACEBOOK_URL, parameterize } from "../api";
+import { FACEBOOK_URL, stringify, parameterize } from "../api";
 
 import { PostError } from "../errors";
 
@@ -82,17 +82,30 @@ export interface CommentMedia extends Omit<CommentRegular, "message"> {
  */
 export type CommentReplyMedia = CommentReply & CommentMedia;
 
-/**
- * Class for managing comments on a post.
- * @see {@link Comments}
- * @see {@link Facebook["comments"]}
- */
+export type CommentConfig =
+  | Post
+  | CreatedComment
+  | CommentRegular
+  | CommentMedia
+  | CommentReply
+  | CommentReplyMedia;
+
+export type CommentPublish =
+  | CommentRegular
+  | CommentMedia
+  | CommentReply
+  | CommentReplyMedia;
 
 export const defaultConfig: CommentRegular = {
   message: "",
   post: "",
 };
 
+/**
+ * Class for managing comments on a post.
+ * @see {@link Comments}
+ * @see {@link Facebook["comments"]}
+ */
 export class Comment {
   profile: Profile;
   id: string;
@@ -115,17 +128,21 @@ export class Comment {
     "message",
     "success",
   ]); // Fields that are set by the constructor, from the API response. Don't need to be set again.
+  private _dumpFields: Set<string> = new Set([
+    "id",
+    "post",
+    "user",
+    "created",
+    "message",
+    "username",
+    "link",
+    "success",
+  ]);
 
   constructor(
     comment: CreatedComment,
     facebook: Facebook,
-    config:
-      | Post
-      | CreatedComment
-      | CommentRegular
-      | CommentMedia
-      | CommentReply
-      | CommentReplyMedia = defaultConfig,
+    config: CommentConfig = defaultConfig,
     profile: Profile = facebook.profile
   ) {
     if (comment.id === undefined) {
@@ -192,6 +209,19 @@ export class Comment {
     profile: Profile = this.profile
   ) {
     return this.client.comments.publish(config, profile);
+  }
+
+  /**
+   * Dumps the post to a JSON string.
+   * @returns {string} The JSON string.
+   */
+  dump() {
+    return stringify(
+      [...this._dumpFields].reduce(
+        (obj, key) => ({ ...obj, [key]: (this as any)[key] }),
+        {}
+      )
+    );
   }
 }
 
@@ -307,7 +337,7 @@ export class Comments {
    * @param config.media - The path of the media to upload — only accepts a single path, as multiple uploads are not supported.
    */
   publish(
-    config: CommentRegular | CommentMedia | CommentReply | CommentReplyMedia,
+    config: CommentPublish,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page" ? ["pageToken"] : ["userToken"],
     permissions: string[] = profile === "page" ? [] : []

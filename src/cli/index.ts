@@ -2,12 +2,13 @@
 
 import { Command } from "commander";
 
-import Facebook from "../index";
+import Facebook from "../";
 import {
   readFromJSONCredentials,
   writeToJSONCredentials,
 } from "../credentials";
-import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "../index";
+import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "../";
+import type { Authentication } from "../";
 
 import {
   appCredentials,
@@ -17,7 +18,10 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
+import { runMCP } from "../mcp";
+
 import { App, LoginStart, RefreshStart, LoginSuccess } from "./components";
+import { MCPInitial, MCPClose } from "./components";
 
 const program = new Command();
 
@@ -154,6 +158,25 @@ program
     );
 
     app.render(LoginSuccess);
+  });
+
+program
+  .command("mcp")
+  .description("Runs the MCP server.")
+  .option("--profile", "Profile to run the MCP server for.")
+  .action(async (options) => {
+    const profile = options.profile || "page";
+    const auth: Authentication = { profile };
+    const facebook = new Facebook(auth);
+    const app = new App();
+
+    await runMCP(facebook, profile)
+      .then(() => {
+        app.render(MCPInitial);
+      })
+      .catch((e) => {
+        throw e;
+      });
   });
 
 program.parse();

@@ -1,12 +1,11 @@
 import Facebook from "../src";
-import { Post, Comment } from "../src";
 import type { Authentication } from "../src";
 
 // This file is used to test the general functionality of the library.
 
 const facebook = new Facebook();
 const auth: Authentication = {
-  profile: "user",
+  profile: "page",
 };
 await facebook.login(auth).then(({ credentials, scope }) => {
   console.log(credentials);

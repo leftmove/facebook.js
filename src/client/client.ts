@@ -89,8 +89,10 @@ export interface Config {
  * @see {@link Posts}
  * @see {@link Comments}
  * @see {@link Upload}
+ * @see {@link MCP}
  * @property {Posts} posts - Methods for interacting with posts on a Facebook page or user profile.
  * @property {Upload} upload - Methods for interacting with uploads.
+ * @property {MCP} mcp - Methods for interacting with AI models through the Model Context Protocol.
  * @property {UserPosts} user.posts - Methods for interacting with posts on a user profile.
  * @property {PagePosts} page.posts - Methods for interacting with posts on a Facebook page.
  * @property {UserComments} user.comments - Methods for interacting with comments on a user profile.

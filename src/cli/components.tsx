@@ -254,3 +254,32 @@ export function Info(emoji: string, message: string, color = "yellow") {
     </Box>
   );
 }
+
+export const MCPInitial = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Box flexDirection="column" alignItems="center" marginBottom={2}>
+        <Text color="yellow">MCP Server</Text>
+      </Box>
+      <Spinner message="Running the MCP" />
+    </Box>
+  </Box>
+);
+
+export const MCPClose = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Text>Successfully closed the MCP server.</Text>
+    </Box>
+  </Box>
+);

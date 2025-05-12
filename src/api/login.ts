@@ -227,7 +227,8 @@ export class Login {
     if (appId === undefined || appSecret === undefined) {
       throw new Error(
         "Empty credentials provided. App ID and App Secret are required. You should login first.\n" +
-          "You can do this by calling the login command: `npx facebook login`."
+          "You can do this by calling the login command: `npx facebook login`." +
+          "\nOnce you are logged in, make sure to protect the sensitive `credentials.json` created in the current directory."
       );
     }
 

@@ -4,6 +4,7 @@ import type { Facebook } from "./client";
 import { PostError } from "../errors";
 
 import fs from "fs";
+import tmp from "tmp";
 import assert from "assert";
 
 export interface ImageId {
@@ -12,8 +13,13 @@ export interface ImageId {
 
 export type ImageUpload = ImageId | string;
 
+export interface ImageBlob {
+  data: string;
+  extension: string;
+}
+
 interface UploadConfig {
-  media: string | string[];
+  media: string | string[] | ImageBlob;
 }
 
 const supportedImageExtensions = ["jpg", "bmp", "png", "gif", "tiff"];
@@ -24,6 +30,37 @@ interface ImageResponse {
 
 const clientInstances = new WeakMap<Facebook, Image>();
 
+/**
+ * Converts a Base64 string to an image file and returns the file path.
+ * @param blob The blob to convert.
+ * @returns The path to the temp image file.
+ */
+export function blobPath(blob: ImageBlob): string {
+  if (
+    blob.extension === undefined ||
+    supportedImageExtensions.includes(blob.extension) === false
+  ) {
+    throw new PostError(
+      `Blob specified is not a supported image. Supported extensions are: ${supportedImageExtensions.join(
+        ", "
+      )}`
+    );
+  }
+  const tempFile = tmp.fileSync({ postfix: `.${blob.extension}` });
+  const buffer = Buffer.from(blob.data, "base64");
+  const uint8 = new Uint8Array(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  );
+  fs.writeFileSync(tempFile.name, uint8);
+  return tempFile.name;
+}
+
+/**
+ * A class representing an uploaded image.
+ * @property {string} id - The ID of the image.
+ */
 export class Image {
   id: string;
   constructor(image: ImageResponse, config: UploadConfig, facebook: Facebook) {
@@ -102,9 +139,17 @@ export class Upload {
           }
         });
       };
-      const promises = Array.isArray(config.media)
-        ? config.media.map((path) => file(path))
-        : [file(config.media)];
+
+      const paths = (
+        Array.isArray(config.media) ? config.media : [config.media]
+      ).map((m) => {
+        if (typeof m === "object" && "data" in m && "type" in m) {
+          return blobPath(m);
+        } else {
+          return m as string;
+        }
+      });
+      const promises = paths.map((path) => file(path));
 
       return Promise.all(promises)
         .then((images: ImageResponse[]) => {
