@@ -26,8 +26,69 @@ import { MCPInitial, MCPClose } from "./components";
 const program = new Command();
 
 program
-  .name("cli-facebook.js")
+  .name("Facebook.js Command")
   .description("The CLI tool for facebook.js and Facebook authentication.");
+
+const environment = program
+  .command("environment")
+  .description("Environment commands.");
+
+environment
+  .command("view")
+  .description("View environment variables.")
+  .action(async () => {
+    const auth: Authentication = { profile: "page" };
+    const facebook = new Facebook(auth);
+    await facebook
+      .login(auth)
+      .then(({ credentials, scope }) => {
+        console.log(credentials);
+        console.log(scope);
+      })
+      .catch((e) => {
+        console.error(e);
+      });
+  });
+
+environment
+  .command("clear")
+  .description("Clear environment variables.")
+  .action(async () => {
+    const auth: Authentication = { profile: "page" };
+    const facebook = new Facebook(auth);
+
+    await facebook.writeCredentials({
+      appId: undefined,
+      appSecret: undefined,
+      appToken: undefined,
+      userToken: undefined,
+      userId: undefined,
+      pageId: undefined,
+      pageToken: undefined,
+    });
+  });
+
+environment
+  .command("load")
+  .description("Load environment variables.")
+  .action(async () => {
+    const auth: Authentication = { profile: "page" };
+    const facebook = new Facebook(auth);
+
+    const credentials = facebook.readCredentials();
+    Object.keys(credentials).forEach((key) => {
+      const typedKey = key as keyof typeof credentials;
+      if (credentials[typedKey] !== undefined) {
+        const envKey = `FACEBOOK-${key
+          .replace(/([A-Z])/g, "-$1")
+          .toUpperCase()}`;
+        const value = JSON.stringify(credentials[typedKey]);
+        process.env[envKey] = value;
+        console.log(`Set ${envKey}=${value}`);
+      }
+    });
+    console.log("\nFacebook credentials loaded into environment variables.");
+  });
 
 program
   .command("login")
