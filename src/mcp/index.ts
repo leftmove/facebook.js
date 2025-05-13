@@ -1,22 +1,10 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { initializeMCP } from "./mcp";
-
-import Facebook from "../";
-import type { Profile } from "../";
-
-export async function runMCP(
-  client: Facebook = new Facebook(),
-  profile: Profile = "page",
-  callback?: () => void
-) {
-  const server = initializeMCP(client, profile);
-  const transport = new StdioServerTransport();
-
-  return await server.connect(transport);
-}
-
-export { initializeMCP };
+import app from "./server";
+import { serve } from "@hono/node-server";
 
 if (require.main === module) {
-  runMCP();
+  serve(app);
 }
+
+const listen = () => serve(app);
+
+export { app, serve, listen };

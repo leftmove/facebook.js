@@ -13,9 +13,14 @@ export const reset = "\x1b[0m";
 
 export const Initial = (
   <Box flexDirection="column" alignItems="center" marginBottom={1}>
-    <Text color="white">---------------</Text>
-    <Text color="cyan">facebook.js</Text>
-    <Text color="white">---------------</Text>
+    <Text color="blue">
+      {/* {
+        '\r\n                                                                      \r\n    ,...                        ,,                                    \r\n  .d\' ""                       *MM                          `7MM      \r\n  dM`                           MM                            MM      \r\n mMMmm ,6"Yb.  ,p6"bo   .gP"Ya  MM,dMMb.   ,pW"Wq.   ,pW"Wq.  MM  ,MP\'\r\n  MM  8)   MM 6M\'  OO  ,M\'   Yb MM    `Mb 6W\'   `Wb 6W\'   `Wb MM ;Y   \r\n  MM   ,pm9MM 8M       8M"""""" MM     M8 8M     M8 8M     M8 MM;Mm   \r\n  MM  8M   MM YM.    , YM.    , MM.   ,M9 YA.   ,A9 YA.   ,A9 MM `Mb. \r\n.JM,,.`Moo9^Yo.YMbmd\'   `Mbmmd\' P^YbmdP\'   `Ybmd9\'   `Ybmd9\'.JMML. YA.\r\n   db                                                                 \r\n                                                                      \r\n `7MM ,pP"Ybd                                                         \r\n   MM 8I   `"                                                         \r\n   MM `YMMMa.                                                         \r\n   MM L.   I8                                                         \r\n   MM M9mmmP\'                                                         \r\nQO MP                                                                 \r\n`bmP                                                                  \r\n'
+      } */}
+      {
+        '\r\n                                                                                                  \r\n    ,...                        ,,                                                     ,,         \r\n  .d\' ""                       *MM                          `7MM                       db         \r\n  dM`                           MM                            MM                                  \r\n mMMmm ,6"Yb.  ,p6"bo   .gP"Ya  MM,dMMb.   ,pW"Wq.   ,pW"Wq.  MM  ,MP\'               `7MM ,pP"Ybd \r\n  MM  8)   MM 6M\'  OO  ,M\'   Yb MM    `Mb 6W\'   `Wb 6W\'   `Wb MM ;Y                    MM 8I   `" \r\n  MM   ,pm9MM 8M       8M"""""" MM     M8 8M     M8 8M     M8 MM;Mm       mmmmm        MM `YMMMa. \r\n  MM  8M   MM YM.    , YM.    , MM.   ,M9 YA.   ,A9 YA.   ,A9 MM `Mb.                  MM L.   I8 \r\n.JMML.`Moo9^Yo.YMbmd\'   `Mbmmd\' P^YbmdP\'   `Ybmd9\'   `Ybmd9\'.JMML. YA.                 MM M9mmmP\' \r\n                                                                                    QO MP         \r\n                                                                                    `bmP          \r\n'
+      }
+    </Text>
   </Box>
 );
 
@@ -165,7 +170,7 @@ export const LoginStart = (
   >
     <Box flexDirection="column" alignItems="center">
       <Box flexDirection="column" alignItems="center" marginBottom={2}>
-        <Text color="yellow">Logging In</Text>
+        <Text bold>Logging In</Text>
       </Box>
       <Text>
         To View Your App Credentials, visit https://developers.facebook.com/apps
@@ -194,7 +199,7 @@ export const RefreshStart = (
   >
     <Box flexDirection="column" alignItems="center">
       <Box flexDirection="column" alignItems="center" marginBottom={2}>
-        <Text color="yellow">Logging In Again</Text>
+        <Text bold>Logging In Again</Text>
       </Box>
       <Text>
         To View Your App Credentials, visit https://developers.facebook.com/apps
@@ -215,7 +220,7 @@ export const LoginSuccess = (
     marginBottom={1}
   >
     <Box marginBottom={2}>
-      <Text color="yellow">Successfully Logged In!</Text>
+      <Text bold>Successfully Logged In!</Text>
     </Box>
     <Box>
       <Text>You can now use all the features of the Facebook API.</Text>
@@ -263,10 +268,10 @@ export const MCPInitial = (
     marginBottom={1}
   >
     <Box flexDirection="column" alignItems="center">
-      <Box flexDirection="column" alignItems="center" marginBottom={2}>
-        <Text color="yellow">MCP Server</Text>
+      <Box flexDirection="column" alignItems="center">
+        <Text bold>MCP Server</Text>
       </Box>
-      <Spinner message="Running the MCP" />
+      {/* <Spinner message="Running the MCP" /> */}
     </Box>
   </Box>
 );
@@ -283,3 +288,163 @@ export const MCPClose = (
     </Box>
   </Box>
 );
+
+export const MCPRunning = ({ url, port }: { url: string; port: number }) => (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Spinner message="Running the MCP" />
+      <Box flexDirection="column" alignItems="center" marginTop={2}>
+        <Text>
+          SSE at{" "}
+          <Text color="cyan" bold>
+            {url}:{port}/mcp/user
+          </Text>{" "}
+          for user MCP
+        </Text>
+        <Text>
+          SSE at{" "}
+          <Text color="cyan" bold>
+            {url}:{port}/mcp/page
+          </Text>{" "}
+          for page MCP
+        </Text>
+      </Box>
+    </Box>
+  </Box>
+);
+
+export const CredentialsDisplay = ({
+  credentials,
+  scope,
+}: {
+  credentials: any;
+  scope: any;
+}) => {
+  // Helper function to format credential objects for display
+  const formatObject = (obj: any, indent = 0): JSX.Element[] => {
+    if (!obj) return [<Text key="null">null</Text>];
+
+    return Object.entries(obj).map(([key, value], index) => {
+      const padding = " ".repeat(indent * 2);
+
+      if (typeof value === "object" && value !== null) {
+        return (
+          <Box key={index} flexDirection="column">
+            <Text>
+              {padding}
+              <Text color="cyan">{key}</Text>: {"{"}'
+            </Text>
+            {formatObject(value, indent + 1)}
+            <Text>
+              {padding}
+              {"}"}
+            </Text>
+          </Box>
+        );
+      }
+
+      return (
+        <Text key={index}>
+          {padding}
+          <Text color="cyan">{key}</Text>:{" "}
+          <Text color="green">{value?.toString() || "null"}</Text>
+        </Text>
+      );
+    });
+  };
+
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+    >
+      <Box flexDirection="column" alignItems="center" marginBottom={1}>
+        <Text bold>Credentials</Text>
+      </Box>
+
+      <Box marginBottom={1}>
+        <Text color="gray" italic>
+          Warning: Displaying sensitive data. Handle with care.
+        </Text>
+      </Box>
+
+      <Box flexDirection="column" marginLeft={2}>
+        {formatObject(credentials)}
+      </Box>
+
+      {scope && (
+        <>
+          <Box
+            flexDirection="column"
+            alignItems="center"
+            marginTop={1}
+            marginBottom={1}
+          >
+            <Text bold>Scope Permissions</Text>
+          </Box>
+
+          <Box flexDirection="column" marginLeft={2}>
+            {Array.isArray(scope) ? (
+              scope.map((permission, index) => (
+                <Text key={index}>
+                  <Text color="green">{figures.tick}</Text> {permission}
+                </Text>
+              ))
+            ) : typeof scope === "object" ? (
+              formatObject(scope)
+            ) : (
+              <Text>{scope?.toString() || "No scope defined"}</Text>
+            )}
+          </Box>
+        </>
+      )}
+    </Box>
+  );
+};
+export const CredentialsStored = ({ path }: { path: string }) => {
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+      borderStyle="round"
+      borderColor="green"
+      padding={1}
+    >
+      <Box flexDirection="column" alignItems="center" marginBottom={1}>
+        <Box>
+          <Text color="green" bold>
+            {figures.tick}{" "}
+          </Text>
+          <Text color="green" bold>
+            Credentials Successfully Stored
+          </Text>
+        </Box>
+      </Box>
+
+      <Box>
+        <Text>Your Facebook credentials have been saved at:</Text>
+      </Box>
+
+      <Box marginTop={1}>
+        <Text color="cyan" italic>
+          {path}
+        </Text>
+      </Box>
+
+      <Box marginTop={1}>
+        <Text>
+          These credentials will be used as a fallback for authentication.
+        </Text>
+      </Box>
+    </Box>
+  );
+};

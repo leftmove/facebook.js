@@ -7,7 +7,7 @@ import { z } from "zod";
 import Facebook from "../";
 import type { Profile } from "../";
 
-export function initializeMCP(facebook: Facebook, profile?: Profile) {
+export function createMCP(facebook: Facebook, profile?: Profile) {
   const server = new McpServer({
     name: "Facebook.js",
     version: "0.1.0",
@@ -95,16 +95,21 @@ export function initializeMCP(facebook: Facebook, profile?: Profile) {
     })
     .optional();
   const media = z
-    .union([
-      z.string({ description: "Media path" }),
-      z.array(z.string({ description: "Media path" }), {
-        description: "Array of media paths",
-      }),
-      z.object({
-        data: z.string({ description: "Base64 encoded blob image data" }),
-        type: z.string({ description: "Extension of the image" }),
-      }),
-    ])
+    .union(
+      [
+        z.string({ description: "Media path" }),
+        z.array(z.string({ description: "Media path" }), {
+          description: "Array of media paths",
+        }),
+        z.object({
+          data: z.string({ description: "Base64 encoded blob image data" }),
+          type: z.string({ description: "Extension of the image" }),
+        }),
+      ],
+      {
+        description: "Media to attach to the post",
+      }
+    )
     .optional();
 
   server.tool(

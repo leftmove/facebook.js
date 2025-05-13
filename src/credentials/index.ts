@@ -76,6 +76,7 @@ export function writeToJSONCredentials(
   const data = JSON.stringify(newCredentials, null, 2);
   try {
     fs.writeFileSync(filePath, data, "utf8");
+    writeToEnvironmentCredentials(newCredentials);
   } catch (error) {
     throw new CredentialError("Error writing to credentials JSON file", error);
   }

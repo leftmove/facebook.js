@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
+import environmentPaths from "env-paths";
 
-import Facebook from "../";
+import Facebook from "..";
 import {
   readFromJSONCredentials,
   writeToJSONCredentials,
 } from "../credentials";
-import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "../";
-import type { Authentication } from "../";
+import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "..";
+import type { Authentication } from "..";
 
 import {
   appCredentials,
@@ -18,10 +19,17 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { runMCP } from "../mcp";
+import { app as mcp, serve } from "../mcp";
 
-import { App, LoginStart, RefreshStart, LoginSuccess } from "./components";
-import { MCPInitial, MCPClose } from "./components";
+import {
+  App,
+  LoginStart,
+  RefreshStart,
+  LoginSuccess,
+  CredentialsDisplay,
+  CredentialsStored,
+} from "./components";
+import { MCPInitial, MCPRunning } from "./components";
 
 const program = new Command();
 
@@ -29,30 +37,31 @@ program
   .name("Facebook.js Command")
   .description("The CLI tool for facebook.js and Facebook authentication.");
 
-const environment = program
-  .command("environment")
-  .description("Environment commands.");
+const credentials = program
+  .command("credentials")
+  .alias("creds")
+  .description("Credential commands.");
 
-environment
+credentials
   .command("view")
-  .description("View environment variables.")
+  .description("View credentials.")
   .action(async () => {
     const auth: Authentication = { profile: "page" };
     const facebook = new Facebook(auth);
+    const app = new App();
     await facebook
       .login(auth)
-      .then(({ credentials, scope }) => {
-        console.log(credentials);
-        console.log(scope);
-      })
+      .then(({ credentials, scope }) =>
+        app.render(CredentialsDisplay({ credentials, scope }))
+      )
       .catch((e) => {
         console.error(e);
       });
   });
 
-environment
+credentials
   .command("clear")
-  .description("Clear environment variables.")
+  .description("Clear credentials.")
   .action(async () => {
     const auth: Authentication = { profile: "page" };
     const facebook = new Facebook(auth);
@@ -68,26 +77,22 @@ environment
     });
   });
 
-environment
-  .command("load")
-  .description("Load environment variables.")
+credentials
+  .command("store")
+  .description(
+    "Store credentials globally. This will create a `credentials.json` that can be used as a fallback for authentication globally."
+  )
   .action(async () => {
-    const auth: Authentication = { profile: "page" };
-    const facebook = new Facebook(auth);
+    const paths = environmentPaths("facebook.js");
+    const facebook = new Facebook();
+    const app = new App();
 
-    const credentials = facebook.readCredentials();
-    Object.keys(credentials).forEach((key) => {
-      const typedKey = key as keyof typeof credentials;
-      if (credentials[typedKey] !== undefined) {
-        const envKey = `FACEBOOK-${key
-          .replace(/([A-Z])/g, "-$1")
-          .toUpperCase()}`;
-        const value = JSON.stringify(credentials[typedKey]);
-        process.env[envKey] = value;
-        console.log(`Set ${envKey}=${value}`);
-      }
+    await facebook.login().then(({ credentials }) => {
+      const configPath = paths.config;
+      writeToJSONCredentials(credentials, configPath);
+
+      app.render(CredentialsStored({ path: configPath }));
     });
-    console.log("\nFacebook credentials loaded into environment variables.");
   });
 
 program
@@ -224,20 +229,13 @@ program
 program
   .command("mcp")
   .description("Runs the MCP server.")
-  .option("--profile", "Profile to run the MCP server for.")
-  .action(async (options) => {
-    const profile = options.profile || "page";
-    const auth: Authentication = { profile };
-    const facebook = new Facebook(auth);
+  .action(() => {
     const app = new App();
+    app.render(MCPInitial);
 
-    await runMCP(facebook, profile)
-      .then(() => {
-        app.render(MCPInitial);
-      })
-      .catch((e) => {
-        throw e;
-      });
+    serve(mcp, (info) => {
+      app.render(MCPRunning({ url: "http://localhost", port: info.port }));
+    });
   });
 
 program.parse();
