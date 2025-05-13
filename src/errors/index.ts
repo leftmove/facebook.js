@@ -65,6 +65,17 @@ export class DeprecatedError extends GraphError {
   }
 }
 
+export class FileError extends Error {
+  constructor(message: string = "", error: any = {}) {
+    super(message);
+    this.name = "FileError";
+    this.message =
+      error && Object.keys(error).length > 0
+        ? `File Error: ${message}\n${JSON.stringify(error, null, 2)}`
+        : `File Error: ${message}`;
+  }
+}
+
 export function warnConsole(message: string) {
   console.warn(`[Warning] ${message}`);
 }

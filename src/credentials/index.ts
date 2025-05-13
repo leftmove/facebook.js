@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import { CredentialError } from "../errors";
+import { CredentialError, FileError } from "../errors";
 import type { Permissions, Profile } from "../api";
 
 export interface Credentials {
@@ -53,7 +53,7 @@ export function createJSONFileIfNotExists(filePath: string) {
     if (error.code === "ENOENT") {
       fs.writeFileSync(filePath, JSON.stringify(DEFAULT_CONFIG, null, 2));
     } else {
-      throw new CredentialError("Error reading credentials JSON file", error);
+      throw new FileError("Error reading credentials JSON file", error);
     }
   }
 }
@@ -78,7 +78,7 @@ export function writeToJSONCredentials(
     fs.writeFileSync(filePath, data, "utf8");
     writeToEnvironmentCredentials(newCredentials);
   } catch (error) {
-    throw new CredentialError("Error writing to credentials JSON file", error);
+    throw new FileError("Error writing to credentials JSON file", error);
   }
 }
 
@@ -97,10 +97,7 @@ export function readFromJSONCredentials(
     );
     return credentials;
   } catch (error) {
-    throw new CredentialError(
-      "Error reading from credentials JSON file",
-      error
-    );
+    throw new FileError("Error reading from credentials JSON file", error);
   }
 }
 

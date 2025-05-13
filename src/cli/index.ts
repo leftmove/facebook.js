@@ -2,6 +2,8 @@
 
 import { Command } from "commander";
 import environmentPaths from "env-paths";
+import portfinder from "portfinder";
+import express from "express";
 
 import Facebook from "..";
 import {
@@ -19,7 +21,7 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { app as mcp, serve } from "../mcp";
+import { app as mcp } from "../mcp";
 
 import {
   App,
@@ -29,7 +31,13 @@ import {
   CredentialsDisplay,
   CredentialsStored,
 } from "./components";
-import { MCPInitial, MCPRunning } from "./components";
+import {
+  MCPInitial,
+  MCPProfile,
+  MCPClose,
+  MCPRequest,
+  MCPError,
+} from "./components";
 
 const program = new Command();
 
@@ -88,9 +96,8 @@ credentials
     const app = new App();
 
     await facebook.login().then(({ credentials }) => {
-      const configPath = paths.config;
+      const configPath = `${paths.config}/credentials.json`;
       writeToJSONCredentials(credentials, configPath);
-
       app.render(CredentialsStored({ path: configPath }));
     });
   });
@@ -233,9 +240,31 @@ program
     const app = new App();
     app.render(MCPInitial);
 
-    serve(mcp, (info) => {
-      app.render(MCPRunning({ url: "http://localhost", port: info.port }));
-    });
+    portfinder.getPort(
+      { port: 3000, stopPort: 9999, host: "127.0.0.1" },
+      (err, port) => {
+        if (err) {
+          console.error(err);
+        } else {
+          mcp.on("error", (err) => {
+            app.render(MCPError({ message: err }));
+          });
+          (mcp as any).on(
+            "request",
+            (req: express.Request, res: express.Response) => {
+              app.render(MCPRequest({ req, res }));
+            }
+          );
+          mcp.listen(port, (err) => {
+            if (err) {
+              app.render(MCPError({ message: err }));
+            } else {
+              app.render(MCPProfile({ url: "http://127.0.0.1", port }));
+            }
+          });
+        }
+      }
+    );
   });
 
 program.parse();

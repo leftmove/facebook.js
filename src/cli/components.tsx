@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import figures from "figures";
-import { render, Box, Text } from "ink";
 import type { ReactNode } from "react";
 
+import express from "express";
+import figures from "figures";
+import { render, Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 
 export const yellow = "\x1b[43m";
@@ -289,7 +290,55 @@ export const MCPClose = (
   </Box>
 );
 
-export const MCPRunning = ({ url, port }: { url: string; port: number }) => (
+export const MCPRequest = ({
+  req,
+  res,
+}: {
+  req: express.Request;
+  res: express.Response;
+}) => (
+  <Box flexDirection="column" alignItems="center">
+    <Box flexDirection="column" alignItems="flex-start">
+      <Text>
+        <Text color="green" bold>
+          {req.method}
+        </Text>{" "}
+        <Text>{req.url}</Text>{" "}
+        <Text color={res.statusCode < 400 ? "green" : "red"} bold>
+          [{res.statusCode}]
+        </Text>{" "}
+        <Text color="blue">
+          {new Date(
+            res.getHeader("date")
+              ? new Date(res.getHeader("date") as string).getTime()
+              : Date.now()
+          ).toUTCString()}
+        </Text>
+      </Text>
+      <Text>
+        <Text color="yellow">ip:</Text>{" "}
+        <Text>{req.ip || req.socket.remoteAddress}</Text> -{" "}
+        <Text color="yellow">user-agent:</Text>{" "}
+        <Text>{req.headers["user-agent"]}</Text>
+      </Text>
+    </Box>
+  </Box>
+);
+
+export const MCPError = ({ message }: { message: any }) => (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Text color="red">{message}</Text>
+    </Box>
+  </Box>
+);
+
+export const MCPProfile = ({ url, port }: { url: string; port: number }) => (
   <Box
     flexDirection="column"
     alignItems="center"
@@ -300,18 +349,18 @@ export const MCPRunning = ({ url, port }: { url: string; port: number }) => (
       <Spinner message="Running the MCP" />
       <Box flexDirection="column" alignItems="center" marginTop={2}>
         <Text>
-          SSE at{" "}
+          Streamable HTTP at{" "}
           <Text color="cyan" bold>
             {url}:{port}/mcp/user
           </Text>{" "}
-          for user MCP
+          for user functions
         </Text>
         <Text>
-          SSE at{" "}
+          Streamable HTTP at{" "}
           <Text color="cyan" bold>
             {url}:{port}/mcp/page
           </Text>{" "}
-          for page MCP
+          for page functions
         </Text>
       </Box>
     </Box>
@@ -415,31 +464,22 @@ export const CredentialsStored = ({ path }: { path: string }) => {
       alignItems="center"
       marginTop={1}
       marginBottom={1}
-      borderStyle="round"
-      borderColor="green"
-      padding={1}
     >
       <Box flexDirection="column" alignItems="center" marginBottom={1}>
         <Box>
-          <Text color="green" bold>
-            {figures.tick}{" "}
-          </Text>
           <Text color="green" bold>
             Credentials Successfully Stored
           </Text>
         </Box>
       </Box>
-
       <Box>
         <Text>Your Facebook credentials have been saved at:</Text>
       </Box>
-
       <Box marginTop={1}>
         <Text color="cyan" italic>
           {path}
         </Text>
       </Box>
-
       <Box marginTop={1}>
         <Text>
           These credentials will be used as a fallback for authentication.

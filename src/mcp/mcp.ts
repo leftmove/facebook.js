@@ -1,7 +1,11 @@
+import express from "express";
+import { randomUUID } from "node:crypto";
 import {
   McpServer,
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import Facebook from "../";
@@ -43,7 +47,7 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
           {
             name: `${profile} info`,
             uri: `info://${profile}`,
-            description: `Facebook ${name} ID, expiry, validity`,
+            description: `${name} ID, expiry, validity`,
             mimeType: "application/json",
           },
         ],
@@ -72,7 +76,7 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
           {
             name: `${profile} token`,
             uri: `access://${profile}/token`,
-            description: `Facebook ${name} Access Token`,
+            description: `${name} Access Token`,
             mimeType: "text/plain",
           },
         ],
@@ -200,4 +204,63 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
   );
 
   return server;
+}
+
+const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+
+export async function MCPHandler(
+  req: express.Request,
+  res: express.Response,
+  profile: Profile
+) {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  let transport: StreamableHTTPServerTransport;
+
+  if (sessionId && transports[sessionId]) {
+    transport = transports[sessionId];
+  } else if (!sessionId && isInitializeRequest(req.body)) {
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sessionId) => {
+        transports[sessionId] = transport;
+      },
+    });
+
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        delete transports[transport.sessionId];
+      }
+    };
+
+    const client = new Facebook();
+    const server = createMCP(client, profile);
+
+    await server.connect(transport);
+  } else {
+    res.status(400).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message: "Bad Request: No valid session ID provided",
+      },
+      id: null,
+    });
+    return;
+  }
+
+  await transport.handleRequest(req, res, req.body);
+}
+
+export async function sessionHandler(
+  req: express.Request,
+  res: express.Response
+) {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  if (!sessionId || !transports[sessionId]) {
+    res.status(400).send("Invalid or missing session ID");
+    return;
+  }
+
+  const transport = transports[sessionId];
+  await transport.handleRequest(req, res);
 }
