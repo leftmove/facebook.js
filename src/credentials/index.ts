@@ -1,4 +1,5 @@
 import fs from "fs";
+import envPaths from "env-paths";
 
 import { CredentialError, FileError } from "../errors";
 import type { Permissions, Profile } from "../api";
@@ -21,6 +22,9 @@ export interface Credentials {
   scope?: Permissions;
 }
 
+export const DEFAULT_CONFIG_PATH = `${
+  envPaths("facebook").config
+}/credentials.json`;
 export const DEFAULT_FILE_PATH = "./credentials.json";
 export const DEFAULT_CONFIG: Credentials = {
   appId: undefined,
@@ -50,50 +54,136 @@ export function createJSONFileIfNotExists(filePath: string) {
   try {
     fs.readFileSync(filePath, "utf8");
   } catch (error: any) {
-    if (error.code === "ENOENT") {
-      fs.writeFileSync(filePath, JSON.stringify(DEFAULT_CONFIG, null, 2));
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      try {
+        const directory = filePath.split("/").slice(0, -1).join("/");
+        try {
+          const stats = fs.statSync(directory);
+          if (!stats.isDirectory()) {
+            fs.unlinkSync(directory);
+            fs.mkdirSync(directory, { recursive: true });
+          }
+        } catch (statError: any) {
+          if (statError.code === "ENOENT") {
+            fs.mkdirSync(directory, { recursive: true });
+          } else {
+            throw statError;
+          }
+        }
+        fs.writeFileSync(filePath, JSON.stringify(DEFAULT_CONFIG, null, 2));
+      } catch (dirError) {
+        throw new FileError(
+          "Error creating directory structure for credentials file",
+          dirError
+        );
+      }
     } else {
-      throw new FileError("Error reading credentials JSON file", error);
+      throw new FileError("Error reading credentials from JSON file", error);
     }
   }
 }
+
+export function doesFileExist(filePath: string): boolean {
+  try {
+    fs.readFileSync(filePath, "utf8");
+    return true;
+  } catch (error: any) {
+    return false;
+  }
+}
+
+// These are called read/write from "JSON" credentials, but really they are just default reads/writes.
+// They use JSON, but they have some other functionality that's useful more than that.
 
 export function writeToJSONCredentials(
   credentials: Credentials,
   filePath: string = DEFAULT_FILE_PATH
 ): void {
-  createJSONFileIfNotExists(filePath);
+  // The following code covers three conditions. It's a little all over the place so here's some extensive documentation to explain what's going on.
 
-  const oldData = fs.readFileSync(filePath, "utf8");
-  const oldJSONCredentials: Credentials = JSON.parse(oldData);
-  const oldEnvironmentCredentials: Credentials =
-    readFromEnvironmentCredentials();
+  // 1. Current directory credentials exist
+  // In this situation, the inputted credentials combine (and override) the current directory credentials, and the resulting credentials are written to both the current directory and the config directory.
+  // 2. Current directory credentials do not exist, but config directory credentials do.
+  // In this situation, the inputted credentials combine (and override) the config directory credentials, and the resulting credentials are written to only the config directory.
+  // 3. Neither the current directory nor the config directory credentials exist.
+  // In this situation, the inputted credentials, templated to the default credential template, are written to both the current directory and the config directory.
 
-  const newCredentials: Credentials = Object.assign(
-    DEFAULT_CREDENTIAL_TEMPLATE,
-    { ...oldEnvironmentCredentials, ...oldJSONCredentials, ...credentials }
-  ); // Object.assign orders the keys for readability, not required.
-  const data = JSON.stringify(newCredentials, null, 2);
-  try {
-    fs.writeFileSync(filePath, data, "utf8");
-    writeToEnvironmentCredentials(newCredentials);
-  } catch (error) {
-    throw new FileError("Error writing to credentials JSON file", error);
+  if (
+    doesFileExist(filePath) // Do the current directory credentials exist? Condition 1.
+  ) {
+    createJSONFileIfNotExists(DEFAULT_CONFIG_PATH);
+
+    const currentDirectoryCredentials: Credentials = JSON.parse(
+      fs.readFileSync(filePath, "utf8")
+    );
+    credentials = Object.assign(DEFAULT_CREDENTIAL_TEMPLATE, {
+      // New credentials are current directory credentials updated with inputted credentials
+      ...currentDirectoryCredentials,
+      ...credentials,
+    });
+  } else if (
+    doesFileExist(filePath) === false && // Current directory credential file doesn't exist;
+    doesFileExist(DEFAULT_CONFIG_PATH) === true // but config directory one does. Condition 2.
+  ) {
+    const configDirectoryCredentials: Credentials = JSON.parse(
+      fs.readFileSync(DEFAULT_CONFIG_PATH, "utf8")
+    );
+    credentials = Object.assign(DEFAULT_CREDENTIAL_TEMPLATE, {
+      // New credentials are config directory credentials updated with inputted credentials
+      ...configDirectoryCredentials,
+      ...credentials,
+    });
+  } else if (
+    doesFileExist(filePath) === false && // Are there no credentials that exist locally?
+    doesFileExist(DEFAULT_CONFIG_PATH) === false // Condition 3.
+  ) {
+    // The following two lines are half redundant since it's known that these files don't exist. This function is only used for convenience as it creates a file, which is what we really need to do in order to trigger the final conditionals below.
+    createJSONFileIfNotExists(filePath);
+    createJSONFileIfNotExists(DEFAULT_CONFIG_PATH);
+
+    credentials = Object.assign(DEFAULT_CREDENTIAL_TEMPLATE, credentials);
+  }
+
+  // Write the credentials to the current directory and config directory, if they exist.
+  if (doesFileExist(filePath) === true) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(credentials, null, 2));
+    } catch (error) {
+      throw new FileError(
+        "Error writing to credentials file in current directory.",
+        error
+      );
+    }
+  }
+  if (doesFileExist(DEFAULT_CONFIG_PATH) === true) {
+    try {
+      fs.writeFileSync(
+        DEFAULT_CONFIG_PATH,
+        JSON.stringify(credentials, null, 2)
+      );
+    } catch (error) {
+      throw new FileError(
+        "Error writing to credentials file in config directory.",
+        error
+      );
+    }
   }
 }
 
 export function readFromJSONCredentials(
   filePath: string = DEFAULT_FILE_PATH
 ): Credentials {
-  createJSONFileIfNotExists(filePath);
   try {
-    const data = fs.readFileSync(filePath, "utf8");
-    const JSONCredentials: Credentials = JSON.parse(data);
-    const environmentCredentials: Credentials =
-      readFromEnvironmentCredentials();
+    const JSONCredentials: Credentials = doesFileExist(filePath)
+      ? JSON.parse(fs.readFileSync(filePath, "utf8"))
+      : {};
+    const configCredentials: Credentials = doesFileExist(DEFAULT_CONFIG_PATH)
+      ? JSON.parse(fs.readFileSync(DEFAULT_CONFIG_PATH, "utf8"))
+      : {};
+
     const credentials: Credentials = Object.assign(
       DEFAULT_CREDENTIAL_TEMPLATE,
-      { ...environmentCredentials, ...JSONCredentials }
+      { ...configCredentials, ...JSONCredentials }
     );
     return credentials;
   } catch (error) {
@@ -101,12 +191,6 @@ export function readFromJSONCredentials(
   }
 }
 
-/**
- * Convert a camelCase string to SCREAMING_CASE with a prefix
- * @param key The camelCase string to convert
- * @param prefix The prefix to add to the converted string
- * @returns The converted string in SCREAMING_CASE with prefix
- */
 export function toEnvironmentKey(
   key: string,
   prefix: string = "FACEBOOK-"
@@ -114,12 +198,6 @@ export function toEnvironmentKey(
   return `${prefix}${key.replace(/([A-Z])/g, "-$1").toUpperCase()}`;
 }
 
-/**
- * Convert a SCREAMING_CASE string with a prefix to camelCase
- * @param key The SCREAMING_CASE string with prefix to convert
- * @param prefix The prefix to remove from the string
- * @returns The converted string in camelCase
- */
 export function fromEnvironmentKey(
   key: string,
   prefix: string = "FACEBOOK-"
@@ -128,10 +206,8 @@ export function fromEnvironmentKey(
     return key.toLowerCase();
   }
 
-  // Remove prefix and convert to lowercase
   const withoutPrefix = key.substring(prefix.length).toLowerCase();
 
-  // Convert kebab-case to camelCase
   return withoutPrefix.replace(/-([a-z])/g, (_, letter) =>
     letter.toUpperCase()
   );
@@ -156,7 +232,7 @@ export function writeToEnvironmentCredentials(
       }
     });
   } catch (error) {
-    throw new CredentialError("Error writing to environment variables", error);
+    throw new FileError("Error writing to environment variables", error);
   }
 }
 
@@ -194,9 +270,6 @@ export function readFromEnvironmentCredentials(
 
     return credentials;
   } catch (error) {
-    throw new CredentialError(
-      "Error reading from environment variables",
-      error
-    );
+    throw new FileError("Error reading from environment variables", error);
   }
 }

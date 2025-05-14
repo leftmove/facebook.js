@@ -19,13 +19,20 @@ export class GraphError extends Error {
     }
 
     this.data = data;
-    this.cause = error ? error.cause : this.cause || e.cause;
-    this.stack = error ? error.stack : this.stack || e.stack;
-
     this.response = response;
     this.status = data?.error?.code || response?.status;
-
     this.name = "GraphError";
+
+    if (error && error.stack) {
+      const currentStack = this.stack || "";
+      const firstLine = currentStack.split("\n")[0];
+      this.stack = `${firstLine}\n${error.stack
+        .split("\n")
+        .slice(1)
+        .join("\n")}`;
+    }
+
+    this.cause = error;
     this.message =
       message || data
         ? `${message || ""}\n${JSON.stringify(data, null, 2) || ""}`
@@ -73,6 +80,16 @@ export class FileError extends Error {
       error && Object.keys(error).length > 0
         ? `File Error: ${message}\n${JSON.stringify(error, null, 2)}`
         : `File Error: ${message}`;
+
+    if (error && error.stack) {
+      const currentStack = this.stack || "";
+      const firstLine = currentStack.split("\n")[0];
+      this.stack = `${firstLine}\n${error.stack
+        .split("\n")
+        .slice(1)
+        .join("\n")}`;
+    }
+    this.cause = error;
   }
 }
 

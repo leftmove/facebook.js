@@ -6,6 +6,8 @@ import figures from "figures";
 import { render, Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 
+import { DEFAULT_CONFIG_PATH, DEFAULT_FILE_PATH } from "../credentials";
+
 export const yellow = "\x1b[43m";
 export const blue = "\x1b[44m";
 export const green = "\x1b[42m";
@@ -229,8 +231,8 @@ export const LoginSuccess = (
   </Box>
 );
 
-export function centerText(text: string): string {
-  const terminalWidth = process.stdout.columns;
+export function centerText(text: string, multiplier: number = 1): string {
+  const terminalWidth = process.stdout.columns * multiplier;
   const textLength = text.length;
   const padding = Math.max(0, Math.floor((terminalWidth - textLength) / 2));
   return " ".repeat(padding) + text;
@@ -418,10 +420,36 @@ export const CredentialsDisplay = ({
         <Text bold>Credentials</Text>
       </Box>
 
-      <Box marginBottom={1}>
+      <Box marginBottom={1} flexDirection="column" alignItems="center">
         <Text color="gray" italic>
           Warning: Displaying sensitive data. Handle with care.
         </Text>
+        <Box marginTop={1} marginBottom={1}>
+          <Text color="gray" italic>
+            These credentials are stored in one or more of the following places.
+          </Text>
+        </Box>
+
+        <Box flexDirection="row" justifyContent="space-between">
+          <Box width={"32%"} alignItems="center">
+            <Text color="gray" italic>
+              - Your current directory (at '
+              <Text color="cyan">{DEFAULT_FILE_PATH}</Text>').
+            </Text>
+          </Box>
+          <Box width={"32%"} alignItems="center">
+            <Text color="gray" italic>
+              - In a location of your choosing, supplied by inputting custom
+              read/write credential functions.
+            </Text>
+          </Box>
+          <Box width={"32%"} alignItems="center">
+            <Text color="gray" italic>
+              - Your config directory (located at '
+              <Text color="cyan">{DEFAULT_CONFIG_PATH}</Text>').
+            </Text>
+          </Box>
+        </Box>
       </Box>
 
       <Box flexDirection="column" marginLeft={2}>

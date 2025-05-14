@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
-import environmentPaths from "env-paths";
 import portfinder from "portfinder";
 import express from "express";
 
@@ -10,7 +9,7 @@ import {
   readFromJSONCredentials,
   writeToJSONCredentials,
 } from "../credentials";
-import { DEFAULT_FILE_PATH, DEFAULT_SCOPE } from "..";
+import { DEFAULT_FILE_PATH, DEFAULT_CONFIG_PATH, DEFAULT_SCOPE } from "..";
 import type { Authentication } from "..";
 
 import {
@@ -21,7 +20,7 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { app as mcp } from "../mcp";
+import { app as server, createMCP, serveStdioMCP } from "../mcp";
 
 import {
   App,
@@ -91,14 +90,12 @@ credentials
     "Store credentials globally. This will create a `credentials.json` that can be used as a fallback for authentication globally."
   )
   .action(async () => {
-    const paths = environmentPaths("facebook.js");
     const facebook = new Facebook();
     const app = new App();
 
     await facebook.login().then(({ credentials }) => {
-      const configPath = `${paths.config}/credentials.json`;
-      writeToJSONCredentials(credentials, configPath);
-      app.render(CredentialsStored({ path: configPath }));
+      writeToJSONCredentials(credentials);
+      app.render(CredentialsStored({ path: DEFAULT_CONFIG_PATH }));
     });
   });
 
@@ -233,12 +230,28 @@ program
     app.render(LoginSuccess);
   });
 
-program
-  .command("mcp")
-  .description("Runs the MCP server.")
-  .action(() => {
+const mcp = program.command("mcp").description("Commands for the MCP server.");
+
+mcp
+  .command("start")
+  .description("Starts the MCP server through streamable HTTP.")
+  .action(async () => {
     const app = new App();
     app.render(MCPInitial);
+
+    try {
+      const facebook = new Facebook();
+      await facebook.login().catch((e) => {
+        throw e;
+      });
+    } catch (e) {
+      throw new Error(
+        "Failed to authenticate the MCP. You may have forgot to login/refresh with your credentials." +
+          "\nIf you've never used this library before, you probably need to get API credentials. You can do this by running `npx facebook login`." +
+          "\n\nOtherwise, if you're running the MCP from an unfamiliar directory or through a third-party app (like Claude Desktop or your IDE), you need to first make your credentials available globally. You can do this automatically by running `npx facebook credentials store`." +
+          "\n\nTLDR: Run the following in a safe directory, and take note of where the credentials are stored.\n`npx facebook login`\n`npx facebook credentials store`"
+      );
+    }
 
     portfinder.getPort(
       { port: 3000, stopPort: 9999, host: "127.0.0.1" },
@@ -246,16 +259,16 @@ program
         if (err) {
           console.error(err);
         } else {
-          mcp.on("error", (err) => {
+          server.on("error", (err) => {
             app.render(MCPError({ message: err }));
           });
-          (mcp as any).on(
+          (server as any).on(
             "request",
             (req: express.Request, res: express.Response) => {
               app.render(MCPRequest({ req, res }));
             }
           );
-          mcp.listen(port, (err) => {
+          server.listen(port, (err) => {
             if (err) {
               app.render(MCPError({ message: err }));
             } else {
@@ -265,6 +278,31 @@ program
         }
       }
     );
+  });
+
+mcp
+  .command("raw")
+  .description(
+    "Runs the MCP server through a stdio transport. No output will be displayed."
+  )
+  .option("--profile", "The profile to use. Accepts 'user' or 'page'.", "page")
+  .action(async (options) => {
+    try {
+      const facebook = new Facebook();
+      await facebook.login().catch((e) => {
+        throw e;
+      });
+
+      const server = createMCP(facebook, options.profile);
+      return await serveStdioMCP(server);
+    } catch (e) {
+      throw new Error(
+        "Failed to authenticate the MCP. You may have forgot to login/refresh with your credentials." +
+          "\nIf you've never used this library before, you probably need to get API credentials. You can do this by running `npx facebook login`." +
+          "\n\nOtherwise, if you're running the MCP from an unfamiliar directory or through a third-party app (like Claude Desktop or your IDE), you need to first make your credentials available globally. You can do this automatically by running `npx facebook credentials store`." +
+          "\n\nTLDR: Run the following in a safe directory, and take note of where the credentials are stored.\n`npx facebook login`\n`npx facebook credentials store`"
+      );
+    }
   });
 
 program.parse();

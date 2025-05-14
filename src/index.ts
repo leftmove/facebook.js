@@ -2,8 +2,11 @@ import { Facebook } from "./client/client";
 
 export default Facebook;
 
-export { DEFAULT_CONFIG } from "./credentials";
-export { DEFAULT_FILE_PATH } from "./credentials";
+export {
+  DEFAULT_CONFIG,
+  DEFAULT_CONFIG_PATH,
+  DEFAULT_FILE_PATH,
+} from "./credentials";
 export { DEFAULT_EXPIRE_ADD } from "./api";
 export { DEFAULT_SCOPE } from "./api";
 export { FACEBOOK_GRAPH_API } from "./api";

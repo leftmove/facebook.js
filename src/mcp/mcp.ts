@@ -4,6 +4,7 @@ import {
   McpServer,
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -204,6 +205,11 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
   );
 
   return server;
+}
+
+export async function serveStdioMCP(mcp: McpServer) {
+  const transport = new StdioServerTransport();
+  return await mcp.connect(transport);
 }
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
