@@ -1,6 +1,6 @@
 {
   "name": "@anonyo/facebook.js",
-  "version": "0.9.7",
+  "version": "1.0.0",
   "author": {
     "name": "Anonyo Noor",
     "url": "https://anonyonoor.com"
@@ -14,6 +14,8 @@
     "@types/mocha": "^10.0.7",
     "@types/node": "^20.14.12",
     "axios": "^1.7.3",
+    "esbuild": "^0.25.4",
+    "rolldown": "^1.0.0-beta.8",
     "ts-node": "^10.9.2",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4"
@@ -25,11 +27,12 @@
     "check:main": "bun run test/index.ts",
     "check:all": "mocha test/**/*.ts",
     "check:client": "mocha test/client/**/*.ts",
-    "facebook": "bun src/cli/index.ts",
-    "login": "tsx src/cli/index.ts login"
+    "facebook": "bun run src/cli/index.ts",
+    "build": "node esbuild.config.mjs",
+    "prepublishOnly": "npm run build"
   },
   "bin": {
-    "facebook": "src/cli/index.ts"
+    "facebook": "dist/cli/index.js"
   },
   "type": "module",
   "dependencies": {
@@ -52,5 +55,8 @@
     "portfinder": "^1.0.37",
     "react": "^18.3.1",
     "tmp": "^0.2.3"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

@@ -9,7 +9,7 @@ import { App, spin, info } from "./components";
 import { UnauthorizedError, GraphError } from "../index";
 import type { Permissions } from "../index";
 
-import successHTML from "./success.html" with { type: "text" };
+import successHTML from "./success.html";
 
 export async function appCredentials(
   appId: string | undefined,

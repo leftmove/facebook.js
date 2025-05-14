@@ -423,7 +423,7 @@ export class Posts {
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
   async publish(
-    config: PublishConfig,
+    config: PostPublish,
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page"
       ? ["pageId", "pageToken"]
@@ -696,7 +696,7 @@ export class PagePosts extends Posts {
    * @see {@link Post#ready} if your posting a scheduled post.
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
-  async publish(config: PublishConfig) {
+  async publish(config: PostPublish) {
     return super.publish(
       config,
       "page",

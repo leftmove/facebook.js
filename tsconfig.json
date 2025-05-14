@@ -9,11 +9,14 @@
     "allowJs": true,
     "esModuleInterop": true,
 
-    // Bundler mode
+    // Output
+    "outDir": "dist",
+    "rootDir": "src",
+
+    // Node-compatible module resolution
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "noEmit": false,
 
     // Best practices
     "strict": true,
@@ -29,5 +32,7 @@
   "ts-node": {
     "transpileOnly": true,
     "files": true
-  }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"],
+  "exclude": ["node_modules", "dist", "test"]
 }

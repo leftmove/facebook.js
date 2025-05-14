@@ -1,5 +1,3 @@
-#!/usr/bin/env tsx
-
 import { Command } from "commander";
 import portfinder from "portfinder";
 
