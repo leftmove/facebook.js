@@ -1,8 +1,7 @@
-#!/usr/bin/env bun
+#!/usr/bin/env tsx
 
 import { Command } from "commander";
 import portfinder from "portfinder";
-import express from "express";
 
 import Facebook from "..";
 import {
@@ -252,18 +251,21 @@ mcp
   .command("start")
   .description("Starts the MCP server through streamable HTTP.")
   .option(
-    "--dual",
-    "Starts the MCP server with dual profiles. Accepts true or false.",
-    "false"
+    "--profile",
+    "The profile to login with. Accepts 'user', 'page'.",
+    "page"
   )
+  .option("--dual", "Starts the MCP server with dual profiles.", false)
   .action(async (options) => {
-    const dual = options.dual === "true";
+    const profile = options.profile;
+    const dual = options.dual;
     const app = new App();
     app.render(MCPInitial);
 
     try {
+      const auth: Authentication = { profile };
       const facebook = new Facebook();
-      await facebook.login().catch((e) => {
+      await facebook.login(auth).catch((e) => {
         throw e;
       });
     } catch (e) {
@@ -279,7 +281,7 @@ mcp
       app.render(MCPRequest({ req, res }));
       next();
     });
-    server.get(["/mcp/user", "/mcp/page"], async (req, res) => {
+    server.get(["/mcp/user", "/mcp/page", "/mcp/main"], async (req, res) => {
       res.send("MCP Running");
     });
     server.get("/mcp", sessionHandler);
@@ -287,7 +289,7 @@ mcp
 
     if (dual) {
       server.post(
-        "/mcp",
+        "/mcp/main",
         async (req, res) => await MCPHandler(req, res, "dual")
       );
     } else {
@@ -311,7 +313,7 @@ mcp
             if (err) {
               app.render(MCPError({ message: err }));
             } else {
-              app.render(MCPProfile({ url: "http://127.0.0.1", port }));
+              app.render(MCPProfile({ url: `http://127.0.0.1:${port}`, dual }));
             }
           });
         }

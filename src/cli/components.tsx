@@ -344,15 +344,7 @@ export const MCPError = ({ message }: { message: any }) => (
   </Box>
 );
 
-export const MCPProfile = ({
-  url,
-  port,
-  dual,
-}: {
-  url: string;
-  port: number;
-  dual?: boolean;
-}) => (
+export const MCPProfile = ({ url, dual }: { url: string; dual?: boolean }) => (
   <Box
     flexDirection="column"
     alignItems="center"
@@ -366,7 +358,7 @@ export const MCPProfile = ({
           <Text>
             Streamable HTTP at{" "}
             <Text color="cyan" bold>
-              {url}:{port}/mcp
+              {url}/mcp/main
             </Text>{" "}
             for user and page functions
           </Text>
@@ -376,14 +368,14 @@ export const MCPProfile = ({
           <Text>
             Streamable HTTP at{" "}
             <Text color="cyan" bold>
-              {url}:{port}/mcp/user
+              {url}/mcp/user
             </Text>{" "}
             for user functions
           </Text>
           <Text>
             Streamable HTTP at{" "}
             <Text color="cyan" bold>
-              {url}:{port}/mcp/page
+              {url}/mcp/page
             </Text>{" "}
             for page functions
           </Text>
