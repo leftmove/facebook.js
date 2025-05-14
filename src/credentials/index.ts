@@ -257,7 +257,9 @@ export function readFromEnvironmentCredentials(): Credentials {
         const credKey = credentialKeys[i] as keyof Credentials;
 
         if (key in process.env) {
-          credentials[credKey] = process.env[envKey] as any;
+          credentials[credKey] = JSON.parse(
+            JSON.stringify(process.env[envKey])
+          ) as any;
         } else {
           credentials[credKey] = DEFAULT_CREDENTIAL_TEMPLATE[credKey] as any;
         }

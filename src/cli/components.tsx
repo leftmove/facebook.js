@@ -563,12 +563,7 @@ export const CredentialsLoaded = ({
           <Text key={`json-${key}`}>
             {'"'}
             <Text color="cyan">{key}</Text>
-            {'"'}:{" "}
-            {typeof value === "string"
-              ? `"${value}"`
-              : value === null
-              ? "null"
-              : String(value)}
+            {'"'}: {`"${value}"`}
             {index < credentialEntries.length - 1 ? "," : ""}
           </Text>
         ))}
