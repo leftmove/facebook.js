@@ -29,14 +29,9 @@ import {
   LoginSuccess,
   CredentialsDisplay,
   CredentialsStored,
+  CredentialsLoaded,
 } from "./components";
-import {
-  MCPInitial,
-  MCPProfile,
-  MCPClose,
-  MCPRequest,
-  MCPError,
-} from "./components";
+import { MCPInitial, MCPProfile, MCPRequest, MCPError } from "./components";
 
 const program = new Command();
 
@@ -94,8 +89,22 @@ credentials
     const app = new App();
 
     await facebook.login().then(({ credentials }) => {
-      writeToJSONCredentials(credentials);
+      writeToJSONCredentials(credentials, DEFAULT_CONFIG_PATH);
       app.render(CredentialsStored({ path: DEFAULT_CONFIG_PATH }));
+    });
+  });
+
+credentials
+  .command("load")
+  .description(
+    "Get easily copy/paste-able credentials to load into your command line or JSON config."
+  )
+  .action(async () => {
+    const facebook = new Facebook();
+    const app = new App();
+
+    await facebook.login().then(({ credentials }) => {
+      app.render(CredentialsLoaded({ credentials }));
     });
   });
 

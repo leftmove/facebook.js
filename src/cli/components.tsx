@@ -6,7 +6,11 @@ import figures from "figures";
 import { render, Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 
-import { DEFAULT_CONFIG_PATH, DEFAULT_FILE_PATH } from "../credentials";
+import {
+  DEFAULT_CONFIG_PATH,
+  DEFAULT_FILE_PATH,
+  toEnvironmentKey,
+} from "../credentials";
 
 export const yellow = "\x1b[43m";
 export const blue = "\x1b[44m";
@@ -485,6 +489,7 @@ export const CredentialsDisplay = ({
     </Box>
   );
 };
+
 export const CredentialsStored = ({ path }: { path: string }) => {
   return (
     <Box
@@ -513,6 +518,115 @@ export const CredentialsStored = ({ path }: { path: string }) => {
           These credentials will be used as a fallback for authentication.
         </Text>
       </Box>
+    </Box>
+  );
+};
+
+export const CredentialsLoaded = ({
+  credentials,
+}: {
+  credentials: Record<string, any>;
+}) => {
+  // Detect OS
+  const platform = process.platform;
+  const isWindows = platform === "win32";
+  const isMac = platform === "darwin";
+  const isLinux = platform === "linux";
+
+  // Format credentials entries for display
+  const credentialEntries = Object.entries(credentials)
+    .filter(([_, value]) => value !== undefined) // Filter out undefined values
+    .map(([key, value]) => [toEnvironmentKey(key), value]) as [
+    string,
+    string | number | boolean | null
+  ][];
+
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+    >
+      <Box flexDirection="column" alignItems="center" marginBottom={1}>
+        <Box>
+          <Text bold>Credentials</Text>
+        </Box>
+      </Box>
+
+      {/* Always show JSON format */}
+      <Box marginBottom={1}>
+        <Text bold>JSON Format</Text>
+      </Box>
+      <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+        {credentialEntries.map(([key, value], index) => (
+          <Text key={`json-${key}`}>
+            {'"'}
+            <Text color="cyan">{key}</Text>
+            {'"'}:{" "}
+            {typeof value === "string"
+              ? `"${value}"`
+              : value === null
+              ? "null"
+              : String(value)}
+            {index < credentialEntries.length - 1 ? "," : ""}
+          </Text>
+        ))}
+        <Box marginTop={1} flexDirection="column" alignItems="center">
+          <Text color="gray" italic>
+            If your terminal isn't wide enough (likely), these values will wrap
+            to the next line, and produce invalid JSON.
+          </Text>
+          <Text color="gray" italic>
+            You can fix this by increasing your terminal width, but you'll
+            probably have to manually get rid of the new lines after you paste
+            the JSON.
+          </Text>
+        </Box>
+      </Box>
+
+      {/* Show Unix/Linux/macOS format if on those platforms */}
+      {(isMac || isLinux) && (
+        <>
+          <Box marginBottom={1}>
+            <Text bold>Unix Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`unix-${key}`}>
+                export <Text color="green">{key}</Text>="{String(value)}"
+              </Text>
+            ))}
+          </Box>
+        </>
+      )}
+
+      {/* Show Windows CMD format if on Windows */}
+      {isWindows && (
+        <>
+          <Box marginBottom={1}>
+            <Text bold>CMD Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`cmd-${key}`}>
+                set <Text color="green">{key}</Text>="{String(value)}"
+              </Text>
+            ))}
+          </Box>
+
+          <Box marginBottom={1}>
+            <Text bold>PowerShell Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`ps-${key}`}>
+                $env:<Text color="green">{key}</Text> = "{String(value)}"
+              </Text>
+            ))}
+          </Box>
+        </>
+      )}
     </Box>
   );
 };

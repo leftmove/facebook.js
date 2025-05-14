@@ -1,5 +1,6 @@
 import fs from "fs";
 import envPaths from "env-paths";
+import dotenv from "dotenv";
 
 import { CredentialError, FileError } from "../errors";
 import type { Permissions, Profile } from "../api";
@@ -167,6 +168,7 @@ export function writeToJSONCredentials(
         error
       );
     }
+    writeToEnvironmentCredentials(credentials);
   }
 }
 
@@ -174,16 +176,18 @@ export function readFromJSONCredentials(
   filePath: string = DEFAULT_FILE_PATH
 ): Credentials {
   try {
-    const JSONCredentials: Credentials = doesFileExist(filePath)
-      ? JSON.parse(fs.readFileSync(filePath, "utf8"))
-      : {};
+    const environmentCredentials = readFromEnvironmentCredentials();
     const configCredentials: Credentials = doesFileExist(DEFAULT_CONFIG_PATH)
       ? JSON.parse(fs.readFileSync(DEFAULT_CONFIG_PATH, "utf8"))
       : {};
+    const JSONCredentials: Credentials = doesFileExist(filePath)
+      ? JSON.parse(fs.readFileSync(filePath, "utf8"))
+      : {};
 
+    // Order of precedence: current directory, config directory, environment
     const credentials: Credentials = Object.assign(
       DEFAULT_CREDENTIAL_TEMPLATE,
-      { ...configCredentials, ...JSONCredentials }
+      { ...configCredentials, ...environmentCredentials, ...JSONCredentials }
     );
     return credentials;
   } catch (error) {
@@ -193,24 +197,23 @@ export function readFromJSONCredentials(
 
 export function toEnvironmentKey(
   key: string,
-  prefix: string = "FACEBOOK-"
+  prefix: string = "FACEBOOK_"
 ): string {
-  return `${prefix}${key.replace(/([A-Z])/g, "-$1").toUpperCase()}`;
+  return `${prefix}${key.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
 }
 
 export function fromEnvironmentKey(
   key: string,
-  prefix: string = "FACEBOOK-"
+  prefix: string = "FACEBOOK_"
 ): string {
-  if (!key.startsWith(prefix)) {
-    return key.toLowerCase();
+  if (key.startsWith(prefix) === false) {
+    return key;
+  } else {
+    return key // SCREAMING_CASE to camelCase from key without prefix.
+      .substring(prefix.length)
+      .toLowerCase()
+      .replace(/_([a-z])/g, (_, c) => c.toUpperCase());
   }
-
-  const withoutPrefix = key.substring(prefix.length).toLowerCase();
-
-  return withoutPrefix.replace(/-([a-z])/g, (_, letter) =>
-    letter.toUpperCase()
-  );
 }
 
 /**
@@ -220,7 +223,7 @@ export function fromEnvironmentKey(
  */
 export function writeToEnvironmentCredentials(
   credentials: Credentials,
-  prefix: string = "FACEBOOK-"
+  prefix: string = "FACEBOOK_"
 ): void {
   try {
     Object.keys(credentials).forEach((key) => {
@@ -241,32 +244,24 @@ export function writeToEnvironmentCredentials(
  * @param prefix The prefix of the environment variables to read
  * @returns The credentials read from environment variables
  */
-export function readFromEnvironmentCredentials(
-  prefix: string = "FACEBOOK-"
-): Credentials {
+export function readFromEnvironmentCredentials(): Credentials {
   try {
+    dotenv.config();
     const credentials: Credentials = {};
+    const credentialKeys = Object.keys(DEFAULT_CREDENTIAL_TEMPLATE);
 
-    Object.keys(process.env).forEach((envKey) => {
-      if (envKey.startsWith(prefix)) {
-        const credentialKey = fromEnvironmentKey(envKey, prefix);
-        const typedKey = credentialKey as keyof Credentials;
+    credentialKeys
+      .map((key) => toEnvironmentKey(key))
+      .forEach((key, i) => {
+        const envKey = key;
+        const credKey = credentialKeys[i] as keyof Credentials;
 
-        try {
-          // Parse the JSON value from the environment variable
-          const value = process.env[envKey];
-          if (value) {
-            credentials[typedKey] = JSON.parse(value);
-          }
-        } catch (parseError) {
-          // If parsing fails, use the raw string value
-          const value = process.env[envKey];
-          if (value) {
-            credentials[typedKey] = value as any;
-          }
+        if (key in process.env) {
+          credentials[credKey] = process.env[envKey] as any;
+        } else {
+          credentials[credKey] = DEFAULT_CREDENTIAL_TEMPLATE[credKey] as any;
         }
-      }
-    });
+      });
 
     return credentials;
   } catch (error) {
