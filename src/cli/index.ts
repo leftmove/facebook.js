@@ -20,7 +20,14 @@ import {
 } from "./token";
 import { userIdCredential, pageIdCredential } from "./id";
 
-import { app as server, createMCP, serveStdioMCP } from "../mcp";
+import {
+  app as server,
+  createMCP,
+  createDualMCP,
+  serveStdioMCP,
+  MCPHandler,
+  sessionHandler,
+} from "../mcp";
 
 import {
   App,
@@ -244,7 +251,13 @@ const mcp = program.command("mcp").description("Commands for the MCP server.");
 mcp
   .command("start")
   .description("Starts the MCP server through streamable HTTP.")
-  .action(async () => {
+  .option(
+    "--dual",
+    "Starts the MCP server with dual profiles. Accepts true or false.",
+    "false"
+  )
+  .action(async (options) => {
+    const dual = options.dual === "true";
     const app = new App();
     app.render(MCPInitial);
 
@@ -262,21 +275,38 @@ mcp
       );
     }
 
+    server.use((req, res, next) => {
+      app.render(MCPRequest({ req, res }));
+      next();
+    });
+    server.get(["/mcp/user", "/mcp/page"], async (req, res) => {
+      res.send("MCP Running");
+    });
+    server.get("/mcp", sessionHandler);
+    server.delete("/mcp", sessionHandler);
+
+    if (dual) {
+      server.post(
+        "/mcp",
+        async (req, res) => await MCPHandler(req, res, "dual")
+      );
+    } else {
+      server.post(
+        "/mcp/user",
+        async (req, res) => await MCPHandler(req, res, "user")
+      );
+      server.post(
+        "/mcp/page",
+        async (req, res) => await MCPHandler(req, res, "page")
+      );
+    }
+
     portfinder.getPort(
       { port: 3000, stopPort: 9999, host: "127.0.0.1" },
       (err, port) => {
         if (err) {
-          console.error(err);
+          app.render(MCPError({ message: err }));
         } else {
-          server.on("error", (err) => {
-            app.render(MCPError({ message: err }));
-          });
-          (server as any).on(
-            "request",
-            (req: express.Request, res: express.Response) => {
-              app.render(MCPRequest({ req, res }));
-            }
-          );
           server.listen(port, (err) => {
             if (err) {
               app.render(MCPError({ message: err }));
@@ -294,15 +324,23 @@ mcp
   .description(
     "Runs the MCP server through a stdio transport. No output will be displayed."
   )
-  .option("--profile", "The profile to use. Accepts 'user' or 'page'.", "page")
+  .option(
+    "--profile",
+    "The profile to use. Accepts 'user', 'page', or 'dual'.",
+    "page"
+  )
   .action(async (options) => {
     try {
+      const profile = options.profile;
       const facebook = new Facebook();
       await facebook.login().catch((e) => {
         throw e;
       });
 
-      const server = createMCP(facebook, options.profile);
+      const server =
+        profile === "dual"
+          ? createDualMCP(facebook)
+          : createMCP(facebook, profile);
       return await serveStdioMCP(server);
     } catch (e) {
       throw new Error(

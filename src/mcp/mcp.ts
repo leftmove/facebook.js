@@ -12,12 +12,11 @@ import { z } from "zod";
 import Facebook from "../";
 import type { Profile } from "../";
 
-export function createMCP(facebook: Facebook, profile?: Profile) {
-  const server = new McpServer({
-    name: "Facebook.js",
-    version: "0.1.0",
-  });
-
+export function createMCPFunctions(
+  server: McpServer,
+  facebook: Facebook,
+  profile?: Profile
+) {
   let name: string;
   let info;
   let access;
@@ -207,6 +206,32 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
   return server;
 }
 
+export function createMCP(facebook: Facebook, profile?: Profile) {
+  const server = createMCPFunctions(
+    new McpServer({
+      name: "Facebook.js",
+      version: "0.9.5",
+    }),
+    facebook,
+    profile
+  );
+  return server;
+}
+
+export function createDualMCP(facebook: Facebook) {
+  const initialServer = createMCPFunctions(
+    new McpServer({
+      name: "Facebook.js",
+      version: "0.9.5",
+    }),
+    facebook,
+    "page"
+  );
+  const dualServer = createMCPFunctions(initialServer, facebook, "user");
+
+  return dualServer;
+}
+
 export async function serveStdioMCP(mcp: McpServer) {
   const transport = new StdioServerTransport();
   return await mcp.connect(transport);
@@ -217,7 +242,7 @@ const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 export async function MCPHandler(
   req: express.Request,
   res: express.Response,
-  profile: Profile
+  profile: Profile | "dual"
 ) {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   let transport: StreamableHTTPServerTransport;
@@ -239,7 +264,8 @@ export async function MCPHandler(
     };
 
     const client = new Facebook();
-    const server = createMCP(client, profile);
+    const server =
+      profile === "dual" ? createDualMCP(client) : createMCP(client, profile);
 
     await server.connect(transport);
   } else {

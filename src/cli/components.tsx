@@ -344,7 +344,15 @@ export const MCPError = ({ message }: { message: any }) => (
   </Box>
 );
 
-export const MCPProfile = ({ url, port }: { url: string; port: number }) => (
+export const MCPProfile = ({
+  url,
+  port,
+  dual,
+}: {
+  url: string;
+  port: number;
+  dual?: boolean;
+}) => (
   <Box
     flexDirection="column"
     alignItems="center"
@@ -353,22 +361,34 @@ export const MCPProfile = ({ url, port }: { url: string; port: number }) => (
   >
     <Box flexDirection="column" alignItems="center">
       <Spinner message="Running the MCP" />
-      <Box flexDirection="column" alignItems="center" marginTop={2}>
-        <Text>
-          Streamable HTTP at{" "}
-          <Text color="cyan" bold>
-            {url}:{port}/mcp/user
-          </Text>{" "}
-          for user functions
-        </Text>
-        <Text>
-          Streamable HTTP at{" "}
-          <Text color="cyan" bold>
-            {url}:{port}/mcp/page
-          </Text>{" "}
-          for page functions
-        </Text>
-      </Box>
+      {dual ? (
+        <Box flexDirection="column" alignItems="center" marginTop={2}>
+          <Text>
+            Streamable HTTP at{" "}
+            <Text color="cyan" bold>
+              {url}:{port}/mcp
+            </Text>{" "}
+            for user and page functions
+          </Text>
+        </Box>
+      ) : (
+        <Box flexDirection="column" alignItems="center" marginTop={2}>
+          <Text>
+            Streamable HTTP at{" "}
+            <Text color="cyan" bold>
+              {url}:{port}/mcp/user
+            </Text>{" "}
+            for user functions
+          </Text>
+          <Text>
+            Streamable HTTP at{" "}
+            <Text color="cyan" bold>
+              {url}:{port}/mcp/page
+            </Text>{" "}
+            for page functions
+          </Text>
+        </Box>
+      )}
     </Box>
   </Box>
 );
@@ -434,7 +454,11 @@ export const CredentialsDisplay = ({
           </Text>
         </Box>
 
-        <Box flexDirection="row" justifyContent="space-between">
+        <Box
+          flexDirection="row"
+          alignItems="flex-start"
+          justifyContent="space-between"
+        >
           <Box width={"32%"} alignItems="center">
             <Text color="gray" italic>
               - Your current directory (at '

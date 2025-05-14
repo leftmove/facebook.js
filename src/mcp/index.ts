@@ -1,2 +1,8 @@
 export { app, serve } from "./server";
-export { createMCP, serveStdioMCP } from "./mcp";
+export {
+  createMCP,
+  createDualMCP,
+  serveStdioMCP,
+  MCPHandler,
+  sessionHandler,
+} from "./mcp";
