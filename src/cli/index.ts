@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import portfinder from "portfinder";
+import express from "express";
 
 import Facebook from "..";
 import {
@@ -34,6 +35,8 @@ import {
   CredentialsDisplay,
   CredentialsStored,
   CredentialsLoaded,
+  CredentialsJSON,
+  CredentialsEnvironmentShell,
 } from "./components";
 import { MCPInitial, MCPProfile, MCPRequest, MCPError } from "./components";
 
@@ -99,16 +102,30 @@ credentials
   });
 
 credentials
-  .command("load")
+  .command("json")
   .description(
-    "Get easily copy/paste-able credentials to load into your command line or JSON config."
+    "Get easily copy/paste-able JSON credentials to load into your MCP config."
   )
   .action(async () => {
     const facebook = new Facebook();
     const app = new App();
 
     await facebook.login().then(({ credentials }) => {
-      app.render(CredentialsLoaded({ credentials }));
+      app.render(CredentialsJSON({ credentials }));
+    });
+  });
+
+credentials
+  .command("shell")
+  .description(
+    "Get easily copy/paste-able environment variables to load into your shell."
+  )
+  .action(async () => {
+    const facebook = new Facebook();
+    const app = new App();
+
+    await facebook.login().then(({ credentials }) => {
+      app.render(CredentialsEnvironmentShell({ credentials }));
     });
   });
 
@@ -275,29 +292,41 @@ mcp
       );
     }
 
-    server.use((req, res, next) => {
-      app.render(MCPRequest({ req, res }));
-      next();
-    });
-    server.get(["/mcp/user", "/mcp/page", "/mcp/main"], async (req, res) => {
-      res.send("MCP Running");
-    });
+    server.use(
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction
+      ) => {
+        app.render(MCPRequest({ req, res }));
+        next();
+      }
+    );
+    server.get(
+      ["/mcp/user", "/mcp/page", "/mcp/main"],
+      async (req: express.Request, res: express.Response) => {
+        res.send("MCP Running");
+      }
+    );
     server.get("/mcp", sessionHandler);
     server.delete("/mcp", sessionHandler);
 
     if (dual) {
       server.post(
         "/mcp/main",
-        async (req, res) => await MCPHandler(req, res, "dual")
+        async (req: express.Request, res: express.Response) =>
+          await MCPHandler(req, res, "dual")
       );
     } else {
       server.post(
         "/mcp/user",
-        async (req, res) => await MCPHandler(req, res, "user")
+        async (req: express.Request, res: express.Response) =>
+          await MCPHandler(req, res, "user")
       );
       server.post(
         "/mcp/page",
-        async (req, res) => await MCPHandler(req, res, "page")
+        async (req: express.Request, res: express.Response) =>
+          await MCPHandler(req, res, "page")
       );
     }
 
@@ -307,7 +336,7 @@ mcp
         if (err) {
           app.render(MCPError({ message: err }));
         } else {
-          server.listen(port, (err) => {
+          server.listen(port, (err: any) => {
             if (err) {
               app.render(MCPError({ message: err }));
             } else {

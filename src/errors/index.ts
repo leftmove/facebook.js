@@ -43,9 +43,10 @@ export class GraphError extends Error {
 export class CredentialError extends GraphError {
   constructor(message: string = "", error: any = {}, api: any = {}) {
     super(error, api?.response, api?.data);
-    this.message =
-      `${this.message} ${message}\n` +
-      "Try logging in again.\nThe command you probably need to use is `npx facebook refresh`.\n";
+    console.error(
+      message +
+        "\nTry logging in again.\nThe command you probably need to use is `npx facebook refresh`.\n"
+    );
     this.name = "CredentialError";
   }
 }

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const filePath = path.join(__dirname, "success-template.html");
+const filePath = path.join(__dirname, "success.html");
 
 const successHTML = fs.readFileSync(filePath, "utf8");
 

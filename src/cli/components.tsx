@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import express from "express";
 import figures from "figures";
+import clipboard from "clipboardy";
 import { render, Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 
@@ -93,6 +94,17 @@ export class App {
 //   return () => setRunning(false);
 // };
 
+function Link({ url }: { url: string }) {
+  const chunks = url.match(/.{1,80}/g) || [];
+  return (
+    <Text>
+      {chunks.map((chunk, i) => (
+        <Text key={i}>{chunk}</Text>
+      ))}
+    </Text>
+  );
+}
+
 function Spinner(props: { message: string }) {
   const [frame, setFrame] = useState(0);
   const spinner = {
@@ -114,7 +126,7 @@ function Spinner(props: { message: string }) {
   }, [spinner]);
 
   return (
-    <Text>
+    <Text color="blue">
       {spinner.frames[frame]} {props.message}
     </Text>
   );
@@ -538,6 +550,174 @@ export const CredentialsStored = ({ path }: { path: string }) => {
   );
 };
 
+export const CredentialsJSON = ({
+  credentials,
+}: {
+  credentials: Record<string, any>;
+}) => {
+  // Format credentials entries for display
+  const credentialEntries = Object.entries(credentials)
+    .filter(([_, value]) => value !== undefined) // Filter out undefined values
+    .map(([key, value]) => [toEnvironmentKey(key), value]) as [
+    string,
+    string | number | boolean | null
+  ][];
+
+  const paste = JSON.stringify(
+    Object.fromEntries(credentialEntries.map(([key, value]) => [key, value])),
+    null,
+    2
+  );
+  clipboard.writeSync(paste);
+
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+      width={"100%"}
+    >
+      <Box flexDirection="column" alignItems="center" marginBottom={1}>
+        <Box>
+          <Text bold>Credentials</Text>
+        </Box>
+      </Box>
+
+      {/* Always show JSON format */}
+      <Box marginBottom={1}>
+        <Text bold>JSON Format</Text>
+      </Box>
+      <Box
+        flexDirection="column"
+        marginLeft={2}
+        marginBottom={2}
+        width={"100%"}
+      >
+        {credentialEntries.map(([key, value], index) => (
+          <Text key={`json-${key}`}>
+            {'"'}
+            <Text color="cyan">{key}</Text>
+            {'"'}: {`"${value}"`}
+            {index < credentialEntries.length - 1 ? "," : ""}
+          </Text>
+        ))}
+        <Box marginTop={1} flexDirection="column" alignItems="center">
+          <Text color="gray" italic>
+            If your terminal isn't wide enough (likely), these values will wrap
+            to the next line, and produce invalid JSON.
+          </Text>
+          <Text color="gray" italic>
+            You can fix this by increasing your terminal width, but you'll
+            probably have to manually get rid of the new lines after you paste
+            the JSON.
+          </Text>
+        </Box>
+        <Box marginTop={2} flexDirection="column" alignItems="center">
+          <Text color="blue" bold>
+            These credentials have been copied to your clipboard.
+          </Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+export const CredentialsEnvironmentShell = ({
+  credentials,
+}: {
+  credentials: Record<string, any>;
+}) => {
+  const platform = process.platform;
+  const isWindows = platform === "win32";
+  const isMac = platform === "darwin";
+  const isLinux = platform === "linux";
+
+  // Format credentials entries for display
+  const credentialEntries = Object.entries(credentials)
+    .filter(([_, value]) => value !== undefined) // Filter out undefined values
+    .map(([key, value]) => [toEnvironmentKey(key), value]) as [
+    string,
+    string | number | boolean | null
+  ][];
+
+  let paste: string;
+  if (isMac || isLinux) {
+    paste = credentialEntries
+      .map(([key, value]) => {
+        return `export ${key}=${value}`;
+      })
+      .join("\n");
+  } else if (isWindows) {
+    paste = credentialEntries
+      .map(([key, value]) => {
+        return `set ${key}=${value}`;
+      })
+      .join("\n");
+  } else {
+    throw new Error("Unsupported platform");
+  }
+  clipboard.writeSync(paste);
+
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      marginTop={1}
+      marginBottom={1}
+      width={"100%"}
+    >
+      {/* Show Unix/Linux/macOS format if on those platforms */}
+      {(isMac || isLinux) && (
+        <>
+          <Box marginBottom={1}>
+            <Text bold>Unix Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`unix-${key}`}>
+                export <Text color="green">{key}</Text>="{String(value)}"
+              </Text>
+            ))}
+          </Box>
+        </>
+      )}
+
+      {/* Show Windows CMD format if on Windows */}
+      {isWindows && (
+        <>
+          <Box marginBottom={1}>
+            <Text bold>CMD Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`cmd-${key}`}>
+                set <Text color="green">{key}</Text>="{String(value)}"
+              </Text>
+            ))}
+          </Box>
+
+          <Box marginBottom={1}>
+            <Text bold>PowerShell Commands</Text>
+          </Box>
+          <Box flexDirection="column" marginLeft={2}>
+            {credentialEntries.map(([key, value]) => (
+              <Text key={`ps-${key}`}>
+                $env:<Text color="green">{key}</Text> = "{String(value)}"
+              </Text>
+            ))}
+          </Box>
+        </>
+      )}
+      <Box marginTop={2} flexDirection="column" alignItems="center">
+        <Text color="blue" bold>
+          These credentials have been copied to your clipboard.
+        </Text>
+      </Box>
+    </Box>
+  );
+};
+
 export const CredentialsLoaded = ({
   credentials,
 }: {
@@ -563,6 +743,7 @@ export const CredentialsLoaded = ({
       alignItems="center"
       marginTop={1}
       marginBottom={1}
+      width={"100%"}
     >
       <Box flexDirection="column" alignItems="center" marginBottom={1}>
         <Box>
@@ -574,7 +755,12 @@ export const CredentialsLoaded = ({
       <Box marginBottom={1}>
         <Text bold>JSON Format</Text>
       </Box>
-      <Box flexDirection="column" marginLeft={2} marginBottom={2}>
+      <Box
+        flexDirection="column"
+        marginLeft={2}
+        marginBottom={2}
+        width={"100%"}
+      >
         {credentialEntries.map(([key, value], index) => (
           <Text key={`json-${key}`}>
             {'"'}

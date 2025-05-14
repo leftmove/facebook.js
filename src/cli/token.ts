@@ -3,6 +3,8 @@ import url from "node:url";
 import assert from "node:assert";
 import http from "http";
 import inquirer from "inquirer";
+import clipboard from "clipboardy";
+import portfinder from "portfinder";
 
 import Facebook, { CredentialError } from "../index";
 import { App, spin, info } from "./components";
@@ -118,13 +120,16 @@ export async function userTokenCredential(
   return facebook.access.user
     .validate(userToken)
     .catch(() => false)
-    .then((valid: boolean) => {
+    .then(async (valid: boolean) => {
       if (valid) {
         return facebook.access.user.token;
       } else {
         const appId = facebook.id;
 
-        const port = 2279;
+        const port = await portfinder.getPortPromise({
+          port: 2279,
+          stopPort: 9999,
+        });
         const host = "localhost";
         const path = "/login";
         const redirect = new URL(`http://${host}:${port}${path}`);
@@ -152,8 +157,14 @@ export async function userTokenCredential(
                 `If OAuth did not open, you can visit the link manually:`,
                 app
               );
-              info(oauth, app, "blueBright");
-            }, 1000 * 5);
+              info(`http://${host}:${port}/redirect`, app, "blueBright");
+              info(
+                "This link has been copied to your clipboard.",
+                app,
+                "blueBright"
+              );
+              clipboard.writeSync(oauth);
+            }, 1000 * 3);
             open(oauth);
 
             const server = http
@@ -171,9 +182,14 @@ export async function userTokenCredential(
                       res.writeHead(200);
                       res.end(successHTML, () => server.close());
                       break;
+                    case "/redirect":
+                      res.writeHead(302, { Location: oauth });
+                      res.end();
+                      break;
                     default:
                       res.writeHead(404);
                       res.end(`Not found, try querying the '${path}' path.`);
+                      break;
                   }
                 }
               )
