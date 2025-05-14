@@ -16,7 +16,6 @@
     "chai": "^5.2.0",
     "esbuild": "^0.25.4",
     "mocha": "^11.1.0",
-    "rolldown": "^1.0.0-beta.8",
     "ts-node": "^10.9.2",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4"
