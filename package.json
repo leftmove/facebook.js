@@ -27,6 +27,7 @@
     "typescript": "^5.5.4"
   },
   "scripts": {
+    "commit": "cz",
     "check:main": "bun run test/index.ts",
     "check:all": "mocha test/**/*.ts",
     "check:client": "mocha test/client/**/*.ts",
