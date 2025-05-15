@@ -3,6 +3,7 @@
 # Development
 .vscode/
 .zed/
+.husky/
 
 # Logs
 
