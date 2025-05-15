@@ -97,9 +97,7 @@ export class App {
 function writeToClipboard(text: string) {
   try {
     clipboard.writeSync(text);
-  } catch (error) {
-    console.error("Failed to write to clipboard:", error);
-  }
+  } catch (error) {}
 }
 
 function Spinner(props: { message: string }) {
