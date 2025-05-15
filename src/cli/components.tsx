@@ -94,15 +94,12 @@ export class App {
 //   return () => setRunning(false);
 // };
 
-function Link({ url }: { url: string }) {
-  const chunks = url.match(/.{1,80}/g) || [];
-  return (
-    <Text>
-      {chunks.map((chunk, i) => (
-        <Text key={i}>{chunk}</Text>
-      ))}
-    </Text>
-  );
+function writeToClipboard(text: string) {
+  try {
+    clipboard.writeSync(text);
+  } catch (error) {
+    console.error("Failed to write to clipboard:", error);
+  }
 }
 
 function Spinner(props: { message: string }) {
@@ -568,7 +565,7 @@ export const CredentialsJSON = ({
     null,
     2
   );
-  clipboard.writeSync(paste);
+  writeToClipboard(paste);
 
   return (
     <Box
@@ -657,7 +654,7 @@ export const CredentialsEnvironmentShell = ({
   } else {
     throw new Error("Unsupported platform");
   }
-  clipboard.writeSync(paste);
+  writeToClipboard(paste);
 
   return (
     <Box
