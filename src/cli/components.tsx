@@ -160,9 +160,14 @@ export const spin = (message: string, app: App) => {
 export function info(
   message: string,
   app: App,
-  color: string | undefined = undefined
+  color: string | undefined = undefined,
+  bold: boolean = false
 ) {
-  app.render(<Text color={color}>{message}</Text>);
+  app.render(
+    <Text color={color} bold={bold}>
+      {message}
+    </Text>
+  );
 }
 
 export type handleInput = (item: Item<any>) => void;

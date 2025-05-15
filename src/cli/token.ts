@@ -13,6 +13,12 @@ import type { Permissions } from "../index";
 
 import successHTML from "./success.html";
 
+export function writeToClipboard(text: string) {
+  try {
+    clipboard.writeSync(text);
+  } catch (error) {}
+}
+
 export async function appCredentials(
   appId: string | undefined,
   appSecret: string | undefined
@@ -157,13 +163,13 @@ export async function userTokenCredential(
                 `If OAuth did not open, you can visit the link manually:`,
                 app
               );
-              info(`http://${host}:${port}/redirect`, app, "blueBright");
+              info(`http://${host}:${port}/redirect`, app, "blueBright", true);
               info(
                 "This link has been copied to your clipboard.",
                 app,
                 "blueBright"
               );
-              clipboard.writeSync(oauth);
+              writeToClipboard(oauth);
             }, 1000 * 3);
             open(oauth);
 
