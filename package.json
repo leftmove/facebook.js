@@ -12,6 +12,7 @@
     "@types/express": "^5.0.1",
     "@types/mocha": "^10.0.7",
     "@types/node": "^20.14.12",
+    "@types/tmp": "^0.2.6",
     "axios": "^1.7.3",
     "chai": "^5.2.0",
     "cz-conventional-changelog": "^3.3.0",
