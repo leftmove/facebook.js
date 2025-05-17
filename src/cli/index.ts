@@ -8,6 +8,7 @@ import {
   writeToJSONCredentials,
 } from "../credentials";
 import { DEFAULT_FILE_PATH, DEFAULT_CONFIG_PATH, DEFAULT_SCOPE } from "..";
+import { CredentialError } from "../errors";
 import type { Authentication } from "..";
 
 import {
@@ -353,7 +354,7 @@ mcp
     "Runs the MCP server through a stdio transport. No output will be displayed."
   )
   .option(
-    "--profile",
+    "--profile <user|page|dual>",
     "The profile to use. Accepts 'user', 'page', or 'dual'.",
     "page"
   )
@@ -371,11 +372,12 @@ mcp
           : createMCP(facebook, profile);
       return await serveStdioMCP(server);
     } catch (e) {
-      throw new Error(
+      throw new CredentialError(
         "Failed to authenticate the MCP. You may have forgot to login/refresh with your credentials." +
           "\nIf you've never used this library before, you probably need to get API credentials. You can do this by running `npx facebook login`." +
           "\n\nOtherwise, if you're running the MCP from an unfamiliar directory or through a third-party app (like Claude Desktop or your IDE), you need to first make your credentials available globally. You can do this automatically by running `npx facebook credentials store`." +
-          "\n\nTLDR: Run the following in a safe directory, and take note of where the credentials are stored.\n`npx facebook login`\n`npx facebook credentials store`"
+          "\n\nTLDR: Run the following in a safe directory, and take note of where the credentials are stored.\n`npx facebook login`\n`npx facebook credentials store`",
+        e
       );
     }
   });

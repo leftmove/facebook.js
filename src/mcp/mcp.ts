@@ -1,5 +1,7 @@
 import express from "express";
+import meta from "../../package.json";
 import { randomUUID } from "node:crypto";
+
 import {
   McpServer,
   ResourceTemplate,
@@ -11,6 +13,9 @@ import { z } from "zod";
 
 import Facebook from "../";
 import type { Profile } from "../";
+
+export const MCP_NAME = "Facebook.js";
+export const MCP_VERSION = meta.version;
 
 export function createMCPFunctions(
   server: McpServer,
@@ -209,8 +214,8 @@ export function createMCPFunctions(
 export function createMCP(facebook: Facebook, profile?: Profile) {
   const server = createMCPFunctions(
     new McpServer({
-      name: "Facebook.js",
-      version: "0.9.5",
+      name: MCP_NAME,
+      version: MCP_VERSION,
     }),
     facebook,
     profile
@@ -219,17 +224,14 @@ export function createMCP(facebook: Facebook, profile?: Profile) {
 }
 
 export function createDualMCP(facebook: Facebook) {
-  const initialServer = createMCPFunctions(
-    new McpServer({
-      name: "Facebook.js",
-      version: "0.9.5",
-    }),
-    facebook,
-    "page"
-  );
-  const dualServer = createMCPFunctions(initialServer, facebook, "user");
-
-  return dualServer;
+  let server: McpServer = new McpServer({
+    name: MCP_NAME,
+    version: MCP_VERSION,
+  });
+  (["page", "user"] as Profile[]).forEach((profile) => {
+    server = createMCPFunctions(server, facebook, profile);
+  });
+  return server;
 }
 
 export async function serveStdioMCP(mcp: McpServer) {

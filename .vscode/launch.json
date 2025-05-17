@@ -16,22 +16,12 @@
       "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
     },
     {
-      "name": "TSX Debug CLI Refresh",
+      "name": "TSX Debug CLI MCP",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/src/cli/index.ts",
-      "args": ["refresh"],
+      "args": ["mcp", "raw", "--profile", "dual"],
       "runtimeExecutable": "tsx",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
-    },
-    {
-      "name": "TSX Debug Test",
-      "type": "node",
-      "request": "launch",
-      "program": "${workspaceFolder}/test/index.ts",
-      "runtimeExecutable": "bun",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
