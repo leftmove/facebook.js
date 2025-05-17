@@ -4,7 +4,7 @@ import { stringify, parameterize } from "../api";
 import { FACEBOOK_URL } from "../api";
 
 import type { Profile } from "../api";
-import type { ImageUpload } from "./upload";
+import type { ImageUpload, Media } from "./upload";
 import type { CommentRegular, CommentMedia } from "./comments";
 
 type id = string;
@@ -97,7 +97,7 @@ export type PostLinkScheduled = PostLink & PostScheduled;
  */
 export interface PostMedia extends Omit<PostRegular, "message"> {
   message?: string;
-  media: string | string[];
+  media: Media;
 }
 
 /**
@@ -195,6 +195,7 @@ export class Post {
 
   created?: Date;
   message?: string;
+  media?: Media;
   link?: string;
 
   success?: boolean;
@@ -217,6 +218,7 @@ export class Post {
     "message",
     "success",
     "scheduled",
+    "media",
     "link",
   ]);
 
@@ -233,7 +235,8 @@ export class Post {
     const ids = post.id.split("_");
     const userID = ids.length > 1 ? ids[0] : undefined;
     const postID = ids.length > 1 ? ids[1] : ids[0];
-    const scheduled = "schedule" in config;
+    const scheduled = "schedule" in config && Boolean(config.schedule);
+    const media = "media" in config && Boolean(config.media);
 
     this.id = postID;
     this.user = userID;
@@ -244,6 +247,7 @@ export class Post {
       ? new Date(config.schedule)
       : new Date();
     this.message = post.message || config.message || undefined;
+    this.media = media ? config.media : undefined;
     this.link = `${FACEBOOK_URL}/${postID}`;
 
     this.success = post.success || true;
@@ -437,7 +441,9 @@ export class Posts {
       const token = t(profile, this.facebook);
 
       const scheduling =
-        "schedule" in config && validateSchedule(config.schedule, config.bypass)
+        "schedule" in config &&
+        config.schedule &&
+        validateSchedule(config.schedule, config.bypass)
           ? {
               published: false,
               scheduled_publish_time: toUNIXTime(config.schedule),
@@ -445,7 +451,7 @@ export class Posts {
           : { published: true };
 
       const media: ImageUpload[] =
-        "media" in config
+        "media" in config && config.media
           ? await this.facebook.upload
               .image({ media: config.media }, profile)
               .then((images) =>
@@ -455,7 +461,7 @@ export class Posts {
               )
           : [];
       const attachments =
-        "media" in config
+        "media" in config && config.media
           ? media.reduce((acc: Record<string, ImageUpload>, mediaId, index) => {
               acc[`attached_media[${index}]`] = mediaId;
               return acc;

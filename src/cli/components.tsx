@@ -397,6 +397,19 @@ export const MCPProfile = ({ url, dual }: { url: string; dual?: boolean }) => (
   </Box>
 );
 
+export const MCPClosed = (
+  <Box
+    flexDirection="column"
+    alignItems="center"
+    marginTop={1}
+    marginBottom={1}
+  >
+    <Box flexDirection="column" alignItems="center">
+      <Text color="blue">Gracefully closed the MCP server.</Text>
+    </Box>
+  </Box>
+);
+
 export const CredentialsDisplay = ({
   credentials,
   scope,

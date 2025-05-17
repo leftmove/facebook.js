@@ -20,7 +20,7 @@
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/src/cli/index.ts",
-      "args": ["mcp", "raw", "--profile", "dual"],
+      "args": ["mcp", "start", "--dual"],
       "runtimeExecutable": "tsx",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",

@@ -150,7 +150,8 @@ export function createMCPFunctions(
           content: [
             {
               type: "text",
-              text: `Error: ${e.message}`,
+              text: `${e.message}`,
+              ...e,
             },
           ],
           isError: true,

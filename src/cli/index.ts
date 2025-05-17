@@ -26,6 +26,7 @@ import {
   serveStdioMCP,
   MCPHandler,
   sessionHandler,
+  app,
 } from "../mcp";
 
 import {
@@ -38,7 +39,13 @@ import {
   CredentialsJSON,
   CredentialsEnvironmentShell,
 } from "./components";
-import { MCPInitial, MCPProfile, MCPRequest, MCPError } from "./components";
+import {
+  MCPInitial,
+  MCPProfile,
+  MCPRequest,
+  MCPError,
+  MCPClosed,
+} from "./components";
 
 const program = new Command();
 
@@ -265,20 +272,14 @@ const mcp = program.command("mcp").description("Commands for the MCP server.");
 mcp
   .command("start")
   .description("Starts the MCP server through streamable HTTP.")
-  .option(
-    "--profile",
-    "The profile to login with. Accepts 'user', 'page'.",
-    "page"
-  )
   .option("--dual", "Starts the MCP server with dual profiles.", false)
   .action(async (options) => {
-    const profile = options.profile;
     const dual = options.dual;
     const app = new App();
     app.render(MCPInitial);
 
     try {
-      const auth: Authentication = { profile };
+      const auth: Authentication = {};
       const facebook = new Facebook();
       await facebook.login(auth).catch((e) => {
         throw e;
@@ -330,22 +331,32 @@ mcp
       );
     }
 
-    portfinder.getPort(
-      { port: 3000, stopPort: 9999, host: "127.0.0.1" },
-      (err, port) => {
-        if (err) {
-          app.render(MCPError({ message: err }));
-        } else {
-          server.listen(port, (err: any) => {
-            if (err) {
-              app.render(MCPError({ message: err }));
-            } else {
-              app.render(MCPProfile({ url: `http://127.0.0.1:${port}`, dual }));
-            }
-          });
-        }
+    const host = "127.0.0.1";
+    const port = await portfinder.getPort({ port: 3000, stopPort: 9999, host });
+    const listener = server.listen(port, (err: any) => {
+      if (err) {
+        app.render(MCPError({ message: err }));
+        throw err;
       }
-    );
+    });
+
+    const onListen = () => {
+      app.render(MCPProfile({ url: `http://${host}:${port}`, dual }));
+    };
+    const onError = (err: Error) => {
+      app.render(MCPError({ message: err }));
+      throw err;
+    };
+    const onClose = () => {
+      app.render(MCPClosed);
+      process.exit(0);
+    };
+
+    listener.on("listening", onListen);
+    listener.on("error", onError);
+    listener.on("close", onClose);
+    listener.on("SIGINT", onClose);
+    listener.on("SIGTERM", onClose);
   });
 
 mcp

@@ -5,6 +5,7 @@ import { PostError } from "../errors";
 
 import type { Facebook } from "./client";
 import type { Profile } from "../api";
+import type { Media } from "./upload";
 import type { Post } from "./posts";
 
 interface CreatedComment {
@@ -72,7 +73,7 @@ export interface CommentReply extends Omit<CommentPost, "user"> {
  */
 export interface CommentMedia extends Omit<CommentRegular, "message"> {
   message?: string;
-  media: string;
+  media: Media;
 }
 
 /**
@@ -115,6 +116,7 @@ export class Comment {
   created?: Date;
   message?: string;
   username?: string;
+  media?: Media;
   link?: string;
 
   success?: boolean;
@@ -135,6 +137,7 @@ export class Comment {
     "created",
     "message",
     "username",
+    "media",
     "link",
     "success",
   ]);
@@ -155,6 +158,7 @@ export class Comment {
         ? ids[0]
         : ("post" in config ? config.post : undefined) || undefined;
     const commentID = ids.length > 1 ? ids[1] : ids[0];
+    const media = "media" in config && Boolean(config.media);
 
     const userID =
       comment.from?.id ||
@@ -171,6 +175,7 @@ export class Comment {
       ? new Date(comment.created_time)
       : undefined;
     this.message = comment.message || config.message || undefined;
+    this.media = media ? config.media : undefined;
     this.link = `${FACEBOOK_URL}/${postID}_${commentID}`;
 
     this.success = comment.success || true;
@@ -365,7 +370,7 @@ export class Comments {
       }
 
       const attachment =
-        "media" in config
+        "media" in config && config.media
           ? await this.facebook.upload
               .image({ media: config.media }, profile)
               .then((images) => {

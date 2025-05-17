@@ -11,7 +11,9 @@ export interface ImageId {
   media_fbid: string;
 }
 
-export type ImageUpload = ImageId | string;
+export type Media = string | string[];
+
+export type ImageUpload = ImageId | Media;
 
 export interface ImageBlob {
   data: string;
@@ -19,7 +21,7 @@ export interface ImageBlob {
 }
 
 interface UploadConfig {
-  media: string | string[] | ImageBlob;
+  media: Media | ImageBlob;
 }
 
 const supportedImageExtensions = ["jpg", "bmp", "png", "gif", "tiff"];
