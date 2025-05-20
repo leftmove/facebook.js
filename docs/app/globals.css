@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+@theme {
+  --color-cobalt-50: #AEC4EB;
+  --color-cobalt-100: #4E85E5;
+  --color-cobalt-200: #0C51CA;
+  --color-cobalt-300: #184A9F;
+  --color-cobalt-400: #0046A1;
+  --color-cobalt-500: #003A86;
+  --color-cobalt-600: #002B63;
+  --color-cobalt-700: #001E44;
+  --color-cobalt-800: #00112B;
+  --color-cobalt-900: #00091F;
+  --color-cobalt-1000: oklch(0.4707 0.1651 264.42);
+  --color-cobalt-2000: oklch(0.4097 0.157168 258.7828);
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-gray-900 my-4;
+  }
+  
+  h1 {
+    @apply text-3xl sm:text-4xl md:text-5xl mb-6;
+  }
+  
+  h2 {
+    @apply text-2xl sm:text-3xl mb-4 mt-8;
+  }
+  
+  h3 {
+    @apply text-xl sm:text-2xl mb-3 mt-6;
+  }
+  
+  a {
+    @apply transition-colors;
+  }
+  
+  p {
+    @apply mb-4 text-gray-700 leading-relaxed;
+  }
+  
+  ul, ol {
+    @apply mb-6 pl-6;
+  }
+  
+  ul {
+    @apply list-disc;
+  }
+  
+  ol {
+    @apply list-decimal;
+  }
+  
+  li {
+    @apply mb-2;
+  }
+  
+  pre {
+    @apply rounded-lg overflow-auto;
+  }
+  
+  blockquote {
+    @apply border-l-4 border-gray-200 pl-4 py-2 my-4 text-gray-600 italic;
+  }
+}
+
+.docs-content {
+  @apply max-w-none;
+}
+
+.docs-content h1:first-child {
+  @apply mt-0;
+}
+
+.shiki {
+  @apply text-sm font-mono;
+}

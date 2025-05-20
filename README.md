@@ -5,6 +5,11 @@ A Facebook API wrapper that's _not_ from 2011.
 > [!IMPORTANT]  
 > This library is in active development.
 
+# Quickstart
+
+## Installation
+`npm install @anonyo/facebook.js`
+
 ## Roadmap
 
 ### Short Term

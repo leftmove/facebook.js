@@ -1,0 +1,56 @@
+---
+title: "Getting Started"
+description: "Learn how to get started with facebook.js"
+---
+
+# Getting Started
+
+Welcome to the facebook.js documentation!
+
+This guide will help you get started with facebook.js, a modern library for integrating Facebook capabilities into your application.
+
+## Installation
+
+Install facebook.js using your preferred package manager:
+
+<Code language="bash">{`
+# Using npm
+npm install facebook.js
+
+# Using yarn
+yarn add facebook.js
+
+# Using bun
+bun add facebook.js
+`}</Code>
+
+## Basic Usage
+
+Here's a simple example of how to use facebook.js:
+
+<Code language="js">{`
+import facebook from 'facebook.js';
+
+// Initialize with your App ID
+facebook.init({
+  appId: 'your-app-id',
+  version: 'v17.0'
+});
+
+// Login
+facebook.login(['email', 'public_profile'])
+  .then((response) => {
+    console.log('Login successful:', response);
+  })
+  .catch((error) => {
+    console.error('Login failed:', error);
+  });
+`}</Code>
+
+## Next Steps
+
+Now that you have facebook.js installed and initialized, check out the [Components](/components) section to explore all the available features.
+
+<Tip>
+Remember to replace 'your-app-id' with your actual Facebook App ID from your Facebook Developer account!
+</Tip> 
