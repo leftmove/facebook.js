@@ -321,8 +321,13 @@ export default function Search() {
 
     // Check if the text already contains <mark> tags (from Pagefind)
     if (text.includes("<mark>")) {
-      // Return the pre-formatted text as a dangerously set HTML
-      return <div dangerouslySetInnerHTML={{ __html: text }} />;
+      // Apply our blue styling to the existing mark tags
+      const styledText = text.replace(
+        /<mark>/g,
+        '<mark class="bg-blue-100 text-blue-900 px-1 rounded">'
+      );
+      // Return the styled HTML
+      return <div dangerouslySetInnerHTML={{ __html: styledText }} />;
     }
 
     // Otherwise, apply our own highlighting
@@ -335,7 +340,7 @@ export default function Search() {
       <>
         {parts.map((part, i) =>
           regex.test(part) ? (
-            <mark key={i} className="bg-cobalt-200 text-gray-900 px-1 rounded">
+            <mark key={i} className="bg-blue-100 text-blue-900 px-1 rounded">
               {part}
             </mark>
           ) : (
@@ -385,7 +390,7 @@ export default function Search() {
       {/* Search trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+        className="flex items-center gap-2 rounded-lg cursor-pointer border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
         aria-label="Search documentation"
       >
         <svg

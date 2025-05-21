@@ -4,7 +4,7 @@ import path from "path";
 import { compileMDX } from "next-mdx-remote/rsc";
 
 import Code from "components/codeblock";
-import Tip from "components/tip";
+import Tip from "@/components/note";
 import Command from "components/commandline";
 import Hero from "components/hero";
 

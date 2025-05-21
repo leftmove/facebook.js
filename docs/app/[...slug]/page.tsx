@@ -1,13 +1,17 @@
 import fs from "fs";
 import path from "path";
+import React, { ReactNode } from "react";
 
 import { notFound } from "next/navigation";
 import { compileMDX } from "next-mdx-remote/rsc";
 import { Metadata } from "next";
+import Image from "next/image";
+import { slug as slugify } from "github-slugger";
 
 import Code from "components/codeblock";
-import Tip from "components/tip";
+import Note from "@/components/note";
 import Command from "components/commandline";
+import Link from "components/link";
 
 interface Frontmatter {
   title?: string;
@@ -15,10 +19,39 @@ interface Frontmatter {
   [key: string]: string | undefined;
 }
 
+// Create heading components with automatic ID generation
+const createHeadingWithId = (level: number) => {
+  const Component = ({ children }: { children: ReactNode }) => {
+    // Skip ID generation for elements that aren't strings
+    if (typeof children !== "string") {
+      return React.createElement(`h${level}`, {}, children);
+    }
+
+    // Generate ID from the heading text
+    const id = slugify(children);
+
+    return React.createElement(
+      `h${level}`,
+      { id, className: "scroll-mt-20" },
+      children
+    );
+  };
+
+  return Component;
+};
+
 const components = {
   Code,
-  Tip,
+  Note,
   Command,
+  Link,
+  Image,
+  h1: createHeadingWithId(1),
+  h2: createHeadingWithId(2),
+  h3: createHeadingWithId(3),
+  h4: createHeadingWithId(4),
+  h5: createHeadingWithId(5),
+  h6: createHeadingWithId(6),
 };
 
 // Add generateStaticParams to pre-render all pages at build time

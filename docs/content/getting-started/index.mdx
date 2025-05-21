@@ -1,56 +1,129 @@
 ---
 title: "Getting Started"
-description: "Learn how to get started with facebook.js"
+description: "Learn how to get started with Bookface."
 ---
+
+import Image from "next/image";
+
+import Command from "components/commandline";
+import Note from "components/note";
 
 # Getting Started
 
-Welcome to the facebook.js documentation!
-
-This guide will help you get started with facebook.js, a modern library for integrating Facebook capabilities into your application.
+Bookface is a TypeScript API wrapper for Facebook. To get started, install the package and login to your Facebook account.
 
 ## Installation
 
-Install facebook.js using your preferred package manager:
+Install the package using your preferred package manager.
 
-<Code language="bash">{`
-# Using npm
-npm install facebook.js
+<Command variant="install" packageName="@anonyo/facebook.js" language="bash" />
 
-# Using yarn
-yarn add facebook.js
+## Logging In
 
-# Using bun
-bun add facebook.js
-`}</Code>
+To login to your Facebook account, use the `login` command.
 
-## Basic Usage
+<Command variant="execute" packageName="facebook login" language="bash" />
 
-Here's a simple example of how to use facebook.js:
+If you've never logged in before, this will prompt you for your Facebook app ID and secret.
 
-<Code language="js">{`
-import facebook from 'facebook.js';
+### Creating and Using an App
 
-// Initialize with your App ID
-facebook.init({
-  appId: 'your-app-id',
-  version: 'v17.0'
-});
+You can get this by visiting Meta's [developer portal](https://developers.facebook.com/apps), and copying your credentials from <span className="text-cobalt-600">App Settings > Basic</span>.
 
-// Login
-facebook.login(['email', 'public_profile'])
-  .then((response) => {
-    console.log('Login successful:', response);
-  })
-  .catch((error) => {
-    console.error('Login failed:', error);
-  });
-`}</Code>
+This is what the apps page should look like.
 
-## Next Steps
+<div className="flex justify-center relative mx-auto">
+  <Image
+    className="rounded-lg border border-gray-200 mb-8"
+    src="/screenshots/meta-apps-page.jpg"
+    alt="Facebook Apps Page"
+    width={1000}
+    height={1000}
+  />
+</div>
 
-Now that you have facebook.js installed and initialized, check out the [Components](/components) section to explore all the available features.
+If you've never created an app before, you'll need to be logged in to your Facebook developer account first before you can create an app by clicking the green button in the top right.
 
-<Tip>
-Remember to replace 'your-app-id' with your actual Facebook App ID from your Facebook Developer account!
-</Tip> 
+Otherwise, if you're already logged in, grab your credentials by following the instructions above or in your terminal.
+
+This is what the app info page should look like.
+
+<div className="flex justify-center relative mx-auto">
+  <Image
+    className="rounded-lg border border-gray-200 mb-8"
+    src="/screenshots/meta-app-info-page.jpg"
+    alt="Facebook App Settings"
+    width={1000}
+    height={1000}
+  />
+</div>
+
+Basic app settings are on the left under app settings. This page has a lot of options and info, but you can safely ignore most of it for now.
+
+Detailed instructions for [creating a Meta developer account](https://developers.facebook.com/docs/development/register) and [registering an app](https://developers.facebook.com/docs/development/create-an-app) can be found in Meta's developer documentation. It's also a good idea to read through Meta's [getting started guide](https://developers.facebook.com/docs/graph-api/get-started).
+
+### Tokens and Browser Authentication
+
+Once you've provided your app ID and secret, the CLI app will automatically start generating your access tokens — these are your API keys, and there are three types of them (there are more, but these are the ones you'll need for now).
+
+<ul>
+  <li>
+    [App Access
+    Token](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/#apptokens)
+  </li>
+  <li>
+    [Page Access
+    Token](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/#pagetokens)
+  </li>
+  <li>
+    [User Access
+    Token](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/#usertokens)
+  </li>
+</ul>
+
+Since user tokens require user approval by Meta, you will have to manually approve your credentials by using a browser authentication flow.
+
+This'll happen automatically when you use the `login` command and follow the steps above, but here's how that should look like.
+
+<div className="flex justify-center relative mx-auto">
+  <Image
+    className="rounded-lg border border-gray-200 mb-8"
+    src="/screenshots/meta-oauth.jpg"
+    alt="Facebook App Settings"
+    width={1000}
+    height={1000}
+  />
+</div>
+
+In order to get to this page, visit [localhost:2279](http://localhost:2279) (the port may be different) in your browser. This `localhost` link is just a redirect of the actual, longer authentication URL provided by Meta.
+
+Once you're there, click through the flow and approve the permissions. These permissions will default to all the stuff you'll probably need when you first login, but you can change these defaults later and re-login to update them.
+
+<Note variant="tip">
+  If you're authenticating over SSH or another remote connection, you'll have to
+  forward the port associated with the `localhost` link (usually `2279`) to your
+  local machine. You can then continue as normal and visit the link printed in
+  the console on your local machine's browser.
+</Note>
+
+### Finishing Up
+
+Once you've approved your app through your browser, if everything went well, the CLI app can do the rest of the authentication for you. In the terminal you should see a success message next to all the tokens you've just generated.
+
+<Note variant="important">
+  Take note of your credentials stored in the current directory. They're stored
+  in in JSON format through a `credentials.json` file, and they contain all the
+  sensitive tokens that allow you to control your Facebook account. Make sure to
+  keep note of this file and take any relevant measures to secure it (i.e. add
+  it to your `.gitignore`).
+</Note>
+
+After this, you'll be all set to go. Take notice however of your credentials, and give them a once-over to make sure they're correct. You can do this by running the following command.
+
+<Command
+  variant="execute"
+  packageName="facebook credentials view"
+  language="bash"
+/>
+
+Your credentials are stored in the current directory, but they're also stored globally in a config directory determined by your operating system. The above command will show you both locations — take note of them. You can then use your credentials however you wish by moving around the credentials files, or by exporting the credentials by running the `facebook credentials json` (for JSON output) or `facebook credentials shell` (for shell output that exports to the environment) commands.

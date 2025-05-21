@@ -8,7 +8,7 @@
 }
 
 @theme {
-  --color-cobalt-50: #AEC4EB;
+  --color-cobalt-50: #EFF6FF;
   --color-cobalt-100: #4E85E5;
   --color-cobalt-200: #0C51CA;
   --color-cobalt-300: #184A9F;
@@ -45,7 +45,7 @@ body {
   }
   
   a {
-    @apply transition-colors;
+    @apply transition-colors text-cobalt-500 hover:text-cobalt-600;
   }
   
   p {
@@ -75,6 +75,10 @@ body {
   blockquote {
     @apply border-l-4 border-gray-200 pl-4 py-2 my-4 text-gray-600 italic;
   }
+
+  code {
+    @apply bg-gray-100
+  }
 }
 
 .docs-content {
@@ -87,4 +91,28 @@ body {
 
 .shiki {
   @apply text-sm font-mono;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
 }

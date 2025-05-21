@@ -18,7 +18,7 @@ export default async function Code({
       </div>
       <div className="p-4">
         <pre className={`language-${language}`}>
-          <code>{children}</code>
+          <code className="bg-transparent">{children}</code>
         </pre>
       </div>
     </div>

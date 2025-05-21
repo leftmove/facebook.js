@@ -9,7 +9,7 @@ export default function Hero() {
           Bookface
         </h1>
         <p className="text-lg md:text-2xl text-gray-100 mb-8">
-          A modern Facebook API wrapper for TypeScript.
+          A Facebook API wrapper that&apos;s not from 2011.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
@@ -19,7 +19,7 @@ export default function Hero() {
             Get Started
           </Link>
           <Link
-            href="https://github.com/anonyo/facebook.js"
+            href="https://github.com/leftmove/facebook.js"
             target="_blank"
             rel="noopener"
             className="inline-block px-6 py-3 rounded-lg bg-cobalt-700 backdrop-blur border border-cobalt-800 text-white font-semibold hover:bg-cobalt-900 hover:shadow-md transition-all"
