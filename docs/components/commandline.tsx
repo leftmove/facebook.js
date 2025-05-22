@@ -1,16 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, Fragment } from "react";
 import clsx from "clsx";
-import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
-import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
-import { prism } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { codeToHast } from "shiki";
+import { toJsxRuntime } from "hast-util-to-jsx-runtime";
+import { jsx, jsxs } from "react/jsx-runtime";
+import type { BundledLanguage } from "shiki";
 import { usePreferences, type PackageManager } from "./preferences";
-
-// Register languages
-SyntaxHighlighter.registerLanguage("bash", bash);
-SyntaxHighlighter.registerLanguage("javascript", javascript);
 
 // Base props shared across all variants
 interface BaseCommandLineProps {
@@ -77,7 +73,7 @@ function CopyButton({ text }: { text: string }) {
       </span>
       <button
         onClick={copyToClipboard}
-        className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         aria-label="Copy to clipboard"
       >
         <svg
@@ -107,33 +103,85 @@ function CodeBlock({
   code: string;
   language?: string;
 }) {
-  const codeRef = useRef<HTMLDivElement>(null);
+  const [highlightedCode, setHighlightedCode] =
+    useState<React.JSX.Element | null>(null);
+  const langToUse = (language.toLowerCase() || "bash") as BundledLanguage;
 
-  return (
-    <div ref={codeRef} className="text-sm overflow-x-auto flex-1">
-      <SyntaxHighlighter
-        language={language}
-        style={prism}
-        customStyle={{
-          backgroundColor: "transparent",
-          padding: "0.5rem 0",
-          margin: 0,
-          fontSize: "0.875rem",
-          fontFamily: "Menlo, Monaco, Consolas, 'Courier New', monospace",
-        }}
-        codeTagProps={{
-          style: {
-            fontSize: "0.875rem",
-            fontFamily: "Menlo, Monaco, Consolas, 'Courier New', monospace",
-            backgroundColor: "transparent",
+  useEffect(() => {
+    let isMounted = true;
+    async function generateHighlightedJsx() {
+      if (!isMounted) return;
+      try {
+        const hast = await codeToHast(code.trim() || " ", {
+          lang: langToUse,
+          themes: {
+            light: "github-light",
+            dark: "github-dark",
           },
-        }}
-        wrapLongLines={true}
-      >
-        {code}
-      </SyntaxHighlighter>
-    </div>
-  );
+        });
+
+        const jsxElement = toJsxRuntime(hast, {
+          Fragment,
+          jsx,
+          jsxs,
+          components: {
+            pre: (props) => (
+              <pre
+                {...props}
+                style={{ ...props.style, backgroundColor: "transparent" }}
+                className="p-0 m-0 text-sm bg-transparent"
+              />
+            ),
+            code: (props) => (
+              <code
+                {...props}
+                style={{
+                  ...props.style,
+                  fontFamily:
+                    "Menlo, Monaco, Consolas, 'Courier New', monospace",
+                }}
+              />
+            ),
+          },
+        }) as React.JSX.Element;
+
+        if (isMounted) {
+          setHighlightedCode(jsxElement);
+        }
+      } catch (error) {
+        console.error(
+          `Shiki highlighting failed for lang ${langToUse}:`,
+          error
+        );
+        if (isMounted) {
+          setHighlightedCode(
+            <pre className="p-0 m-0 text-sm bg-transparent">
+              <code
+                style={{
+                  fontFamily:
+                    "Menlo, Monaco, Consolas, 'Courier New', monospace",
+                }}
+              >
+                {code}
+              </code>
+            </pre>
+          );
+        }
+      }
+    }
+
+    if (code) {
+      generateHighlightedJsx();
+    } else {
+      setHighlightedCode(null);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [code, langToUse]);
+
+  return <div className="overflow-x-auto flex-1">{highlightedCode}</div>;
 }
 
 // Default command line variant
@@ -149,11 +197,11 @@ function DefaultCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 bg-white shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
         className
       )}
     >
-      <div className="p-4 flex justify-between items-center bg-white">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>
@@ -205,21 +253,21 @@ function InstallCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 bg-white shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
         className
       )}
     >
       {isHydrated && (
         <div className="flex justify-between">
-          <div className="flex ml-2 border-b border-gray-200">
+          <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
             {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
               <button
                 key={manager}
                 className={clsx(
                   "px-4 py-2 text-sm transition-all duration-50",
                   activeManager === manager
-                    ? "text-gray-900 border-b-2 border-cobalt-500 font-medium"
-                    : "text-gray-500 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700"
+                    ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                    : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
                 )}
                 onClick={() => setActiveManager(manager)}
               >
@@ -227,13 +275,13 @@ function InstallCommandLine({
               </button>
             ))}
           </div>
-          <div className="mr-2 flex items-center border-b border-gray-200">
+          <div className="mr-2 flex items-center border-b border-gray-200 dark:border-gray-700">
             <button
               className={clsx(
                 "px-4 py-2 text-sm transition-all duration-50",
                 registry === "npm"
-                  ? "text-gray-900 border-b-2 border-cobalt-500 font-medium"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               )}
               onClick={() => setRegistry("npm")}
             >
@@ -243,8 +291,8 @@ function InstallCommandLine({
               className={clsx(
                 "px-4 py-2 text-sm transition-all duration-50",
                 registry === "jsr"
-                  ? "text-gray-900 border-b-2 border-cobalt-500 font-medium"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               )}
               onClick={() => setRegistry("jsr")}
             >
@@ -253,7 +301,7 @@ function InstallCommandLine({
           </div>
         </div>
       )}
-      <div className="p-4 flex justify-between items-center bg-white">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>
@@ -300,21 +348,21 @@ function ExecuteCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 bg-white shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
         className
       )}
     >
       {isHydrated && (
         <div className="flex">
-          <div className="flex ml-2 border-b border-gray-200">
+          <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
             {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
               <button
                 key={manager}
                 className={clsx(
                   "px-4 py-2 text-sm transition-all duration-50",
                   activeManager === manager
-                    ? "text-gray-900 border-b-2 border-cobalt-500 font-medium"
-                    : "text-gray-500 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700"
+                    ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                    : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
                 )}
                 onClick={() => setActiveManager(manager)}
               >
@@ -324,7 +372,7 @@ function ExecuteCommandLine({
           </div>
         </div>
       )}
-      <div className="p-4 flex justify-between items-center bg-white">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>

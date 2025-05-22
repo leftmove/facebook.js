@@ -7,6 +7,7 @@ import Code from "components/codeblock";
 import Tip from "@/components/note";
 import Command from "components/commandline";
 import Hero from "components/hero";
+import Description from "components/description";
 
 const components = {
   Code,
@@ -14,6 +15,7 @@ const components = {
   Command,
   Hero,
   Link,
+  Description,
 };
 
 export default async function Home() {

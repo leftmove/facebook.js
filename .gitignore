@@ -4,6 +4,8 @@
 .vscode/
 .zed/
 .husky/
+.claude/
+.cursor/
 
 # Logs
 

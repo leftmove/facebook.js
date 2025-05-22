@@ -1,11 +1,13 @@
 @import "tailwindcss";
 
 
-
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 
 @theme {
   --color-cobalt-50: #EFF6FF;
@@ -76,7 +78,7 @@ body {
     @apply border-l-4 border-gray-200 pl-4 py-2 my-4 text-gray-600 italic;
   }
 
-  code {
+  p code {
     @apply bg-gray-100
   }
 }
@@ -91,6 +93,14 @@ body {
 
 .shiki {
   @apply text-sm font-mono;
+}
+
+.dark .shiki, .dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
 /* Custom scrollbar styles */

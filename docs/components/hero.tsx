@@ -2,9 +2,9 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <div className="relative py-16 sm:py-24 md:py-32 bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-sm border border-gray-100 mb-12 overflow-hidden ">
+    <div className="w-11/12 mx-auto relative py-12 sm:py-16 md:py-20 bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-sm border border-gray-100 mb-0 overflow-hidden ">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:50px_50px] bg-cobalt-400"></div>
-      <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
+      <div className="max-w-2xl mx-auto px-6 text-center relative z-10">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold bg-white bg-clip-text text-transparent mb-6">
           Bookface
         </h1>

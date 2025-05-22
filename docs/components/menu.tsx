@@ -3,38 +3,56 @@
 import { useState } from "react";
 import Link from "next/link";
 
-// Static menu component
+const linkStyles =
+  "text-gray-600 dark:text-gray-400 hover:text-cobalt-500 dark:hover:text-cobalt-400 transition";
+const mobileLinkStyles = `block px-4 py-2 ${linkStyles} hover:bg-gray-50 dark:hover:bg-gray-700`;
+
+const menuItems = [
+  { href: "/", label: "Home" },
+  { href: "/getting-started", label: "Getting Started" },
+  {
+    href: "https://github.com/leftmove/facebook.js",
+    label: "Contribute",
+    external: true,
+  },
+];
+
+function MenuLink({
+  href,
+  label,
+  external = false,
+  mobile = false,
+}: {
+  href: string;
+  label: string;
+  external?: boolean;
+  mobile?: boolean;
+}) {
+  const props = external ? { target: "_blank", rel: "noopener" } : {};
+  const className = mobile ? mobileLinkStyles : linkStyles;
+
+  return (
+    <Link href={href} className={className} {...props}>
+      {label}
+    </Link>
+  );
+}
+
 function StaticMenu() {
   return (
     <nav className="flex gap-6 text-sm">
-      <Link href="/" className="text-gray-600 hover:text-cobalt-500 transition">
-        Home
-      </Link>
-      <Link
-        href="/getting-started"
-        className="text-gray-600 hover:text-cobalt-500 transition"
-      >
-        Getting Started
-      </Link>
-      <Link
-        href="https://github.com/leftmove/facebook.js"
-        target="_blank"
-        rel="noopener"
-        className="text-gray-600 hover:text-cobalt-500 transition"
-      >
-        Contribute
-      </Link>
+      {menuItems.map((item) => (
+        <MenuLink key={item.href} {...item} />
+      ))}
     </nav>
   );
 }
 
-// Mobile menu component
 function MobileMenu() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <nav className="relative">
-      {/* Mobile menu button */}
       <button
         className="md:hidden flex items-center p-2"
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -45,7 +63,7 @@ function MobileMenu() {
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          className="w-6 h-6 text-gray-600"
+          className="w-6 h-6 text-gray-600 dark:text-gray-400"
         >
           <path
             strokeLinecap="round"
@@ -60,69 +78,29 @@ function MobileMenu() {
         </svg>
       </button>
 
-      {/* Desktop menu */}
       <div className="hidden md:flex gap-6 text-sm">
-        <Link
-          href="/"
-          className="text-gray-600 hover:text-cobalt-500 transition"
-        >
-          Home
-        </Link>
-        <Link
-          href="/getting-started"
-          className="text-gray-600 hover:text-cobalt-500 transition"
-        >
-          Getting Started
-        </Link>
-        <Link
-          href="https://github.com/leftmove/facebook.js"
-          target="_blank"
-          rel="noopener"
-          className="text-gray-600 hover:text-cobalt-500 transition"
-        >
-          Contribute
-        </Link>
+        {menuItems.map((item) => (
+          <MenuLink key={item.href} {...item} />
+        ))}
       </div>
 
-      {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-50 md:hidden">
-          <Link
-            href="/"
-            className="block px-4 py-2 text-gray-600 hover:text-cobalt-500 hover:bg-gray-50"
-          >
-            Home
-          </Link>
-          <Link
-            href="/getting-started"
-            className="block px-4 py-2 text-gray-600 hover:text-cobalt-500 hover:bg-gray-50"
-          >
-            Getting Started
-          </Link>
-          <Link
-            href="https://github.com/leftmove/facebook.js"
-            target="_blank"
-            rel="noopener"
-            className="block px-4 py-2 text-gray-600 hover:text-cobalt-500 hover:bg-gray-50"
-          >
-            Contribute
-          </Link>
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-2 z-50 md:hidden">
+          {menuItems.map((item) => (
+            <MenuLink key={item.href} {...item} mobile />
+          ))}
         </div>
       )}
     </nav>
   );
 }
 
-// Main menu component that can be imported
 export default function Menu() {
   return (
     <>
-      {/* Show mobile menu on smaller screens */}
       <div className="md:hidden">
         <MobileMenu />
       </div>
-
-      {/* Show static menu on medium and larger screens */}
       <div className="hidden md:block">
         <StaticMenu />
       </div>
