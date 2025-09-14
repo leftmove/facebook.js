@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import clsx from "clsx";
+
 import Header from "components/header";
 import TableOfContents from "components/toc";
 
@@ -25,11 +27,12 @@ function SidebarLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`transition block text-gray-600 dark:text-gray-400 py-1.5 border-l-2 hover:border-cobalt-500 dark:hover:border-cobalt-400 pl-3 -ml-0.5 ${
+      className={clsx(
+        "transition block text-gray-600 dark:text-gray-400 py-1.5 border-l-2 hover:border-cobalt-500 dark:hover:border-cobalt-400 pl-3 -ml-0.5",
         isActive
           ? "text-cobalt-500 dark:text-cobalt-400 border-cobalt-500 dark:border-cobalt-400 font-medium"
-          : "hover:text-cobalt-500 dark:hover:text-cobalt-400 border-transparent"
-      }`}
+          : "hover:text-cobalt-500  dark:hover:text-cobalt-400 border-transparent"
+      )}
     >
       {label}
     </Link>
