@@ -9,8 +9,9 @@ import Image from "next/image";
 import { slug as slugify } from "github-slugger";
 
 import Code from "components/codeblock";
-import Note from "@/components/note";
+import Note from "components/note";
 import Command from "components/commandline";
+import Documentation from "components/documentation";
 import Link from "components/link";
 
 interface Frontmatter {
@@ -44,6 +45,7 @@ const components = {
   Code,
   Note,
   Command,
+  Documentation,
   Link,
   Image,
   h1: createHeadingWithId(1),

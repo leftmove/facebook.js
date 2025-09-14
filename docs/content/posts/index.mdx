@@ -1,0 +1,412 @@
+---
+title: "Posts"
+description: "Learn how to create, read, edit, and delete posts on Facebook using the library."
+---
+
+import Note from "components/note";
+import Code from "components/code";
+import Documentation from "components/documentation";
+
+# Posts
+
+Posts are the core content on Facebook — text updates, links, photos, and videos that appear in news feeds and on profiles. This library provides comprehensive tools for managing posts on both user and page profiles.
+
+<Note variant="note">
+  You need to be authenticated before you can interact with posts. If you
+  haven't set up authentication yet, check out the
+  [authentication](/authentication) guide.
+</Note>
+
+## Overview
+
+The library handles several types of posts:
+
+- **Text posts**: Simple status updates with a message
+- **Link posts**: Posts that include a URL with automatic preview generation
+- **Media posts**: Posts with photos or videos
+- **Scheduled posts**: Posts that publish at a future date and time
+
+All posts can be created, retrieved, edited, and deleted (where Meta's policies allow).
+
+## Profile Types
+
+### Page Posts
+
+Page posts are the recommended approach for most applications. Pages have full posting capabilities and are designed for business and public use.
+
+<Documentation file="client/posts.ts" abstraction="PagePosts" />
+
+Set up page posting using the following
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "page", pageIndex: 0 };
+const facebook = new Facebook(config);
+
+const post = await facebook.page.posts.publish({
+message: "Hello world"
+});
+
+````
+</Code>
+
+### User Posts
+
+<Note variant="important">
+  User profile posting has been heavily restricted by Meta since April 2018.
+  Most posting operations will throw errors.
+</Note>
+
+User posts are limited to reading existing posts. Publishing, editing, and deleting user posts is no longer supported by Meta's Graph API.
+
+<Documentation file="client/posts.ts" abstraction="UserPosts" />
+
+User posts can only be read, and require special permissions using the following
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "user" };
+const facebook = new Facebook(config);
+
+const posts = await facebook.user.posts.read();
+````
+
+</Code>
+
+## Creating Posts
+
+### Text Posts
+
+The simplest type of post contains just a text message using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "New product update available"
+});
+
+console.log({ post });
+
+````
+</Code>
+
+### Link Posts
+
+Posts with links automatically generate rich previews with the page's title, description, and thumbnail. Create link posts using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "This is a link post.",
+  link: "https://developers.facebook.com"
+});
+````
+
+</Code>
+
+You can also post links without additional text using the following:
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  link: "https://github.com"
+});
+```
+</Code>
+
+### Media Posts
+
+Upload and share photos with your posts. The library supports JPG, PNG, GIF, BMP, and TIFF formats. Upload media using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "Product photos",
+  media: "/path/to/image.jpg"
+});
+
+const multipleImages = await facebook.page.posts.publish({
+message: "Gallery update",
+media: [
+"/path/to/photo1.jpg",
+"/path/to/photo2.png",
+"/path/to/photo3.gif"
+]
+});
+
+````
+</Code>
+
+You can also upload images from Base64 data using the following:
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "Generated image",
+  media: {
+    data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+    type: "png"
+  }
+});
+````
+
+</Code>
+
+### Scheduled Posts
+
+Schedule posts to publish at a future date and time. The scheduled time must be at least 10 minutes in the future using the following
+
+<Code language="typescript">
+```typescript
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+tomorrow.setHours(9, 0, 0, 0);
+
+const post = await facebook.page.posts.publish({
+message: "Scheduled announcement",
+schedule: tomorrow
+});
+
+console.log("Post scheduled");
+console.log({ scheduled: post.scheduled });
+
+````
+</Code>
+
+Schedule any type of post using the following
+
+<Code language="typescript">
+```typescript
+const scheduledLink = await facebook.page.posts.publish({
+  message: "Weekly newsletter",
+  link: "https://example.com/newsletter",
+  schedule: "2024-01-15T10:00:00Z"
+});
+
+const scheduledMedia = await facebook.page.posts.publish({
+  message: "Product launch",
+  media: "/path/to/announcement.jpg",
+  schedule: new Date("2024-01-20 14:30:00")
+});
+````
+
+</Code>
+
+## Checking Scheduled Posts
+
+When you schedule a post, you can check if it has been published using the `ready()` method with the following
+
+<Code language="typescript">
+```typescript
+const scheduledPost = await facebook.page.posts.publish({
+  message: "Future announcement",
+  schedule: new Date("2024-01-15T10:00:00Z")
+});
+
+console.log("Checking if post is published");
+const isPublished = await scheduledPost.ready();
+console.log({ published: isPublished });
+
+````
+</Code>
+
+<Note variant="note">
+  The `ready()` method returns `true` when the scheduled post has been published,
+  `false` when it's still scheduled.
+</Note>
+
+## Reading Posts
+
+### Get All Posts
+
+Retrieve all posts from a profile using the following
+
+<Code language="typescript">
+```typescript
+const pagePosts = await facebook.page.posts.read();
+console.log("Posts retrieved");
+console.log({ count: pagePosts.length });
+console.log({ posts: pagePosts });
+````
+
+</Code>
+
+### Get Specific Post
+
+Retrieve a single post by its ID using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.get({
+  id: "123456789_987654321"
+});
+
+console.log({ post });
+
+````
+</Code>
+
+Get posts by passing another post object using the following
+
+<Code language="typescript">
+```typescript
+const existingPost = await facebook.page.posts.publish({
+  message: "Original post"
+});
+
+const retrievedPost = await facebook.page.posts.get(existingPost);
+console.log({ retrievedPost });
+````
+
+</Code>
+
+## Editing Posts
+
+<Note variant="note">
+  You can only edit the text message of posts. Media, links, and scheduling
+  cannot be modified after publishing.
+</Note>
+
+Update the message of an existing post using the following
+
+<Code language="typescript">
+```typescript
+const editedPost = await facebook.page.posts.edit({
+  id: "123456789_987654321",
+  message: "Updated content"
+});
+
+console.log("Post updated");
+console.log({ success: editedPost.success });
+
+````
+</Code>
+
+## Deleting Posts
+
+Remove posts from your profile using the following
+
+<Code language="typescript">
+```typescript
+const result = await facebook.page.posts.remove({
+  id: "123456789_987654321"
+});
+
+console.log("Post deleted");
+console.log({ success: result.success });
+````
+
+</Code>
+
+## Post Object
+
+When you create, read, or modify posts, you'll work with `Post` objects that provide direct methods for interacting with the post. Post objects contain properties like `id`, `message`, `created`, `media`, `link`, `success`, and `scheduled`.
+
+Work with post objects using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "Hello world"
+});
+
+console.log("Post properties");
+console.log({
+id: post.id,
+message: post.message,
+created: post.created,
+scheduled: post.scheduled
+});
+
+````
+</Code>
+
+### Direct Post Methods
+
+Post objects have methods that let you interact with them directly using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "Original message"
+});
+
+await post.edit({
+  message: "Edited message"
+});
+
+await post.remove({});
+
+const details = post.dump();
+console.log({ details });
+````
+
+</Code>
+
+### Post Comments
+
+Post objects can also be used to work with comments. When comments documentation is available, you'll be able to interact with comments directly through post objects.
+
+## Targeting
+
+Target posts to specific geographic locations using the following
+
+<Code language="typescript">
+```typescript
+const post = await facebook.page.posts.publish({
+  message: "Regional announcement",
+  targeting: {
+    geo_locations: {
+      countries: ["US"],
+      cities: [
+        { key: "123", name: "New York" },
+        { key: "456", name: "Los Angeles" }
+      ]
+    }
+  }
+});
+```
+</Code>
+
+## Error Handling
+
+Handle errors properly by using promise chains with `.catch()` methods with the following
+
+<Code language="typescript">
+```typescript
+facebook.page.posts.publish({
+  message: "Test post",
+  schedule: new Date()
+})
+.then(post => {
+  console.log({ post });
+})
+.catch(error => {
+  console.log("Publishing failed");
+  console.log({ error: error.message });
+});
+
+facebook.user.posts.publish({
+message: "This will fail"
+})
+.catch(error => {
+console.log("User posting deprecated");
+console.log({ error: error.message });
+});
+
+```
+</Code>
+
+## Working with Posts
+
+Posts are central to Facebook content management. Use page profiles for full functionality, handle scheduled posts with the `ready()` method, and remember that media uploads happen automatically when you provide file paths. The library handles authentication, token management, and API communication so you can focus on your content.
+
+For advanced use cases, leverage post targeting for geographic distribution, use the post object methods for direct manipulation, and implement proper error handling to manage API limitations gracefully.
+
+```

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const linkStyles =
-  "text-gray-600 dark:text-gray-400 hover:text-cobalt-500 dark:hover:text-cobalt-400 transition";
-const mobileLinkStyles = `block px-4 py-2 ${linkStyles} hover:bg-gray-50 dark:hover:bg-gray-700`;
+  "text-gray-700 dark:text-gray-300 hover:text-cobalt-500 dark:hover:text-cobalt-300 transition-colors px-1.5 py-1 rounded";
+const mobileLinkStyles = `block px-4 py-2 ${linkStyles} hover:bg-gray-50 dark:hover:bg-gray-800`;
 
 const menuItems = [
   { href: "/", label: "Home" },
@@ -28,11 +29,23 @@ function MenuLink({
   external?: boolean;
   mobile?: boolean;
 }) {
+  const pathname = usePathname();
   const props = external ? { target: "_blank", rel: "noopener" } : {};
-  const className = mobile ? mobileLinkStyles : linkStyles;
+  const isActive = !external && pathname === href;
+  const base = mobile ? mobileLinkStyles : linkStyles;
+  const className = `${base} ${
+    isActive
+      ? "text-cobalt-600 dark:text-cobalt-300 border-b-2 border-cobalt-500 pb-0.5"
+      : ""
+  }`;
 
   return (
-    <Link href={href} className={className} {...props}>
+    <Link
+      href={href}
+      className={className}
+      aria-current={isActive ? "page" : undefined}
+      {...props}
+    >
       {label}
     </Link>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 interface TOCItem {
@@ -10,32 +11,27 @@ interface TOCItem {
 }
 
 export default function TableOfContents() {
+  const pathname = usePathname();
   const [headings, setHeadings] = useState<TOCItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const headingsRef = useRef<TOCItem[]>([]);
 
-  // Update the ref whenever headings change
   useEffect(() => {
     headingsRef.current = headings;
   }, [headings]);
 
-  // Function to find active heading based on scroll position
   const updateActiveHeading = () => {
     const currentHeadings = headingsRef.current;
     if (currentHeadings.length === 0) return;
 
-    // Get all heading elements that we've identified
     const headingElements = currentHeadings
       .map(({ id }) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];
 
     if (headingElements.length === 0) return;
 
-    // Determine which heading is currently visible
-    // Adding a small offset to prefer headings near the top of the viewport
     const scrollY = window.scrollY + 100;
 
-    // Find the last heading that's above the current scroll position
     let currentIndex = -1;
     for (let i = headingElements.length - 1; i >= 0; i--) {
       if (headingElements[i].offsetTop <= scrollY) {
@@ -44,40 +40,32 @@ export default function TableOfContents() {
       }
     }
 
-    // If we found a heading, set it as active
     if (currentIndex >= 0) {
       setActiveId(currentHeadings[currentIndex].id);
     } else if (headingElements.length > 0) {
-      // If no heading is above the fold, use the first one
       setActiveId(currentHeadings[0].id);
     }
   };
 
-  // Extract headings on mount
   useEffect(() => {
-    // Extract all heading elements from the document
     const headingElements = Array.from(
       document.querySelectorAll("h1, h2, h3, h4, h5, h6")
     );
 
-    // Convert them to TOC items
     const items = headingElements
-      .filter((el) => el.id) // Only include headings with IDs
+      .filter((el) => el.id)
       .map((el) => ({
         id: el.id,
         text: el.textContent || "",
-        level: parseInt(el.tagName.substring(1), 10), // Extract heading level from tag name (H1 -> 1, H2 -> 2, etc.)
+        level: parseInt(el.tagName.substring(1), 10),
       }));
 
     setHeadings(items);
-  }, []);
+  }, [pathname]);
 
-  // Set up scroll listener in a separate effect
   useEffect(() => {
-    // When the page first loads, determine the active heading
     updateActiveHeading();
 
-    // Add scroll event listener to update active heading during scrolling
     window.addEventListener("scroll", updateActiveHeading, { passive: true });
 
     return () => {
@@ -85,7 +73,6 @@ export default function TableOfContents() {
     };
   }, []);
 
-  // Also update active heading when clicking a link
   const handleLinkClick = (id: string) => {
     return () => {
       setActiveId(id);
@@ -98,9 +85,8 @@ export default function TableOfContents() {
 
   return (
     <div className="mt-8">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">On This Page</h3>
       <nav>
-        <ul className="space-y-2 text-sm">
+        <ul className="space-y-2 text-sm pl-0">
           {headings.map((heading) => (
             <li
               key={heading.id}
@@ -111,10 +97,10 @@ export default function TableOfContents() {
               <Link
                 href={`#${heading.id}`}
                 onClick={handleLinkClick(heading.id)}
-                className={`block transition-all duration-200 hover:text-cobalt-500 border-l-2 pl-2 ${
+                className={`block transition-all duration-200 py-1.5 pl-3 -ml-0.5 border-l-2 ${
                   activeId === heading.id
-                    ? "text-cobalt-500 font-medium border-cobalt-500"
-                    : "text-gray-600 border-transparent"
+                    ? "text-cobalt-500 dark:text-cobalt-400 border-cobalt-500 dark:border-cobalt-400 font-medium"
+                    : "text-gray-600 dark:text-gray-400 border-transparent hover:border-cobalt-500 dark:hover:border-cobalt-400 hover:text-cobalt-500 dark:hover:text-cobalt-400"
                 }`}
               >
                 {heading.text}

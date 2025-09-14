@@ -7,24 +7,6 @@ const TableOfContents = dynamic(() => import("components/toc"), { ssr: false });
 const sidebarItems = [
   { href: "/", label: "Overview" },
   { href: "/getting-started", label: "Getting Started" },
-  { href: "/posts", label: "Posts" },
-  { href: "/posts/publishing", label: "Publishing" },
-  { href: "/posts/managing", label: "Managing" },
-  { href: "/posts/text", label: "Text Posts" },
-  { href: "/posts/links", label: "Link Posts" },
-  { href: "/posts/media", label: "Media Posts" },
-  { href: "/posts/scheduling", label: "Scheduling" },
-  { href: "/posts/targeting", label: "Targeting" },
-  { href: "/comments", label: "Comments" },
-  { href: "/comments/reading", label: "Reading" },
-  { href: "/comments/publishing", label: "Publishing" },
-  { href: "/comments/media", label: "Media" },
-  { href: "/comments/replies", label: "Replies" },
-  { href: "/reference", label: "Reference" },
-  { href: "/reference/posts", label: "Post Objects" },
-  { href: "/reference/comments", label: "Comment Objects" },
-  { href: "/reference/config", label: "Configuration" },
-  { href: "/reference/profiles", label: "Profiles" },
 ];
 
 function SidebarLink({ href, label }: { href: string; label: string }) {

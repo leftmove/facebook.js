@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Code, Zap, Bot } from "lucide-react";
+import { Code, Zap, Sparkle } from "lucide-react";
 
 import Codeblock from "components/codeblock";
 
@@ -51,7 +51,7 @@ export default function Description() {
 
         <div className="flex items-start gap-4 p-4 rounded-lg bg-gray-50/50 border border-gray-100">
           <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Bot className="w-4 h-4 text-purple-600" />
+            <Sparkle className="w-4 h-4 text-purple-600" />
           </div>
           <div className="text-base leading-relaxed">
             Run the built-in MCP (model context protocol) to prompt with all

@@ -124,13 +124,59 @@ const kindMap: Record<
   },
 };
 
-function extractText(
+function extractPlainText(
   content: Array<{ kind: string; text: string }> = []
 ): string {
-  return content
-    .map((item) => item.text)
-    .join("")
-    .trim();
+  return content.map((item) => item.text).join("").trim();
+}
+
+function processLinks(text: string): React.ReactNode[] {
+  const linkRegex = /@link\{([^}\s]+)(?:\s+([^}]+))?\}/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null) {
+    const [fullMatch, url, linkText] = match;
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    const href = url.trim();
+    const displayText = linkText?.trim();
+    const isExternalLink = href.startsWith('http://') || href.startsWith('https://');
+    
+    parts.push(
+      <a
+        key={`link-${match.index}`}
+        href={href}
+        target={isExternalLink ? "_blank" : undefined}
+        rel={isExternalLink ? "noopener noreferrer" : undefined}
+        className={clsx(
+          "text-cobalt-600 dark:text-cobalt-400 hover:text-cobalt-800 dark:hover:text-cobalt-300 transition-colors no-underline",
+          !displayText && "inline-block max-w-48 truncate"
+        )}
+      >
+        {displayText || href}
+        {isExternalLink && <ExternalLink className="w-3 h-3 ml-1 inline" />}
+      </a>
+    );
+
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
+function extractText(
+  content: Array<{ kind: string; text: string }> = []
+): React.ReactNode[] {
+  const text = extractPlainText(content);
+  return processLinks(text);
 }
 
 function getItemComment(item: DocItem): DocItem["comment"] | undefined {
@@ -156,7 +202,7 @@ function renderComment(comment?: DocItem['comment']) {
     <div className="space-y-3">
       {summary && (
         <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-          {summary}
+          {extractText(comment.summary)}
         </p>
       )}
 
@@ -458,7 +504,7 @@ export default function Documentation({ file, abstraction, showSearch = false }:
       const matchesSearch =
         !searchTerm ||
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        extractText(itemComment?.summary)
+        extractPlainText(itemComment?.summary)
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
 
@@ -579,7 +625,7 @@ export default function Documentation({ file, abstraction, showSearch = false }:
                     {icon}
                   </span>
                   <span>{name}</span>
-                  <span className="bg-white dark:bg-gray-900 bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded text-xs">
+                  <span className={clsx("bg-white dark:bg-gray-900 bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded text-xs", selectedKind === kind ? 'text-black' : "")}>
                     {count}
                   </span>
                 </button>

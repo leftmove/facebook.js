@@ -1,0 +1,140 @@
+---
+title: "Authentication"
+description: "Overview of how to authenticate with Meta's Graph API."
+---
+
+import Note from "components/note";
+import Code from "components/code";
+import Documentation from "components/documentation";
+
+# Authentication
+
+Before interacting with Meta's Graph API, understanding a few concepts about profiles can be useful.
+
+<Note variant="note">
+  You'll need to be authenticated with credentials in order to get anything done
+  with Meta's Graph API. If you haven't done this already, check out the
+  [getting started](/getting-started) guide.
+</Note>
+
+## Profile
+
+You can interact with posts on behalf of a [profile](https://www.facebook.com/help/337881706729661/). This can either be a [page](https://www.facebook.com/business/tools/facebook-pages) or a [user](https://www.facebook.com/help/337881706729661/).
+
+The difference between the two is where you post to, and therefore what permissions you need. The `user` profile posts to the user's personal profile, while the `page` profile posts to the one of the user's pages.
+
+## Credentials
+
+Once you've chosen a profile (or both), it's useful to know what credentials are created. You probably won't need these, as most work done with these credentials is handled automatically, but it's good to know what's going on under the hood.
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = {};
+const facebook = new Facebook(config);
+
+// App ID
+const appID = facebook.id;
+const appSecret = facebook.secret;
+console.log({ appID, appSecret });
+
+// App Token
+const appToken = facebook.access.app.token;
+const appTokenExpires = facebook.access.app.expires;
+const appTokenValid = facebook.access.app.valid;
+console.log({ appToken, appTokenExpires, appTokenValid });
+
+// Page ID
+const pageID = facebook.info.page.id;
+const pageIDExpires = facebook.info.page.expires;
+const pageIDValid = facebook.info.page.valid;
+const pageIndex = facebook.info.index;
+console.log({ pageID, pageIDExpires, pageIDValid, pageIndex });
+
+// Page Token
+const pageToken = facebook.access.page.token;
+const pageTokenExpires = facebook.access.page.expires;
+const pageTokenValid = facebook.access.page.valid;
+console.log({ pageToken, pageTokenExpires, pageTokenValid });
+
+// User ID
+const userID = facebook.info.user.id;
+const userIDExpires = facebook.info.user.expires;
+const userIDValid = facebook.info.user.valid;
+console.log({ userID, userIDExpires, userIDValid });
+
+// User Token
+const userToken = facebook.access.user.token;
+const userTokenExpires = facebook.access.user.expires;
+const userTokenValid = facebook.access.user.valid;
+console.log({ userToken, userTokenExpires, userTokenValid });
+```
+</Code>
+
+- Profile ID: The ID of the profile you're acting on behalf of.
+  - [User](https://developers.facebook.com/docs/graph-api/reference/user/)
+  - [Page](https://developers.facebook.com/docs/pages-api/getting-started/)
+- Profile Expires: The date and time when the profile's ID will expire. At that point in time, the library will automatically re-check that the profile's ID is still valid. Ensures that the library is always using the most up-to-date profile ID, and that the current profile ID is cached for as long as possible.
+- Profile Valid: Whether the profile's ID is still valid. Mainly for internal use.
+- Page Index: The index of the page you're acting on behalf of. Only relevant for page profiles.
+- Profile Token: The token used to authenticate with the profile.
+  - [User](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/#usertokens)
+  - [Page](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/#pagetokens)
+- Profile Token Expires: The date and time when the profile's token will expire. At that point in time, the library will automatically re-check that the profile's token is still valid. Ensures that the library is always using the most up-to-date profile token, and that the current profile token is cached for as long as possible.
+- Profile Token Valid: Whether the profile's token is still valid. Mainly for internal use.
+
+## Users
+
+<Note variant="important">
+  Meta heavily restricts the use of user profiles. It's recommended you use
+  [page profiles](#pages) instead.
+</Note>
+
+The user profile is the personal profile of a user — the account that you use to login to Facebook. By passing in `user` as the profile, you'll be able to act on behalf of yourself.
+
+While using a user profile is possible, it's not recommended, as publishing (a central function of the library) from user profiles has been deprecated. The only way to publish posts now is through a [page profile](#pages).
+
+Though you can no longer publish, edit, or delete posts from a user profile, Meta still allows a couple of very limited actions with the [special `user_posts` permission](https://developers.facebook.com/docs/permissions/reference/user_posts). However, this permission requires manual approval from Meta, and is not available to everyone.
+
+For more information about the breaking changes made to user profiles by Meta, see the [Graph API changelog](https://developers.facebook.com/docs/graph-api/changelog/out-of-cycle-changes), and [Meta's announcement post](https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/).
+
+<Documentation file="client/posts.ts" abstraction="UserPosts" />
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "user" };
+const facebook = new Facebook(config);
+```
+</Code>
+
+## Pages
+
+The page profile is the profile of one of your pages. Since pages are not created like personal profiles by default, you'll need to [create a page](https://www.facebook.com/help/104002523024878/) first.
+
+Once you've done that, you can pass in the `page` and `index` parameters to your client to specify which page you want to act on behalf of.
+
+While `page` just specifies that you want to use a page in the first place, `index` specifies which page in your list of pages you want to act on behalf of.
+
+This number starts from 0, and and counts up through your list of pages. For example, if you have 3 pages, the first page you create would have an `index` of, the second page would have an `index` of 1, the third an index of `2`, and so on. Your pages here are sorted by when you first created them, and `index` just refers to the position of the page in that list.
+
+<Note variant="important">
+  You'll need to have the `pages_manage_posts` permission to publish posts to a
+  page.
+</Note>
+
+<Documentation file="client/posts.ts" abstraction="PagePosts" />
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "page", pageIndex: 0 };
+const facebook = new Facebook(config);
+```
+</Code>
