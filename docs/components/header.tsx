@@ -45,7 +45,7 @@ export default function Header() {
   return (
     <header
       className={clsx(
-        "sticky top-0 z-30 w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-nowrap transition-all duration-700 ease-in-out",
+        "sticky top-0 z-30 w-full border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-nowrap transition-all duration-700 ease-in-out",
         isScrolled ? "h-14" : "h-20"
       )}
       data-pagefind-ignore
@@ -67,7 +67,7 @@ export default function Header() {
           <Search />
         </div>
       </div>
-      <div className="h-0.5 w-full bg-cobalt-200 opacity-20" />
+      <div className="h-0.5 w-full bg-cobalt-200 dark:bg-cobalt-700 opacity-20" />
     </header>
   );
 }

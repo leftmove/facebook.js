@@ -5,6 +5,11 @@
   --background-rgb: 240, 242, 245;
 }
 
+.dark {
+  --foreground-rgb: 243, 244, 246;
+  --background-rgb: 3, 7, 18;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -34,7 +39,7 @@ body {
   h4,
   h5,
   h6 {
-    @apply font-bold tracking-tight text-gray-900 my-4;
+    @apply font-bold tracking-tight text-gray-900 dark:text-gray-100 my-4;
   }
 
   h1 {
@@ -50,7 +55,7 @@ body {
   }
 
   a {
-    @apply transition-colors text-cobalt-500 hover:text-cobalt-600 no-underline;
+    @apply transition-colors text-cobalt-500 hover:text-cobalt-600 dark:text-cobalt-400 dark:hover:text-cobalt-300 no-underline;
   }
 
   p {
@@ -71,11 +76,11 @@ body {
   }
 
   blockquote {
-    @apply border-l-4 border-gray-200 pl-4 py-2 my-4 text-gray-600 italic;
+    @apply border-l-4 border-gray-200 dark:border-gray-700 pl-4 py-2 my-4 text-gray-600 dark:text-gray-300 italic;
   }
 
   p code {
-    @apply bg-gray-100;
+    @apply bg-gray-100 dark:bg-gray-800;
   }
 }
 
@@ -132,4 +137,16 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: #e5e7eb transparent;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: #374151 transparent;
 }

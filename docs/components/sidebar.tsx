@@ -31,10 +31,10 @@ export default function Sidebar({
 
   return (
     <aside
-      className="w-64 hidden lg:block sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto pb-8 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+      className="w-64 hidden lg:block sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto pb-8 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent"
       data-pagefind-ignore
     >
-      <div className="pr-6 border-r border-gray-200 dark:border-gray-700 h-full pt-6">
+      <div className="pr-6 border-r border-gray-200 dark:border-gray-800 h-full pt-6">
         <nav>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 pl-3">
             Navigation

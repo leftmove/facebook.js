@@ -197,11 +197,11 @@ function DefaultCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm",
         className
       )}
     >
-      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-900">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>
@@ -253,7 +253,7 @@ function InstallCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm",
         className
       )}
     >
@@ -301,7 +301,7 @@ function InstallCommandLine({
           </div>
         </div>
       )}
-      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-900">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>
@@ -348,7 +348,7 @@ function ExecuteCommandLine({
   return (
     <div
       className={clsx(
-        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm",
+        "rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm",
         className
       )}
     >
@@ -372,7 +372,7 @@ function ExecuteCommandLine({
           </div>
         </div>
       )}
-      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-800">
+      <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-900">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
       </div>

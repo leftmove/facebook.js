@@ -263,7 +263,7 @@ function TypeDisplay({ type }: { type: TypeInfo }) {
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-mono bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-mono bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
       {typeDisplay}
     </span>
   );
@@ -307,14 +307,14 @@ function DocNode({ item, depth = 0 }: { item: DocItem; depth?: number }) {
 
   return (
     <div className={clsx(
-      'border rounded-lg bg-white dark:bg-gray-900 shadow-sm transition-all duration-200',
-      depth === 0 ? 'border-gray-300 dark:border-gray-600' : 'border-gray-200 dark:border-gray-700',
-      isInherited && 'bg-gray-50 dark:bg-gray-800'
+      'border rounded-lg bg-white dark:bg-gray-950 shadow-sm transition-all duration-200',
+      depth === 0 ? 'border-gray-300 dark:border-gray-800' : 'border-gray-200 dark:border-gray-800',
+      isInherited && 'bg-gray-50 dark:bg-gray-900'
     )}>
       <div 
         className={clsx(
-          'p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors',
-          hasChildren && 'border-b border-gray-200 dark:border-gray-700'
+          'p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors',
+          hasChildren && 'border-b border-gray-200 dark:border-gray-800'
         )}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
@@ -347,7 +347,7 @@ function DocNode({ item, depth = 0 }: { item: DocItem; depth?: number }) {
                   kindInfo.color.includes('green') && 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
                   kindInfo.color.includes('purple') && 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
                   kindInfo.color.includes('yellow') && 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
-                  kindInfo.color.includes('gray') && 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300',
+                  kindInfo.color.includes('gray') && 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300',
                   kindInfo.color.includes('red') && 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
                   kindInfo.color.includes('indigo') && 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300',
                   kindInfo.color.includes('orange') && 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
@@ -378,9 +378,9 @@ function DocNode({ item, depth = 0 }: { item: DocItem; depth?: number }) {
                   {item.signatures.map((sig, idx) => {
                     const isSignatureExpanded = expandedSignatures.has(sig.id || idx)
                     return (
-                      <div key={sig.id || idx} className="bg-gray-50 dark:bg-gray-800 rounded-md overflow-hidden">
+                      <div key={sig.id || idx} className="bg-gray-50 dark:bg-gray-900 rounded-md overflow-hidden">
                         <div 
-                          className="p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation()
                             toggleSignature(sig.id || idx)
@@ -401,7 +401,7 @@ function DocNode({ item, depth = 0 }: { item: DocItem; depth?: number }) {
                         </div>
                         
                         {isSignatureExpanded && (
-                          <div className="px-3 pb-3 border-t border-gray-200 dark:border-gray-600">
+                          <div className="px-3 pb-3 border-t border-gray-200 dark:border-gray-800">
                             <div className="pt-3">
                               {renderComment(sig.comment)}
                               {sig.parameters && sig.parameters.length > 0 && (

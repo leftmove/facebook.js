@@ -51,7 +51,7 @@ export async function Code(props: CodeProps) {
 
 export default function Block(props: CodeProps) {
   return (
-    <div className="border-2 border-gray-200 dark:border-gray-700 rounded-lg mb-4 bg-white dark:bg-gray-800">
+    <div className="border-2 border-gray-200 dark:border-gray-800 rounded-lg mb-4 bg-white dark:bg-gray-900">
       <Code {...props} />
     </div>
   );

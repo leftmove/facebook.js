@@ -18,7 +18,10 @@ export default function CustomLink({
   return (
     <Link
       href={href}
-      className={clsx("text-cobalt-500 hover:text-cobalt-600", className)}
+      className={clsx(
+        "text-cobalt-500 hover:text-cobalt-600 dark:text-cobalt-400 dark:hover:text-cobalt-300",
+        className
+      )}
       {...props}
       target={isExternal ? "_blank" : undefined}
     >

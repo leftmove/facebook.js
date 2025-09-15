@@ -16,6 +16,7 @@ const sidebar: { name: string; items: { href: string; label: string }[] }[] = [
       { href: "/getting-started", label: "Getting Started" },
       { href: "/authentication", label: "Authentication" },
       { href: "/reference", label: "Reference" },
+      { href: "/guides", label: "Guides" },
     ],
   },
 ];
@@ -46,7 +47,7 @@ export function Sidebar({ show = true }: { show?: boolean }) {
 
   return (
     <aside
-      className="w-64 xl:w-72 hidden md:block sticky top-20 self-start max-h-[calc(100vh-5rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+      className="w-64 xl:w-72 hidden md:block sticky top-20 self-start max-h-[calc(100vh-5rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent"
       data-pagefind-ignore
     >
       <div>

@@ -31,7 +31,10 @@ export default async function Home() {
   });
 
   return (
-    <div className="docs-content" data-pagefind-body>
+    <div
+      className="docs-content text-gray-900 dark:text-gray-100"
+      data-pagefind-body
+    >
       {content}
     </div>
   );

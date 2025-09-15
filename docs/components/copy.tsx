@@ -26,7 +26,7 @@ export default function CopyButton({ text }: CopyButtonProps) {
     <button
       onClick={handleCopy}
       className={clsx(
-        "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-transform duration-150 p-1 rounded-md hover:bg-cobalt-300 dark:hover:bg-cobalt-400 focus:outline-none",
+        "text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-200 transition-transform duration-150 p-1 rounded-md hover:bg-cobalt-300 dark:hover:bg-cobalt-600/30 focus:outline-none",
         isAnimating && "animate-wiggle"
       )}
       disabled={isAnimating}

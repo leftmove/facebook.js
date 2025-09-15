@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const linkStyles =
-  "text-gray-700 dark:text-gray-300 hover:text-cobalt-500 dark:hover:text-cobalt-300 transition-colors px-1.5 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded";
+  "text-gray-700 dark:text-gray-200 hover:text-cobalt-500 dark:hover:text-cobalt-300 transition-colors px-1.5 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded";
 const mobileLinkStyles = `block px-4 py-2 ${linkStyles} hover:bg-gray-50 dark:hover:bg-gray-800`;
 
 const menuItems = [
@@ -35,7 +35,7 @@ function MenuLink({
   const base = mobile ? mobileLinkStyles : linkStyles;
   const className = `${base} ${
     isActive
-      ? "text-cobalt-600 dark:text-cobalt-300 border-b-2 bg-gray-100 dark:bg-gray-800 border-cobalt-500 pb-0.5"
+      ? "text-cobalt-600 dark:text-cobalt-300 border-b-2 bg-gray-100 dark:bg-gray-900 border-cobalt-500 pb-0.5"
       : ""
   }`;
 
@@ -98,7 +98,7 @@ function MobileMenu() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-2 z-50 md:hidden">
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md shadow-lg py-2 z-50 md:hidden">
           {menuItems.map((item) => (
             <MenuLink key={item.href} {...item} mobile />
           ))}

@@ -35,7 +35,7 @@ export default function ThemeToggle() {
 
   if (!isHydrated) {
     return (
-      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-900 animate-pulse" />
     );
   }
 
@@ -47,7 +47,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={handleToggle}
-      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+      className="w-8 h-8 rounded-lg  hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
       title={`Switch to ${nextTheme(theme)}`}
     >
       <ThemeIcon theme={nextTheme(theme)} />

@@ -5,7 +5,7 @@ export default function Hero() {
     <div className="w-full">
       <div className="relative mx-auto max-w-7xl">
         <div className="relative">
-          <div className="relative overflow-hidden bg-gradient-to-br from-cobalt-500 via-cobalt-400 to-cobalt-600 rounded-xl sm:rounded-2xl">
+          <div className="relative overflow-hidden bg-gradient-to-br from-cobalt-500 via-cobalt-400 to-cobalt-600 dark:from-cobalt-600 dark:via-cobalt-500 dark:to-cobalt-700 rounded-xl sm:rounded-2xl">
             <div
               className="absolute inset-0 opacity-20 mix-blend-overlay"
               style={{

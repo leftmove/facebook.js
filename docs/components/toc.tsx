@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface TOCItem {
   id: string;
@@ -15,6 +16,7 @@ export default function TableOfContents() {
   const [headings, setHeadings] = useState<TOCItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const headingsRef = useRef<TOCItem[]>([]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     headingsRef.current = headings;
@@ -73,6 +75,18 @@ export default function TableOfContents() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!activeId) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const activeLink = container.querySelector(
+      'a[aria-current="true"]'
+    ) as HTMLAnchorElement | null;
+    if (activeLink) {
+      activeLink.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [activeId]);
+
   const handleLinkClick = (id: string) => {
     return () => {
       setActiveId(id);
@@ -84,7 +98,7 @@ export default function TableOfContents() {
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-8" ref={containerRef}>
       <nav>
         <ul className="space-y-2 text-sm pl-0">
           {headings.map((heading) => (
@@ -97,6 +111,7 @@ export default function TableOfContents() {
               <Link
                 href={`#${heading.id}`}
                 onClick={handleLinkClick(heading.id)}
+                aria-current={activeId === heading.id ? "true" : undefined}
                 className={`block transition-all duration-200 py-1.5 pl-3 -ml-0.5 border-l-2 ${
                   activeId === heading.id
                     ? "text-cobalt-500 dark:text-cobalt-400 border-cobalt-500 dark:border-cobalt-400 font-medium"

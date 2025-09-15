@@ -2,6 +2,7 @@ import "./globals.css";
 import Navigation from "components/navigation";
 import Footer from "components/footer";
 import Container from "components/container";
+import { PreferencesProvider } from "components/preferences";
 
 import { IBM_Plex_Sans } from "next/font/google";
 
@@ -23,11 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`bg-white text-gray-900 min-h-screen flex flex-col ${ibmPlexSans.className}`}
+        className={`bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col ${ibmPlexSans.className}`}
       >
-        <Navigation />
-        <Container>{children}</Container>
-        <Footer />
+        <PreferencesProvider>
+          <Navigation />
+          <Container>{children}</Container>
+          <Footer />
+        </PreferencesProvider>
       </body>
     </html>
   );
