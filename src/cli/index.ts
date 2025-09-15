@@ -355,6 +355,8 @@ mcp
     listener.on("listening", onListen);
     listener.on("error", onError);
     listener.on("close", onClose);
+
+    process.on("SIGINT", onClose);
     listener.on("SIGINT", onClose);
     listener.on("SIGTERM", onClose);
   });

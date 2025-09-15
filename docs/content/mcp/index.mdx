@@ -1,0 +1,230 @@
+---
+title: MCP
+description: How to use the MCP server.
+---
+
+# MCP
+
+import Note from "components/note";
+import Code from "components/code";
+import Command from "components/commandline";
+import Documentation from "components/documentation";
+
+MCP, or [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro), is a standard for connecting external tools with AI models.
+
+Bookface comes with a built-in MCP server that allows your AI agents to interact with the Facebook API.
+
+<Note variant="note">
+  You need to be authenticated before you can use the MCP. If you haven't set
+  up authentication yet, start with the [getting started](/getting-started) and
+  [authentication](/authentication) guides.
+  
+  If you're launching the MCP from a different process (IDEs, desktop apps,
+  remote shells), you'll also want to make your credentials are available globally.
+</Note>
+
+## Prerequisites
+
+Log in and, if needed, store credentials globally.
+
+<Command variant="execute" packageName="facebook login" language="bash" />
+
+<Command
+  variant="execute"
+  packageName="facebook credentials store"
+  language="bash"
+/> 
+
+## Starting the MCP
+
+There are two ways to run the server: Streamable HTTP (recommended for most GUI agents) and stdio (for CLI/agent runtimes that speak MCP over the terminal).
+
+While Streamable HTTP is often more convenient, stdio is more widely supported by MCP clients (like Claude Desktop).
+
+For more information on these different methods, check out the [MCP transport documentation](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports).
+
+### stdio
+
+
+<Command variant="execute" packageName="facebook mcp raw" language="bash" />
+
+Specify a profile (defaults to `page`), or run both with `dual`.
+
+<Command
+  variant="execute"
+  packageName="facebook mcp raw --profile user"
+  language="bash"
+/>
+
+<Command
+  variant="execute"
+  packageName="facebook mcp raw --profile dual"
+  language="bash"
+/>
+
+stdio is the more widely supported method for transport, so it's likely what you need.
+
+To run stdio in clients like Claude Desktop or Cursor, you can use the following command.
+
+<Command variant="execute" packageName="-y @anonyo/facebook.js mcp raw --profile user" language="bash" />
+
+<Note variant="important">
+  The above command is probably the command you're looking for.
+</Note>
+
+This runs the MCP server directly though npm so that the package is installed as it is run. This is useful for running the MCP in isolated environments, where clients like Cursor or Claude Desktop like to work.
+
+### Streamable HTTP
+
+Start a local HTTP server. The CLI will automatically pick an available port and print the URLs.
+
+<Command variant="execute" packageName="facebook mcp start" language="bash" />
+
+To expose both page and user tools on a single endpoint, run the following.
+
+<Command
+  variant="execute"
+  packageName="facebook mcp start --dual"
+  language="bash"
+/> 
+
+Once the MCP server is running, you'll see different endpoints for the different profiles.
+
+- `http://127.0.0.1:<port>/mcp/page` - page tools
+- `http://127.0.0.1:<port>/mcp/user` - user tools
+- `http://127.0.0.1:<port>/mcp/main` - combined tools (when using `--dual`)
+
+
+You can then use these endpoints to plug into any MCP-compatible agent.
+
+<Note variant="tip">
+  You can check whether the server is running by fetching the health endpoint, `/mcp/page`, `/mcp/user`, or `/mcp/main`.
+</Note>
+
+<Note variant="tip">
+  If your agent cannot access files in your current directory, use
+  `facebook credentials store` first so the MCP can read credentials from a
+  global config directory.
+</Note>
+
+## Profiles
+
+The MCP exposes tools in three modes:
+
+- **page**: Act as a Facebook Page (recommended)
+- **user**: Act as a personal profile (restricted by Meta)
+- **dual**: Expose both page and user tools on one endpoint
+
+<Note variant="important">
+  Meta has deprecated most user publishing operations. Prefer the `page` profile
+  for creating content. User tools may return errors depending on your app's
+  permissions/status.
+</Note>
+
+## Tools
+
+Tools are registered per profile. Names include the profile so you can see what
+you're calling at a glance.
+
+### publish-&lt;profile&gt;-post
+
+Publishes a post for the selected profile.
+
+Input:
+
+- **message**: Text of the post (string)
+- **schedule**: Optional date/time string (parsable by `Date`)
+- **media**: Optional media input
+  - String file path, array of file paths, or `{ data: <base64>, type: <ext> }`
+
+<Code language="json">
+```json
+{ "message": "Hello world", "schedule": "2026-01-15T10:00:00Z" }
+```
+</Code>
+
+Response: JSON string representing the created post.
+
+### publish-&lt;profile&gt;-comment
+
+Publishes a comment. Requires a parent.
+
+Input:
+
+- **parent**: One of:
+  - `{ "id": "<commentId>", "post": "<postId>" }`
+  - `{ "user": "<userId>", "post": "<postId>" }`
+- **message**: Text of the comment (string)
+- **schedule**: Optional date/time string
+- **media**: Optional media input (same as posts)
+
+<Code language="json">
+```json
+{ "parent": { "user": "10039207206110825", "post": "122172395366285076" }, "message": "Replying via MCP" }
+```
+</Code>
+
+Response: JSON string representing the created comment.
+
+<Note variant="note">
+  Both tools return `{ content: [{ type: "text", text: <json> }] }` on success.
+  Errors are returned with `isError: true` and a message.
+</Note>
+
+## Resources
+
+Resources expose read-only data through URIs that MCP clients can fetch.
+
+- **info://page** or **info://user**
+  - Returns `{ id, expires, valid }` for the active profile
+- **access://page/token** or **access://user/token**
+  - Returns the access token as plain text
+
+These are useful for quick checks, debugging, or dynamic prompts.
+
+## Sessions and Endpoints (HTTP)
+
+When using Streamable HTTP, the server manages sessions with a `mcp-session-id`
+header. Clients initialize a session with the standard MCP `initialize` request;
+subsequent requests should include the `mcp-session-id` header value returned by
+the server.
+
+- POST `/mcp/page` or `/mcp/user` or `/mcp/main` for tool calls
+- GET/DELETE `/mcp` for session management
+
+You typically do not need to handle this manually—MCP clients do it for you.
+
+## Programmatic Usage
+
+If you need to mount the MCP inside your own server, you can use the same handlers the CLI uses.
+
+This allows you handle more advanced, custom use cases.
+
+<Code language="typescript">
+```typescript
+import express from "express";
+import { MCPHandler, sessionHandler } from "bookface/mcp";
+
+const app = express();
+app.use(express.json());
+
+app.get(["/mcp/user", "/mcp/page", "/mcp/main"], (req, res) => {
+  res.send("MCP Running");
+});
+
+// Choose one profile per endpoint, or mount a dual endpoint
+app.post("/mcp/page", (req, res) => MCPHandler(req, res, "page"));
+app.post("/mcp/user", (req, res) => MCPHandler(req, res, "user"));
+app.post("/mcp/main", (req, res) => MCPHandler(req, res, "dual"));
+
+// Session management used by MCP clients
+app.get("/mcp", (req, res) => sessionHandler(req, res));
+app.delete("/mcp", (req, res) => sessionHandler(req, res));
+
+app.listen(3000);
+```
+</Code>
+
+For more information on how to use these handlers, you can see the [source code/documentation](/reference#mcp) below.
+
+<Documentation file="mcp/mcp.ts" abstraction="MCPHandler" showSearch={true} />

@@ -1,0 +1,130 @@
+---
+title: "Command Line Interface"
+description: "How to use the CLI."
+---
+
+import Note from "components/note";
+import Command from "components/commandline";
+
+# Command Line Interface
+
+The CLI is the main way to configure Bookface. The main functions are to login, refresh credentials, manage saved credentials, and start the MCP server.
+
+## Running Commands
+
+Use your preferred package runner.
+
+<Command variant="execute" packageName="facebook --help" language="bash" />
+
+<Note variant="note">
+  If you haven't authenticated yet, start with the [getting started](/getting-started)
+  and [authentication](/authentication) guides.
+  Most commands will validate credentials before proceeding.
+</Note>
+
+## Authentication
+
+### Login
+
+Starts a guided flow that collects your app credentials, generates tokens, and writes a `credentials.json`.
+
+<Command variant="execute" packageName="facebook login" language="bash" />
+
+Options (all optional):
+
+- **--appId**: Facebook App ID
+- **--appSecret**: Facebook App Secret
+- **--appToken**: Existing App token
+- **--userToken**: Existing User token
+- **--userId**: Existing User ID
+- **--pageId**: Existing Page ID
+- **--pageIndex**: Page index when selecting a page
+- **--pageToken**: Existing Page token
+- **--scope**: Permissions as a JSON string
+- **--credentials**: Path to read existing creds (defaults to `./credentials.json`)
+- **--path**: Path to write final creds file (defaults to `./credentials.json`)
+
+You edit this scope by changing the `credentials.json` file created, or by using the `--scope` flag.
+
+<Command
+  variant="execute"
+  packageName='facebook login --scope "{\"pages_manage_posts\": true}"'
+  language="bash"
+/>
+
+### Refresh
+
+Re-generates fresh tokens using your App ID/Secret and writes them to disk.
+
+<Command variant="execute" packageName="facebook refresh" language="bash" />
+
+Accepts the same options as `login`. Tokens are recreated; use this when tokens expire or scopes change.
+
+## Credentials
+
+### View
+
+Prints the currently resolved credentials (working directory and global fallback).
+
+<Command variant="execute" packageName="facebook credentials view" language="bash" />
+
+<Command variant="execute" packageName="facebook creds view" language="bash" />
+
+### Clear
+
+Clears saved tokens/IDs in the current working directory file.
+
+<Command variant="execute" packageName="facebook credentials clear" language="bash" />
+
+<Command variant="execute" packageName="facebook creds clear" language="bash" />
+
+### Store Globally
+
+Writes a global fallback `credentials.json` to your OS config directory so tools can authenticate outside your project folder.
+
+<Command variant="execute" packageName="facebook credentials store" language="bash" />
+
+<Command variant="execute" packageName="facebook creds store" language="bash" />
+
+<Note variant="tip">
+  Use this before launching the MCP from IDEs or agents that run in isolated directories.
+</Note>
+
+### JSON
+
+Pretty-prints credentials as JSON for quick copy/paste into configs.
+
+<Command variant="execute" packageName="facebook credentials json" language="bash" />
+
+<Command variant="execute" packageName="facebook creds json" language="bash" />
+
+### Shell
+
+Prints environment variable exports to source into your shell.
+
+<Command variant="execute" packageName="facebook credentials shell" language="bash" />
+
+<Command variant="execute" packageName="facebook creds shell" language="bash" />
+
+## MCP
+
+Start the built-in MCP server for agent integrations. See the full guide at [MCP](/mcp).
+
+### Streamable HTTP
+
+Starts a local HTTP server. Add `--dual` to expose user and page tools together.
+
+<Command variant="execute" packageName="facebook mcp start" language="bash" />
+
+<Command variant="execute" packageName="facebook mcp start --dual" language="bash" />
+
+### stdio (Most clients)
+
+Runs the MCP over stdio. Choose a profile: `user`, `page` (default), or `dual`.
+
+<Command variant="execute" packageName="facebook mcp raw --profile user" language="bash" />
+
+For sandboxed clients (e.g. IDEs), you can execute directly from the registry:
+
+<Command variant="execute" packageName='-y @anonyo/facebook.js mcp raw --profile user' language="bash" />
+
