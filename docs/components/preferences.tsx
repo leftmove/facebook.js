@@ -10,6 +10,8 @@ import {
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export type Theme = "light" | "dark";
+
 // Define the types for our preferences
 export type PackageManager = "npm" | "yarn" | "pnpm" | "bun";
 export type Registry = "npm" | "jsr";
@@ -17,6 +19,8 @@ export type Registry = "npm" | "jsr";
 interface PreferencesState {
   packageManager: PackageManager;
   registry: Registry;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
   setPackageManager: (packageManager: PackageManager) => void;
   setRegistry: (registry: Registry) => void;
 }
@@ -27,6 +31,8 @@ export const usePreferencesStore = create<PreferencesState>()(
     (set) => ({
       packageManager: "npm",
       registry: "npm",
+      theme: "light",
+      setTheme: (theme) => set({ theme }),
       setPackageManager: (packageManager) => set({ packageManager }),
       setRegistry: (registry) => set({ registry }),
     }),
@@ -40,6 +46,8 @@ export const usePreferencesStore = create<PreferencesState>()(
 // Create a context for SSR compatibility
 type PreferencesContextType = {
   isHydrated: boolean;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 } & PreferencesState;
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(

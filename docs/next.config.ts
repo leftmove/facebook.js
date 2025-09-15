@@ -3,6 +3,7 @@ import withMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: true,
 };
 
 export default withMDX({

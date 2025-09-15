@@ -1,23 +1,28 @@
 @import "tailwindcss";
 
-
-
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
+  --background-rgb: 240, 242, 245;
 }
 
+.dark {
+  --foreground-rgb: 243, 244, 246;
+  --background-rgb: 3, 7, 18;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-cobalt-50: #EFF6FF;
-  --color-cobalt-100: #4E85E5;
-  --color-cobalt-200: #0C51CA;
-  --color-cobalt-300: #184A9F;
-  --color-cobalt-400: #0046A1;
-  --color-cobalt-500: #003A86;
-  --color-cobalt-600: #002B63;
-  --color-cobalt-700: #001E44;
-  --color-cobalt-800: #00112B;
-  --color-cobalt-900: #00091F;
+  --color-cobalt-50: #eff6ff;
+  --color-cobalt-100: #4e85e5;
+  --color-cobalt-200: #0c51ca;
+  --color-cobalt-300: #184a9f;
+  --color-cobalt-400: #0046a1;
+  --color-cobalt-500: #003a86;
+  --color-cobalt-600: #002b63;
+  --color-cobalt-700: #001e44;
+  --color-cobalt-800: #00112b;
+  --color-cobalt-900: #00091f;
   --color-cobalt-1000: oklch(0.4707 0.1651 264.42);
   --color-cobalt-2000: oklch(0.4097 0.157168 258.7828);
 }
@@ -28,56 +33,60 @@ body {
 }
 
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight text-gray-900 my-4;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight text-gray-900 dark:text-gray-100 my-4;
   }
-  
+
   h1 {
     @apply text-3xl sm:text-4xl md:text-5xl mb-6;
   }
-  
+
   h2 {
     @apply text-2xl sm:text-3xl mb-4 mt-8;
   }
-  
+
   h3 {
     @apply text-xl sm:text-2xl mb-3 mt-6;
   }
-  
+
   a {
-    @apply transition-colors text-cobalt-500 hover:text-cobalt-600;
+    @apply transition-colors text-cobalt-500 hover:text-cobalt-600 dark:text-cobalt-400 dark:hover:text-cobalt-300 no-underline;
   }
-  
+
   p {
-    @apply mb-4 text-gray-700 leading-relaxed;
+    @apply mb-4 text-gray-800 dark:text-gray-200 leading-relaxed;
   }
-  
-  ul, ol {
+
+  ul,
+  ol {
     @apply mb-6 pl-6;
   }
-  
-  ul {
-    @apply list-disc;
-  }
-  
-  ol {
-    @apply list-decimal;
-  }
-  
+
   li {
-    @apply mb-2;
+    @apply mb-2 text-gray-800 dark:text-gray-200;
   }
-  
+
   pre {
     @apply rounded-lg overflow-auto;
   }
-  
+
   blockquote {
-    @apply border-l-4 border-gray-200 pl-4 py-2 my-4 text-gray-600 italic;
+    @apply border-l-4 border-gray-200 dark:border-gray-700 pl-4 py-2 my-4 text-gray-600 dark:text-gray-300 italic;
   }
 
-  code {
-    @apply bg-gray-100
+  p code {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+}
+
+@layer components {
+  .kbd-hint {
+    @apply bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600;
   }
 }
 
@@ -89,8 +98,21 @@ body {
   @apply mt-0;
 }
 
+.docs-content li:first-child {
+  @apply mt-2;
+}
+
 .shiki {
   @apply text-sm font-mono;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
 /* Custom scrollbar styles */
@@ -115,4 +137,16 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: #e5e7eb transparent;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: #374151 transparent;
 }

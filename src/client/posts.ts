@@ -340,7 +340,7 @@ export class Post {
 /**
  * Class for managing posts on a Facebook page or user profile.
  * Provides methods for getting, publishing, editing, and deleting posts.
- * You can use this class to manage posts on a page or user profile, but your probably shouldn't access it directly.
+ * You can use this class to manage posts on a page or user profile, but you probably shouldn't access it directly.
  * Instead, access it through the {@link Facebook} class.
  * @see {@link Post}
  * @see {@link Facebook["posts"]}
@@ -566,7 +566,7 @@ export class Posts {
  * Class for managing posts on a Facebook user profile.
  * Provides methods for getting posts.
  * Since April of 2018, Facebook has disabled the ability to publish, edit, and delete posts from a user's profile.
- * You can read more about on the @link{https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes accompanying blog post}, and the @link{https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/ breaking changes changelog}.
+ * You can read more about it on the @link{https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes accompanying blog post}, and the @link{https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/ out-of-cycle changelog}.
  */
 export class UserPosts extends Posts {
   constructor(facebook: Facebook) {

@@ -24,6 +24,8 @@
 # misc
 .DS_Store
 *.pem
+.claude/
+.cursor/
 
 # debug
 npm-debug.log*

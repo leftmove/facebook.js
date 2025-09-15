@@ -1,26 +1,58 @@
-import React from "react";
+import React, { Fragment } from "react";
+import { codeToHast } from "shiki";
+import { toJsxRuntime } from "hast-util-to-jsx-runtime";
+import { jsx, jsxs } from "react/jsx-runtime";
 
-export default async function Code({
-  language,
-  children,
-}: {
+import clsx from "clsx";
+
+interface CodeProps {
   language: string;
-  children: string;
-}) {
-  // Use client-side rendering with a simple pre/code fallback initially
+  children:
+    | {
+        props: {
+          children: {
+            props: {
+              children: string;
+            };
+          };
+        };
+      }
+    | string;
+}
+
+export async function Code(props: CodeProps) {
+  const codeContent =
+    typeof props.children === "string"
+      ? props.children
+      : props.children.props.children.props.children;
+  const out = await codeToHast(codeContent, {
+    lang: props.language,
+    themes: {
+      light: "github-light",
+      dark: "github-dark",
+    },
+  });
+
+  return toJsxRuntime(out, {
+    Fragment,
+    jsx,
+    jsxs,
+    components: {
+      pre: (props) => (
+        <pre
+          data-custom-codeblock
+          {...props}
+          className={clsx("p-6", props.className)}
+        />
+      ),
+    },
+  }) as React.JSX.Element;
+}
+
+export default function Block(props: CodeProps) {
   return (
-    <div
-      className="my-6 rounded-lg overflow-x-auto bg-gray-50 border border-gray-200 shadow-sm"
-      data-pagefind-ignore
-    >
-      <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 text-xs font-medium text-gray-500">
-        {language}
-      </div>
-      <div className="p-4">
-        <pre className={`language-${language}`}>
-          <code className="bg-transparent">{children}</code>
-        </pre>
-      </div>
+    <div className="border-2 border-gray-200 dark:border-gray-800 rounded-lg mb-4 bg-white dark:bg-gray-900">
+      <Code {...props} />
     </div>
   );
 }

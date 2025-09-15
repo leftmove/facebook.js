@@ -1,12 +1,12 @@
 import Facebook from "../src";
+import type { Config } from "../src";
 import type { Authentication } from "../src";
 
 // This file is used to test the general functionality of the library.
 
-const facebook = new Facebook();
-const auth: Authentication = {
-  profile: "page",
-};
+const config: Config = { pageIndex: 0 };
+const facebook = new Facebook(config);
+const auth: Authentication = { profile: "page" };
 await facebook.login(auth).then(({ credentials, scope }) => {
   console.log(credentials);
   console.log(scope);
@@ -16,19 +16,41 @@ await facebook.login(auth).then(({ credentials, scope }) => {
 // Information
 // Retrieve information about the current profile.
 
-// // Page
+// // App ID
+// const appID = facebook.id;
+// const appSecret = facebook.secret;
+// console.log({ appID, appSecret });
+
+// // App Token
+// const appToken = facebook.access.app.token;
+// const appTokenExpires = facebook.access.app.expires;
+// const appTokenValid = facebook.access.app.valid;
+// console.log({ appToken, appTokenExpires, appTokenValid });
+
+// // Page ID
 // const pageID = facebook.info.page.id;
-// const pageExpires = facebook.info.page.expires;
-// const pageValid = facebook.info.page.valid;
+// const pageIDExpires = facebook.info.page.expires;
+// const pageIDValid = facebook.info.page.valid;
+// const pageIndex = facebook.info.index;
+// console.log({ pageID, pageIDExpires, pageIDValid, pageIndex });
+
+// // Page Token
 // const pageToken = facebook.access.page.token;
-// console.log({ pageID, pageExpires, pageValid, pageToken });
+// const pageTokenExpires = facebook.access.page.expires;
+// const pageTokenValid = facebook.access.page.valid;
+// console.log({ pageToken, pageTokenExpires, pageTokenValid });
 
 // // User
 // const userID = facebook.info.user.id;
-// const userExpires = facebook.info.user.expires;
-// const userValid = facebook.info.user.valid;
+// const userIDExpires = facebook.info.user.expires;
+// const userIDValid = facebook.info.user.valid;
+// console.log({ userID, userIDExpires, userIDValid });
+
+// // User Token
 // const userToken = facebook.access.user.token;
-// console.log({ userID, userExpires, userValid, userToken });
+// const userTokenExpires = facebook.access.user.expires;
+// const userTokenValid = facebook.access.user.valid;
+// console.log({ userToken, userTokenExpires, userTokenValid });
 
 // // Publishing
 // // Publish posts to the current profile.

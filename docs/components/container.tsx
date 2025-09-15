@@ -1,14 +1,6 @@
 import { ReactNode } from "react";
 import { Sidebar } from "components/navigation";
-import dynamic from "next/dynamic";
-
-// Dynamically import the provider with no SSR
-const PreferencesProviderClient = dynamic(() =>
-  import("./preferences").then((mod) => {
-    const { PreferencesProvider } = mod;
-    return { default: PreferencesProvider };
-  })
-);
+import { PreferencesProvider } from "components/preferences";
 
 interface ContainerProps {
   children: ReactNode;
@@ -16,14 +8,18 @@ interface ContainerProps {
 
 export default function Container({ children }: ContainerProps) {
   return (
-    // Wrap with the client-side provider
-    <PreferencesProviderClient>
-      <div className="flex flex-1 w-full mx-auto px-4 sm:px-6 py-8 gap-8">
-        <Sidebar />
-        <main className="flex-1 min-w-0" data-pagefind-body>
-          {children}
-        </main>
+    <PreferencesProvider>
+      <div className="flex flex-1 w-full mx-auto max-w-7xl px-4 sm:px-8 py-8">
+        <div className="flex w-full gap-8 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-sm">
+          <Sidebar />
+          <main
+            className="flex-1 min-w-0 mt-10 text-gray-900 dark:text-gray-100"
+            data-pagefind-body
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </PreferencesProviderClient>
+    </PreferencesProvider>
   );
 }

@@ -74,7 +74,7 @@ export class Image {
 /**
  * Class for uploading media to Facebook.
  * Provides methods for uploading images, videos, and other media types.
- * You can use this class to upload media to Facebook, but your probably shouldn't access it directly.
+ * You can use this class to upload media to Facebook, but you probably shouldn't access it directly.
  * Instead, access it through the {@link Facebook} class.
  * @see {@link Facebook["upload"]}
  * @see {@link Facebook["client"]}

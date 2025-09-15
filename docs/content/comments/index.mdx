@@ -1,0 +1,424 @@
+---
+title: "Comments"
+description: "How to create, read, edit, delete and otherwise interact with comments."
+---
+
+# Comments
+
+<Note variant="note">
+  You need to be authenticated before you can interact with comments. If you
+  haven't set up authentication yet, check out the
+  [authentication](/authentication) guide.
+</Note>
+
+## Overview
+
+Comments are replies to posts. They follow most of the same rules as posts, but unlike posts, comments cannot stand alone.
+
+Before you can interact with comments, you'll need to have a post to interact with.
+
+<Note variant="note">
+  If you're new, you probably want to read the [posts guide](/posts) first.
+</Note>
+
+There are four main types of comments.
+
+- **Text comments**: Simple status updates with a message
+- **Link comments**: Comments that include a URL with automatic preview generation
+- **Media comments**: Comments with photos or videos
+- **Scheduled comments**: Comments that publish at a future date and time
+
+Through the API, comments can be created, retrieved, edited, and deleted (where Meta's policies allow).
+
+## Profile Types
+
+### Page Comments
+
+Page comments are the recommended approach for most applications. Since user posting is deprecated, commenting on behalf a page has become the only way to comment on posts. Unless all you want to do is read comments, you'll need to have a page setup with permissions.
+
+If you don't already have a page setup with permissions, you can find out to create a page in the [authentication guide](/authentication).
+
+<Documentation file="client/comments.ts" abstraction="PageComments" />
+
+The following is a minimal, reproducible example of how to comment on a post you've created (on your page).
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "page", pageIndex: 0 };
+const facebook = new Facebook(config);
+
+const post = await facebook.page.posts.publish({
+  message: "This is a post."
+});
+const comment = await facebook.page.comments.publish({
+  post: post.id,
+  user: post.user,
+  message: "This is a reply.",
+});
+```
+</Code>
+
+### User Comments
+
+<Note variant="important">
+  User profile posting has been heavily restricted by Meta since April of 2018.
+  Most commenting operations will throw errors.
+  
+  You can read more about this in the accompanying [blog post](https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes) and [out-of-cycle changelog](https://developers.facebook.com/docs/graph-api/changelog/out-of-cycle-changes).
+</Note>
+
+User comments refer to comments on your personal profile. Unlike page comments, user comments can no longer be published, edited, or deleted. The only remaining functionality is reading existing comments.
+
+<Documentation file="client/comments.ts" abstraction="UserComments" />
+
+The following is a minimal, reproducible example of how to read comments on your user profile.
+
+<Code language="typescript">
+```typescript
+import Facebook from "bookface";
+import type { Config } from "bookface";
+
+const config: Config = { profile: "user" };
+const facebook = new Facebook(config);
+
+const comments = await facebook.user.comments.read();
+```
+</Code>
+
+## Creating Comments
+
+Creating comments is done using the `publish` method. Depending on what your trying to comment, you'll need to pass in the appropriate configuration object and have the right permissions.
+
+### Text Comments
+
+The simplest type of comment is a text comment.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This is a text comment."
+});
+
+console.log({ comment });
+```
+</Code>
+
+### Link Comments
+
+Link comments are comments that refer to a URL.
+
+Different from text posts, link posts automatically generate rich previews with the your link's title, description, and thumbnail.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This is a link post.",
+  link: "https://developers.facebook.com"
+});
+```
+
+</Code>
+
+You can also comment links without an additional message by doing the following.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  link: "https://github.com"
+});
+```
+</Code>
+
+### Media Comments
+
+Media comments allow you to attach photos or videos.
+
+Supported formats include JPG, PNG, GIF, BMP, and TIFF.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This is a photo comment.",
+  media: "/path/to/image.jpg"
+});
+
+const galleryComment = await facebook.page.comments.publish({
+  message: "This is a gallery comment.",
+  post: "122172395366285076",
+  user: "10039207206110825",
+  media: [
+    "/path/to/photo1.jpg",
+    "/path/to/photo2.png",
+    "/path/to/photo3.gif"
+  ]
+});
+```
+</Code>
+
+You can also upload images with Base64 data by doing the following.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This post attaches a Base64 image.",
+  media: {
+    data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+    type: "png"
+  }
+});
+```
+
+</Code>
+
+### Scheduled Comments
+
+Scheduled comments allow you to publish things at a future time and date.
+
+<Note variant="note">
+  The scheduled time of your post must be at least 10 minutes in the future.
+</Note>
+
+<Code language="typescript">
+```typescript
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+tomorrow.setHours(9, 0, 0, 0);
+
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "Scheduled announcement",
+  schedule: tomorrow
+});
+
+console.log("Post scheduled");
+console.log({ scheduled: comment.scheduled });
+```
+</Code>
+
+You can also schedule other types of comments, like the ones defined above.
+
+<Code language="typescript">
+```typescript
+const scheduledLink = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This is a scheduled link post.",
+  link: "https://example.com/newsletter",
+  schedule: "2024-01-15T10:00:00Z"
+});
+
+const scheduledMedia = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "This is a scheduled media post.",
+  media: "/path/to/announcement.jpg",
+  schedule: new Date("2024-01-20 14:30:00")
+});
+```
+</Code>
+
+## Checking Scheduled Comments
+
+When you schedule a comment, you can check if the comment has been published yet using the `ready()` method.
+
+<Code language="typescript">
+```typescript
+const scheduledComment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  user: "10039207206110825",
+  message: "Future announcement",
+  schedule: new Date("2024-01-15T10:00:00Z")
+});
+
+console.log("Checking if post is published");
+const isPublished = await scheduledComment.ready();
+console.log({ published: isPublished });
+```
+</Code>
+
+
+## Reading Comments
+
+While posts and comments are similar, reading comments is a bit different.
+
+### Read All Comments
+
+You can read all comments from a profile using the `read` method.
+
+<Code language="typescript">
+```typescript
+const pageComments = await facebook.page.comments.read();
+console.log("Comments retrieved");
+console.log({ count: pageComments.length });
+console.log({ comments: pageComments });
+```
+</Code>
+
+### Get Specific Comments
+
+If you only want to read a single comment though, you can use the `get` method instead and specify the comment's ID.
+
+While comment IDs can be useful, it's better practice to use comment objects whenever available, as IDs can be finnicky.
+
+If you want to use a string ID anyways, note that comment IDs also usually require the user ID to specified in a "\{user ID}_\{post ID}" format.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.get({
+  id: "1446136966366636",
+  post: "122172395366285076",
+});
+
+console.log({ comment });
+```
+</Code>
+
+To pass in an existing comment object (recommended), pass the object in directly or pass in the `id` property.
+
+<Code language="typescript">
+```typescript
+const existingComment = await facebook.page.comments.publish({
+  id: "1446136966366636",
+  post: "122172395366285076",
+  message: "This is a comment."  
+});
+
+const retrievedComment = await facebook.page.comments.get(existingComment);
+const idRetrievedComment = await facebook.page.comments.get({ id: existingComment.id });
+console.log({ retrievedComment });
+```
+</Code>
+
+## Editing Posts
+
+<Note variant="note">
+  You can only edit text comments. Media, link, and scheduled comments cannot be modified after publishing.
+</Note>
+
+To edit a text comment, pass in the comment's ID (or better yet, an existing comment object) and the new message.
+
+<Code language="typescript">
+```typescript
+const editedComment = await facebook.page.comments.edit({
+  id: "1446136966366636",
+  post: "122172395366285076",
+  message: "This comment has been edited."
+});
+
+console.log("Comment updated");
+console.log({ success: editedComment.success });
+```
+</Code>
+
+## Deleting Posts
+
+To delete a comment, pass in the comment's ID (or better yet, an existing comment object).
+
+<Code language="typescript">
+```typescript
+const result = await facebook.page.comments.remove({
+  id: "1446136966366636",
+  post: "122172395366285076",
+});
+
+console.log("Comment deleted");
+console.log({ success: result.success });
+```
+
+</Code>
+
+## Comment Object
+
+When you create, read, or modify comments, you'll automatically get back a [`Comment`](/reference#comments) object. This is useful because it provides direct methods for interacting with your comment.
+
+Comment objects also contain properties like `id`, `message`, `created`, `media`, `link`, `success`, and `scheduled` — these are useful for gathering information about a comment.
+
+You can find the full list of properties/methods for comments in the [API reference](/reference#comments).
+
+The following is a minimal, reproducible example of how to use a comment object.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  post: "122172395366285076",
+  id: "10039207206110825",
+  message: "This is a comment.",
+});
+
+console.log("Comment properties");
+console.log({
+  id: comment.id,
+  message: comment.message,
+  created: comment.created,
+  scheduled: comment.scheduled
+});
+```
+</Code>
+
+## Replying
+
+A special property on comment objects is the `reply` method. This method allows you to comment on a comment.
+
+<Code language="typescript">
+```typescript
+const reply = await facebook.page.comments.reply({
+  id: "1446136966366636",
+  post: "122172395366285076",
+  message: "This is a reply."
+});
+console.log({ reply });
+```
+</Code>
+
+Like with scheduled comments, you can also comment reply with links and media.
+
+<Code language="typescript">
+```typescript
+const linkReply = await facebook.page.comments.reply({
+  id: "1446136966366636",
+  post: "122172395366285076",
+  message: "This is a reply.",
+  link: "https://example.com/newsletter"
+});
+console.log({ linkReply });
+
+const mediaReply = await facebook.page.comments.reply({
+  id: "1446136966366636",
+  post: "122172395366285076",
+  message: "This is a reply.",
+  media: "/path/to/image.jpg"
+});
+console.log({ mediaReply });
+```
+</Code>
+
+### Comment Dumps (JSON)
+
+If you need to get a raw JSON representation of a comment, you can use the `dump` method.
+
+<Code language="typescript">
+```typescript
+const comment = await facebook.page.comments.publish({
+  id: "10039207206110825",
+  post: "122172395366285076",
+  message: "This is a comment.",
+});
+
+const details = comment.dump();
+console.log({ details });
+```
+</Code>

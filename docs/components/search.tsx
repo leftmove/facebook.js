@@ -280,7 +280,7 @@ export default function Search() {
                       id: result.id,
                       title: data.meta.title || "Untitled",
                       excerpt: data.excerpt || "No excerpt available",
-                      url: data.url || "#",
+                      url: normalizeUrl(data.url || "#"),
                       highlights: highlights.length ? highlights : undefined,
                       section: data.meta.title,
                     };
@@ -356,6 +356,45 @@ export default function Search() {
     return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   };
 
+  // Normalize Pagefind's HTML file URLs to Next.js routes
+  const normalizeUrl = (rawUrl: string): string => {
+    if (!rawUrl) return "#";
+
+    let working = rawUrl.trim();
+
+    // Ensure absolute for parsing, then strip origin
+    try {
+      const parsed = new URL(
+        working,
+        typeof window !== "undefined"
+          ? window.location.origin
+          : "http://localhost"
+      );
+      let pathname = parsed.pathname;
+
+      const lower = pathname.toLowerCase();
+      if (lower.endsWith("/index.html")) {
+        pathname = pathname.slice(0, -"/index.html".length) + "/";
+      }
+      if (pathname.toLowerCase().endsWith(".html")) {
+        pathname = pathname.slice(0, -".html".length);
+      }
+
+      // Ensure leading slash and remove trailing slash (except root)
+      if (pathname && !pathname.startsWith("/")) pathname = "/" + pathname;
+      if (pathname.length > 1 && pathname.endsWith("/"))
+        pathname = pathname.slice(0, -1);
+
+      return `${pathname}${parsed.search}${parsed.hash}` || "/";
+    } catch {
+      // Fallback: basic string transforms
+      let url = working.replace(/\/index\.html$/i, "/").replace(/\.html$/i, "");
+      if (url && !url.startsWith("/")) url = "/" + url;
+      if (url.length > 1 && url.endsWith("/")) url = url.slice(0, -1);
+      return url;
+    }
+  };
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -390,8 +429,7 @@ export default function Search() {
       {/* Search trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 rounded-lg cursor-pointer border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
-        aria-label="Search documentation"
+        className="flex items-center gap-2 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -409,7 +447,7 @@ export default function Search() {
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <span>Search</span>
-        <span className="hidden sm:flex items-center border rounded px-1.5 py-0.5 ml-2 text-xs bg-gray-50 border-gray-200 text-gray-400">
+        <span className="hidden sm:flex items-center rounded px-1.5 py-0.5 ml-2 text-xs kbd-hint">
           ⌘K
         </span>
       </button>
@@ -428,11 +466,11 @@ export default function Search() {
 
           {/* Search panel */}
           <div
-            className="absolute z-10 bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden border border-gray-200"
+            className="absolute z-10 bg-white dark:bg-gray-950 rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden overflow-x-hidden border border-gray-200 dark:border-gray-800"
             ref={searchPanelRef}
           >
             {/* Search input */}
-            <div className="sticky top-0 flex items-center p-4 border-b border-gray-200 bg-white">
+            <div className="sticky top-0 flex items-center p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -454,7 +492,7 @@ export default function Search() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search documentation..."
-                className="flex-1 border-0 focus:ring-0 focus:outline-none text-gray-900 placeholder-gray-400 text-base"
+                className="flex-1 border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-base"
                 autoComplete="off"
                 autoFocus
               />
@@ -482,11 +520,11 @@ export default function Search() {
             </div>
 
             {/* Search results */}
-            <div className="overflow-y-auto bg-white px-4">
+            <div className="overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-950 px-4 max-w-full">
               {loading ? (
                 <div className="flex justify-center p-6">
                   <svg
-                    className="animate-spin h-6 w-6 text-blue-600"
+                    className="animate-spin h-6 w-6 text-cobalt-600 dark:text-cobalt-400"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -507,44 +545,44 @@ export default function Search() {
                   </svg>
                 </div>
               ) : results.length > 0 ? (
-                <ul className="py-2">
+                <ul className="py-2 max-w-full">
                   {results.map((result, index) => (
                     <li key={result.id || index}>
                       <a
                         href={result.url}
-                        className="block px-4 py-3 hover:bg-gray-50 rounded-lg transition"
+                        className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg transition max-w-full overflow-hidden"
                         onClick={() => setIsOpen(false)}
                       >
-                        <h3 className="text-sm font-medium text-gray-900 mb-1 truncate">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 truncate max-w-full">
                           {result.title}
                           {result.section &&
                             result.section !== result.title && (
-                              <span className="text-gray-500 font-normal ml-1">
+                              <span className="text-gray-500 dark:text-gray-400 font-normal ml-1">
                                 ›{" "}
-                                <span className="text-blue-600">
+                                <span className="text-cobalt-600 dark:text-cobalt-400">
                                   {result.section}
                                 </span>
                               </span>
                             )}
                         </h3>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal max-w-full overflow-hidden">
                           {/* Display excerpt with highlighted matches */}
                           {highlightText(result.excerpt)}
                         </div>
 
                         {/* Display additional highlight contexts if available */}
                         {result.highlights && result.highlights.length > 0 && (
-                          <div className="mt-2 border-t border-gray-100 pt-2">
+                          <div className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-2">
                             {result.highlights.map((highlight, i) => (
                               <div
                                 key={i}
-                                className="mt-1 px-2 py-1 bg-gray-50 rounded-md text-xs"
+                                className="mt-1 px-2 py-1 bg-gray-50 dark:bg-gray-900 rounded-md text-xs"
                               >
                                 <div className="flex items-center gap-1">
-                                  <span className="text-gray-400 text-[10px] flex-shrink-0 font-mono">
+                                  <span className="text-gray-400 dark:text-gray-500 text-[10px] flex-shrink-0 font-mono">
                                     {highlight.position || "•"}
                                   </span>
-                                  <div className="text-gray-600 overflow-hidden">
+                                  <div className="text-gray-600 dark:text-gray-300 overflow-hidden break-words whitespace-normal max-w-full">
                                     {highlightText(highlight.text)}
                                   </div>
                                 </div>
@@ -557,7 +595,7 @@ export default function Search() {
                   ))}
                 </ul>
               ) : query ? (
-                <div className="text-center py-16 text-gray-500">
+                <div className="text-center py-16 text-gray-500 dark:text-gray-400">
                   <p className="font-medium">
                     No results found for &quot;{query}&quot;
                   </p>
@@ -567,7 +605,7 @@ export default function Search() {
                   </p>
                 </div>
               ) : (
-                <div className="text-center py-16 text-gray-500">
+                <div className="text-center py-16 text-gray-500 dark:text-gray-400">
                   <p className="font-medium">Type to start searching</p>
                   <p className="text-sm mt-2">
                     Search through titles, content, and more
@@ -577,10 +615,10 @@ export default function Search() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 border-t border-gray-200 px-4 py-2 text-xs text-gray-500 flex justify-between items-center bg-gray-50">
+            <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 px-4 py-2 text-xs text-gray-500 dark:text-gray-400 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
               <span>
                 Press{" "}
-                <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs">
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded text-xs">
                   ESC
                 </kbd>{" "}
                 to close

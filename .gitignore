@@ -4,6 +4,9 @@
 .vscode/
 .zed/
 .husky/
+.claude/
+.cursor/
+.ropeproject/
 
 # Logs
 
@@ -162,6 +165,10 @@ dist
 # TernJS port file
 
 .tern-port
+
+# Gitbook
+
+.gitbook.yaml
 
 # Stores VSCode versions used for testing VSCode extensions
 
