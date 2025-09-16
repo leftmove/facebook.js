@@ -20,7 +20,7 @@ Bookface comes with a built-in MCP server that allows your AI agents to interact
   [authentication](/authentication) guides.
   
   If you're launching the MCP from a different process (IDEs, desktop apps,
-  remote shells), you'll also want to make your credentials are available globally.
+  remote shells), you'll also want to make your credentials are available globally and skip to the [stdio section](#stdio).
 </Note>
 
 ## Prerequisites
@@ -109,10 +109,10 @@ You can then use these endpoints to plug into any MCP-compatible agent.
 
 ## Profiles
 
-The MCP exposes tools in three modes:
+The MCP exposes tools in three modes.
 
 - **page**: Act as a Facebook Page (recommended)
-- **user**: Act as a personal profile (restricted by Meta)
+- **user**: Act as a personal profile
 - **dual**: Expose both page and user tools on one endpoint
 
 <Note variant="important">
@@ -120,79 +120,6 @@ The MCP exposes tools in three modes:
   for creating content. User tools may return errors depending on your app's
   permissions/status.
 </Note>
-
-## Tools
-
-Tools are registered per profile. Names include the profile so you can see what
-you're calling at a glance.
-
-### publish-&lt;profile&gt;-post
-
-Publishes a post for the selected profile.
-
-Input:
-
-- **message**: Text of the post (string)
-- **schedule**: Optional date/time string (parsable by `Date`)
-- **media**: Optional media input
-  - String file path, array of file paths, or `{ data: <base64>, type: <ext> }`
-
-<Code language="json">
-```json
-{ "message": "Hello world", "schedule": "2026-01-15T10:00:00Z" }
-```
-</Code>
-
-Response: JSON string representing the created post.
-
-### publish-&lt;profile&gt;-comment
-
-Publishes a comment. Requires a parent.
-
-Input:
-
-- **parent**: One of:
-  - `{ "id": "<commentId>", "post": "<postId>" }`
-  - `{ "user": "<userId>", "post": "<postId>" }`
-- **message**: Text of the comment (string)
-- **schedule**: Optional date/time string
-- **media**: Optional media input (same as posts)
-
-<Code language="json">
-```json
-{ "parent": { "user": "10039207206110825", "post": "122172395366285076" }, "message": "Replying via MCP" }
-```
-</Code>
-
-Response: JSON string representing the created comment.
-
-<Note variant="note">
-  Both tools return `{ content: [{ type: "text", text: <json> }] }` on success.
-  Errors are returned with `isError: true` and a message.
-</Note>
-
-## Resources
-
-Resources expose read-only data through URIs that MCP clients can fetch.
-
-- **info://page** or **info://user**
-  - Returns `{ id, expires, valid }` for the active profile
-- **access://page/token** or **access://user/token**
-  - Returns the access token as plain text
-
-These are useful for quick checks, debugging, or dynamic prompts.
-
-## Sessions and Endpoints (HTTP)
-
-When using Streamable HTTP, the server manages sessions with a `mcp-session-id`
-header. Clients initialize a session with the standard MCP `initialize` request;
-subsequent requests should include the `mcp-session-id` header value returned by
-the server.
-
-- POST `/mcp/page` or `/mcp/user` or `/mcp/main` for tool calls
-- GET/DELETE `/mcp` for session management
-
-You typically do not need to handle this manually—MCP clients do it for you.
 
 ## Programmatic Usage
 
