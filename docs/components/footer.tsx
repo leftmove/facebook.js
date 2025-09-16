@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import ThemeToggle from "components/theme";
+import Toggle from "components/theme";
 
 export default function Footer() {
   return (
@@ -40,7 +40,7 @@ export default function Footer() {
           >
             Source Code
           </a>
-          <ThemeToggle />
+          <Toggle />
         </div>
       </div>
     </footer>

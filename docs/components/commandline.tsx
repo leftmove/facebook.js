@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState } from "react";
+
+import { use$ } from "@legendapp/state/react";
+import { preferences$, type PackageManager } from "state/preferences";
+
 import clsx from "clsx";
-import { codeToHast } from "shiki";
-import { toJsxRuntime } from "hast-util-to-jsx-runtime";
-import { jsx, jsxs } from "react/jsx-runtime";
-import type { BundledLanguage } from "shiki";
-import { usePreferences, type PackageManager } from "./preferences";
+
+import Code from "components/codeblock";
 
 // Base props shared across all variants
 interface BaseCommandLineProps {
@@ -62,7 +63,7 @@ function CopyButton({ text }: { text: string }) {
     <div className="flex items-center relative">
       <span
         className={clsx(
-          "mr-1 text-xs font-medium text-cobalt-500 whitespace-nowrap",
+          "mr-1 text-xs font-medium text-cobalt-500 dark:text-cobalt-200 whitespace-nowrap",
           copied
             ? "opacity-100 translate-x-0"
             : "opacity-0 -translate-x-2 pointer-events-none",
@@ -103,85 +104,11 @@ function CodeBlock({
   code: string;
   language?: string;
 }) {
-  const [highlightedCode, setHighlightedCode] =
-    useState<React.JSX.Element | null>(null);
-  const langToUse = (language.toLowerCase() || "bash") as BundledLanguage;
-
-  useEffect(() => {
-    let isMounted = true;
-    async function generateHighlightedJsx() {
-      if (!isMounted) return;
-      try {
-        const hast = await codeToHast(code.trim() || " ", {
-          lang: langToUse,
-          themes: {
-            light: "github-light",
-            dark: "github-dark",
-          },
-        });
-
-        const jsxElement = toJsxRuntime(hast, {
-          Fragment,
-          jsx,
-          jsxs,
-          components: {
-            pre: (props) => (
-              <pre
-                {...props}
-                style={{ ...props.style, backgroundColor: "transparent" }}
-                className="p-0 m-0 text-sm bg-transparent"
-              />
-            ),
-            code: (props) => (
-              <code
-                {...props}
-                style={{
-                  ...props.style,
-                  fontFamily:
-                    "Menlo, Monaco, Consolas, 'Courier New', monospace",
-                }}
-              />
-            ),
-          },
-        }) as React.JSX.Element;
-
-        if (isMounted) {
-          setHighlightedCode(jsxElement);
-        }
-      } catch (error) {
-        console.error(
-          `Shiki highlighting failed for lang ${langToUse}:`,
-          error
-        );
-        if (isMounted) {
-          setHighlightedCode(
-            <pre className="p-0 m-0 text-sm bg-transparent">
-              <code
-                style={{
-                  fontFamily:
-                    "Menlo, Monaco, Consolas, 'Courier New', monospace",
-                }}
-              >
-                {code}
-              </code>
-            </pre>
-          );
-        }
-      }
-    }
-
-    if (code) {
-      generateHighlightedJsx();
-    } else {
-      setHighlightedCode(null);
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [code, langToUse]);
-
-  return <div className="overflow-x-auto flex-1">{highlightedCode}</div>;
+  return (
+    <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
+      {code}
+    </div>
+  );
 }
 
 // Default command line variant
@@ -219,13 +146,8 @@ function InstallCommandLine({
   language?: string;
   className?: string;
 }) {
-  const {
-    packageManager: activeManager,
-    registry,
-    setPackageManager: setActiveManager,
-    setRegistry,
-    isHydrated,
-  } = usePreferences();
+  const activeManager = use$(preferences$.packageManager);
+  const registry = use$(preferences$.registry);
 
   const getInstallCommand = (manager: PackageManager): string => {
     const prefix = registry === "jsr" ? "jsr:" : "";
@@ -245,10 +167,7 @@ function InstallCommandLine({
     }
   };
 
-  // Fall back to npm during SSR or before hydration
-  const command = isHydrated
-    ? getInstallCommand(activeManager)
-    : `npm install ${packageName}`;
+  const command = getInstallCommand(activeManager);
 
   return (
     <div
@@ -257,50 +176,48 @@ function InstallCommandLine({
         className
       )}
     >
-      {isHydrated && (
-        <div className="flex justify-between">
-          <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
-            {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
-              <button
-                key={manager}
-                className={clsx(
-                  "px-4 py-2 text-sm transition-all duration-50",
-                  activeManager === manager
-                    ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
-                    : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
-                )}
-                onClick={() => setActiveManager(manager)}
-              >
-                {manager}
-              </button>
-            ))}
-          </div>
-          <div className="mr-2 flex items-center border-b border-gray-200 dark:border-gray-700">
+      <div className="flex justify-between">
+        <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
+          {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
             <button
+              key={manager}
               className={clsx(
                 "px-4 py-2 text-sm transition-all duration-50",
-                registry === "npm"
+                activeManager === manager
                   ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
               )}
-              onClick={() => setRegistry("npm")}
+              onClick={() => preferences$.packageManager.set(manager)}
             >
-              npm
+              {manager}
             </button>
-            <button
-              className={clsx(
-                "px-4 py-2 text-sm transition-all duration-50",
-                registry === "jsr"
-                  ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              )}
-              onClick={() => setRegistry("jsr")}
-            >
-              jsr
-            </button>
-          </div>
+          ))}
         </div>
-      )}
+        <div className="mr-2 flex items-center border-b border-gray-200 dark:border-gray-700">
+          <button
+            className={clsx(
+              "px-4 py-2 text-sm transition-all duration-50",
+              registry === "npm"
+                ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            )}
+            onClick={() => preferences$.registry.set("npm")}
+          >
+            npm
+          </button>
+          <button
+            className={clsx(
+              "px-4 py-2 text-sm transition-all duration-50",
+              registry === "jsr"
+                ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            )}
+            onClick={() => preferences$.registry.set("jsr")}
+          >
+            jsr
+          </button>
+        </div>
+      </div>
       <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-900">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />
@@ -319,11 +236,7 @@ function ExecuteCommandLine({
   language?: string;
   className?: string;
 }) {
-  const {
-    packageManager: activeManager,
-    setPackageManager: setActiveManager,
-    isHydrated,
-  } = usePreferences();
+  const activeManager = use$(preferences$.packageManager);
 
   const getExecuteCommand = (manager: PackageManager): string => {
     switch (manager) {
@@ -340,10 +253,7 @@ function ExecuteCommandLine({
     }
   };
 
-  // Fall back to npx during SSR or before hydration
-  const command = isHydrated
-    ? getExecuteCommand(activeManager)
-    : `npx ${packageName}`;
+  const command = getExecuteCommand(activeManager);
 
   return (
     <div
@@ -352,26 +262,24 @@ function ExecuteCommandLine({
         className
       )}
     >
-      {isHydrated && (
-        <div className="flex">
-          <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
-            {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
-              <button
-                key={manager}
-                className={clsx(
-                  "px-4 py-2 text-sm transition-all duration-50",
-                  activeManager === manager
-                    ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
-                    : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
-                )}
-                onClick={() => setActiveManager(manager)}
-              >
-                {manager}
-              </button>
-            ))}
-          </div>
+      <div className="flex">
+        <div className="flex ml-2 border-b border-gray-200 dark:border-gray-700">
+          {(["npm", "yarn", "pnpm", "bun"] as const).map((manager) => (
+            <button
+              key={manager}
+              className={clsx(
+                "px-4 py-2 text-sm transition-all duration-50",
+                activeManager === manager
+                  ? "text-gray-900 dark:text-gray-100 border-b-2 border-cobalt-500 font-medium"
+                  : "text-gray-500 dark:text-gray-400 hover:border-b-2 hover:border-cobalt-500 hover:text-gray-700 dark:hover:text-gray-300"
+              )}
+              onClick={() => preferences$.packageManager.set(manager)}
+            >
+              {manager}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
       <div className="p-4 flex justify-between items-center bg-white dark:bg-gray-900">
         <CodeBlock code={command} language={language} />
         <CopyButton text={command} />

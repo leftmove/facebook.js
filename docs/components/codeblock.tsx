@@ -20,7 +20,7 @@ interface CodeProps {
     | string;
 }
 
-export async function Code(props: CodeProps) {
+export default async function Code(props: CodeProps) {
   const codeContent =
     typeof props.children === "string"
       ? props.children
@@ -33,7 +33,7 @@ export async function Code(props: CodeProps) {
     },
   });
 
-  return toJsxRuntime(out, {
+  const code = toJsxRuntime(out, {
     Fragment,
     jsx,
     jsxs,
@@ -47,12 +47,10 @@ export async function Code(props: CodeProps) {
       ),
     },
   }) as React.JSX.Element;
-}
 
-export default function Block(props: CodeProps) {
   return (
     <div className="border-2 border-gray-200 dark:border-gray-800 rounded-lg mb-4 bg-white dark:bg-gray-900">
-      <Code {...props} />
+      {code}
     </div>
   );
 }

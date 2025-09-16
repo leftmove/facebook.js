@@ -10,11 +10,12 @@ import type { Authentication } from 'bookface';
 const facebook = new Facebook();
 const auth: Authentication = { };
 
-// Login with your credentials (unnecessary but good to have)
-await facebook.login(auth).then(({ credentials, scope }) => {
-  console.log(credentials);
-  console.log(scope);
-});
+// Login (unnecessary but good to have)
+await facebook.login(auth)
+  .then(({ credentials, scope }) => {
+    console.log(credentials);
+    console.log(scope);
+  });
 
 // Publish a post to your page
 const post = await facebook.page.posts.publish({
@@ -28,7 +29,7 @@ const posts = await facebook.page.posts.read();`;
 export default function Description() {
   return (
     <div className="flex flex-col items-center text-gray-900 dark:text-gray-100">
-      <div className="w-2/3 mt-12 mx-auto space-y-6">
+      {/* <div className="w-2/3 mt-12 mx-auto space-y-6">
         <div className="flex items-start gap-4 p-4 rounded-lg bg-gray-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
           <div className="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
             <Code className="w-4 h-4 text-blue-600 dark:text-blue-300" />
@@ -58,7 +59,7 @@ export default function Description() {
             things AI.
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="w-2/3 mt-12 mx-auto">
         <Codeblock language="typescript">{codeExample}</Codeblock>

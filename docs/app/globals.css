@@ -55,7 +55,7 @@ body {
   }
 
   a {
-    @apply transition-colors text-cobalt-500 hover:text-cobalt-600 dark:text-cobalt-400 dark:hover:text-cobalt-300 no-underline;
+    @apply transition-colors text-cobalt-500 hover:text-cobalt-600 dark:text-cobalt-100 dark:hover:text-cobalt-200 no-underline;
   }
 
   p {
@@ -80,7 +80,11 @@ body {
   }
 
   p code {
-    @apply bg-gray-100 dark:bg-gray-800;
+    @apply bg-gray-200 dark:bg-gray-800;
+  }
+
+  li code {
+    @apply bg-gray-200 dark:bg-gray-800;
   }
 }
 

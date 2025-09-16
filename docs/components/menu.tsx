@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const linkStyles =
-  "text-gray-700 dark:text-gray-200 hover:text-cobalt-500 dark:hover:text-cobalt-300 transition-colors px-1.5 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded";
+  "text-gray-700 dark:text-gray-200 hover:text-cobalt-500 dark:hover:text-gray-200 transition-colors px-1.5 py-1 hover:bg-gray-100 dark:hover:bg-gray-500 rounded";
 const mobileLinkStyles = `block px-4 py-2 ${linkStyles} hover:bg-gray-50 dark:hover:bg-gray-800`;
 
 const menuItems = [
@@ -35,7 +35,7 @@ function MenuLink({
   const base = mobile ? mobileLinkStyles : linkStyles;
   const className = `${base} ${
     isActive
-      ? "text-cobalt-600 dark:text-cobalt-300 border-b-2 bg-gray-100 dark:bg-gray-900 border-cobalt-500 pb-0.5"
+      ? "text-cobalt-600 dark:text-cobalt-300 border-b-2 bg-gray-100 dark:bg-gray-500 border-cobalt-500 dark:border-cobalt-200 pb-0.5"
       : ""
   }`;
 

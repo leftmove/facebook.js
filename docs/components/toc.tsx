@@ -114,8 +114,8 @@ export default function TableOfContents() {
                 aria-current={activeId === heading.id ? "true" : undefined}
                 className={`block transition-all duration-200 py-1.5 pl-3 -ml-0.5 border-l-2 ${
                   activeId === heading.id
-                    ? "text-cobalt-500 dark:text-cobalt-400 border-cobalt-500 dark:border-cobalt-400 font-medium"
-                    : "text-gray-600 dark:text-gray-400 border-transparent hover:border-cobalt-500 dark:hover:border-cobalt-400 hover:text-cobalt-500 dark:hover:text-cobalt-400"
+                    ? "text-cobalt-500 dark:text-cobalt-200 border-cobalt-500 dark:border-cobalt-400 font-medium"
+                    : "text-gray-600 dark:text-gray-400 border-transparent hover:border-cobalt-500 dark:hover:border-cobalt-400 hover:text-cobalt-500 dark:hover:text-cobalt-100"
                 }`}
               >
                 {heading.text}

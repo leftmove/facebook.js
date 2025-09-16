@@ -360,7 +360,7 @@ export default function Search() {
   const normalizeUrl = (rawUrl: string): string => {
     if (!rawUrl) return "#";
 
-const working = rawUrl.trim();
+    const working = rawUrl.trim();
 
     // Ensure absolute for parsing, then strip origin
     try {

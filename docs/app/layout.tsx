@@ -2,7 +2,7 @@ import "./globals.css";
 import Navigation from "components/navigation";
 import Footer from "components/footer";
 import Container from "components/container";
-import { PreferencesProvider } from "components/preferences";
+import Provider from "components/provider";
 
 import { IBM_Plex_Sans } from "next/font/google";
 
@@ -22,15 +22,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col ${ibmPlexSans.className}`}
       >
-        <PreferencesProvider>
+        <Provider>
           <Navigation />
           <Container>{children}</Container>
           <Footer />
-        </PreferencesProvider>
+        </Provider>
       </body>
     </html>
   );
