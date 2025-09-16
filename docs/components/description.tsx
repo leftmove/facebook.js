@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Code, Zap, Sparkle } from "lucide-react";
+// import { Code, Zap, Sparkle } from "lucide-react";
 
 import Codeblock from "components/codeblock";
 

@@ -7,8 +7,6 @@ import { preferences$, type PackageManager } from "state/preferences";
 
 import clsx from "clsx";
 
-import Code from "components/codeblock";
-
 // Base props shared across all variants
 interface BaseCommandLineProps {
   className?: string;
@@ -99,8 +97,8 @@ function CopyButton({ text }: { text: string }) {
 // Syntax highlighter wrapper
 function CodeBlock({
   code,
-  language = "bash",
-}: {
+}: // language = "bash",
+{
   code: string;
   language?: string;
 }) {
