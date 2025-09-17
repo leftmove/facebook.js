@@ -1,37 +1,51 @@
 # facebook.js
 
-A Facebook API wrapper that's _not_ from 2011.
+A modern Facebook Graph API client and CLI.
 
-> [!IMPORTANT]  
-> This library is in active development.
+## Install
 
-# Quickstart
+```bash
+bun add @anonyo/facebook.js
+```
 
-## Installation
-`npm install @anonyo/facebook.js`
+## Authenticate (CLI)
 
-## Roadmap
+Most API calls require credentials. Use the built‑in CLI to create a local `credentials.json`.
 
-### Short Term
+```bash
+bunx facebook login
+```
 
-- Separate login flow from main app, minimum setup
-- Better error handling with more specific error types
-- Flesh out README.md with minimal examples/use-cases (i.e. quickstart section)
-- Native function for every major use-case
-  - Posting
-  - Commenting
-  - Etc.
-- Make all methods available synchronously
-- Consistency across parameters for different methods
-- Support for videos
+Optionally store credentials globally for other directories:
 
-### Long Term
+```bash
+bunx facebook credentials store
+```
 
-- Migrate CLI and core into different packages
-- Documentation
-  - Every function, class, type
-  - Programmatic login
-  - Custom credential file authentication
-- Create documentation website
-  - [Starlight](https://starlight.astro.build/)
-  - Register domain
+## Minimal usage
+
+Publish a page post (requires credentials from the step above):
+
+```ts
+import Facebook from "@anonyo/facebook.js";
+
+const facebook = new Facebook();
+const post = await facebook.page.posts.publish({
+  message: "Hello from the API",
+});
+console.log(post.id);
+```
+
+Read recent page posts:
+
+```ts
+import Facebook from "@anonyo/facebook.js";
+
+const facebook = new Facebook();
+const posts = await facebook.page.posts.read();
+console.log(posts.map((p) => p.id));
+```
+
+## License
+
+MIT
