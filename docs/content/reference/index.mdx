@@ -36,3 +36,170 @@ import Documentation from "components/documentation";
 <Documentation file="mcp/mcp.ts" abstraction="createMCP" showSearch={true} />
 
 <Documentation file="mcp/mcp.ts" abstraction="MCPHandler" showSearch={true} />
+
+## Upload
+
+<Documentation file="client/upload.ts" abstraction="Upload" showSearch={true} />
+
+### Examples
+
+```typescript
+import Facebook from "bookface";
+
+const facebook = new Facebook({ profile: "page" });
+
+// Upload a single image
+await facebook.upload.image({ media: "/path/to/image.jpg" });
+
+// Upload multiple images
+await facebook.upload.image({ media: [
+  "/path/to/1.jpg",
+  "/path/to/2.png"
+]});
+
+// Upload from Base64 data
+await facebook.upload.image({ media: { data: "...base64...", type: "png" } });
+```
+
+## Post and Comment Objects
+
+<Documentation file="client/posts.ts" abstraction="Post" showSearch={true} />
+
+<Documentation file="client/comments.ts" abstraction="Comment" showSearch={true} />
+
+### Examples
+
+```typescript
+// Edit and delete directly from a Post instance
+const post = await facebook.page.posts.publish({ message: "Hello" });
+await post.edit({ message: "Edited" });
+await post.remove({});
+
+// Reply to a comment from the Comment instance
+const comment = await facebook.page.comments.publish({
+  post: post.id,
+  user: post.user!,
+  message: "Nice post!"
+});
+await comment.reply({ id: comment.id, post: post.id, message: "Thanks!" });
+```
+
+## Low-level Client and Utilities
+
+<Documentation file="api/wrapper.ts" abstraction="Client" showSearch={true} />
+
+<Documentation file="api/wrapper.ts" abstraction="stringify" />
+
+<Documentation file="api/wrapper.ts" abstraction="parameterize" />
+
+<Documentation file="api/wrapper.ts" abstraction="FACEBOOK_GRAPH_API" />
+
+<Documentation file="api/wrapper.ts" abstraction="FACEBOOK_URL" />
+
+### Examples
+
+```typescript
+import { Client, FACEBOOK_GRAPH_API, parameterize } from "bookface/api";
+
+const client = new Client(FACEBOOK_GRAPH_API);
+await client.get("me", { access_token: "..." });
+await client.post("me/feed", parameterize({ message: "hi", access_token: "..." }));
+```
+
+## Authentication Internals
+
+<Documentation file="client/client.ts" abstraction="Facebook" showSearch={true} />
+
+<Documentation file="client/client.ts" abstraction="i" />
+
+<Documentation file="client/client.ts" abstraction="t" />
+
+<Documentation file="api/login.ts" abstraction="Login" showSearch={true} />
+
+<Documentation file="api/app.ts" abstraction="App" />
+
+<Documentation file="api/user.ts" abstraction="User" />
+
+<Documentation file="api/page.ts" abstraction="Page" />
+
+<Documentation file="api/uid.ts" abstraction="Uid" />
+
+<Documentation file="api/pid.ts" abstraction="Pid" />
+
+<Documentation file="api/uids.ts" abstraction="Uids" />
+
+<Documentation file="api/pids.ts" abstraction="Pids" />
+
+### Examples
+
+```typescript
+import Facebook from "bookface";
+
+const facebook = new Facebook({ profile: "page" });
+await facebook.login();
+await facebook.refresh();
+
+// Switch profiles at runtime
+facebook.switch("user");
+```
+
+## Credentials Utilities
+
+<Documentation file="credentials/index.ts" abstraction="writeToJSONCredentials" />
+
+<Documentation file="credentials/index.ts" abstraction="readFromJSONCredentials" />
+
+<Documentation file="credentials/index.ts" abstraction="writeToEnvironmentCredentials" />
+
+<Documentation file="credentials/index.ts" abstraction="readFromEnvironmentCredentials" />
+
+<Documentation file="credentials/index.ts" abstraction="createJSONFileIfNotExists" />
+
+<Documentation file="credentials/index.ts" abstraction="doesFileExist" />
+
+<Documentation file="credentials/index.ts" abstraction="toEnvironmentKey" />
+
+<Documentation file="credentials/index.ts" abstraction="fromEnvironmentKey" />
+
+### Examples
+
+```typescript
+import { readFromJSONCredentials, writeToJSONCredentials } from "bookface/credentials";
+
+const creds = readFromJSONCredentials();
+writeToJSONCredentials({ ...creds, pageIndex: 0 });
+```
+
+## Errors
+
+<Documentation file="errors/index.ts" abstraction="GraphError" />
+
+<Documentation file="errors/index.ts" abstraction="CredentialError" />
+
+<Documentation file="errors/index.ts" abstraction="UnauthorizedError" />
+
+<Documentation file="errors/index.ts" abstraction="DeprecatedError" />
+
+<Documentation file="errors/index.ts" abstraction="FileError" />
+
+<Documentation file="errors/index.ts" abstraction="warnConsole" />
+
+### Examples
+
+```typescript
+try {
+  await facebook.page.posts.publish({ message: "Scheduled too soon", schedule: new Date() });
+} catch (e) {
+  if (e.name === "PostError") {
+    console.warn(e.message);
+  }
+}
+```
+
+## MCP (Additional)
+
+<Documentation file="mcp/mcp.ts" abstraction="createDualMCP" />
+
+<Documentation file="mcp/mcp.ts" abstraction="serveStdioMCP" />
+
+<Documentation file="mcp/server.ts" abstraction="serve" />
