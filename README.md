@@ -1,3 +1,6 @@
+> [!IMPORTANT]  
+> This library is in active development.
+
 <div align="center" style="margin-top: 1em;">
   <a href="https://facebook-js-sdk.vercel.app" target="_blank">
     <picture>
@@ -6,16 +9,17 @@
   </a>
 </div>
 
-<p align="center" style="margin-top: 1em;">
+<br />
+
+<p align="center">
   <b>Bookface</b> is a modern TypeScript wrapper for <a src="https://developers.facebook.com/docs/">Meta's developer services</a>.
 </p>
+
+<br />
 
 The Graph API is Meta's platform for building apps and services that interact with their products (i.e. Facebook, Instagram).
 
 Bookface allows you to interact with the Graph API through TypeScript with a more intuitive, organized, and straightforward syntax.
-
-> [!IMPORTANT]  
-> This library is in active development.
 
 # Getting Started
 
