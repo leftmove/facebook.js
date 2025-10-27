@@ -65,17 +65,22 @@ export default function Description() {
         <Codeblock language="typescript">{codeExample}</Codeblock>
       </div>
 
-      <span className="text-center text-lg w-3/4 mx-auto mt-10 text-gray-800 dark:text-gray-300">
-        The Graph API is Meta&apos;s platform for building apps and services
-        that interact with their products (i.e. Facebook, Instagram). Bookface
-        is your (opinionated) one-stop shop for interacting with the Graph API
-        through a more intuitive, organized, and straightforward syntax.
-      </span>
+      <div className="w-2/3 mt-12 flex flex-col items-center mb-12 mx-auto">
+        <span className="text-left text-lg text-gray-800 dark:text-gray-300">
+          The Graph API is Meta&apos;s platform for building apps and services
+          that interact with their products (i.e. Facebook, Instagram).
+        </span>
 
-      <span className="text-center text-lg w-3/4 mx-auto mt-10 text-gray-800 dark:text-gray-300">
-        To get started with Bookface, check out the{" "}
-        <Link href="/getting-started">getting started</Link> guide.
-      </span>
+        <span className="text-left text-lg mt-4 text-gray-800 dark:text-gray-300">
+          Bookface allows you to interact with the Graph API through TypeScript,
+          with a more intuitive, organized, and straightforward syntax.
+        </span>
+
+        <span className="text-left text-lg mt-10 text-gray-800 dark:text-gray-300">
+          To get started with Bookface, check out the{" "}
+          <Link href="/getting-started">getting started</Link> guide.
+        </span>
+      </div>
     </div>
   );
 }

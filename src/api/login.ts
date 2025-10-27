@@ -194,7 +194,7 @@ export class Login {
   profile: Profile;
 
   stale: Array<string> = credentialOptions;
-  client = new Client();
+  client: Client = new Client();
 
   writeCredentials: writeCredentials = writeToJSONCredentials;
   readCredentials: readCredentials = readFromJSONCredentials;
@@ -421,7 +421,7 @@ export class Login {
     readCredentials: readCredentials = this.readCredentials,
     writeCredentials: writeCredentials = this.writeCredentials,
     expireTime: number = this.expireTime
-  ) {
+  ): this {
     const credentials = readCredentials();
     this.readCredentials = readCredentials;
     this.writeCredentials = writeCredentials;
@@ -481,7 +481,7 @@ export class Login {
     return this;
   }
 
-  generate(credentials: Array<string> = this.stale) {
+  generate(credentials: Array<string> = this.stale): this {
     credentials.map((c) => {
       switch (c) {
         case "appToken":

@@ -99,7 +99,7 @@ export interface Config {
  * @property {PageComments} page.comments - Methods for interacting with comments on a Facebook page.
  */
 export class Facebook extends Login {
-  client = new Client();
+  client: Client = new Client();
 
   /**
    * Creates a new Facebook API client instance
@@ -117,16 +117,16 @@ export class Facebook extends Login {
     super(config);
   }
 
-  posts = new Posts(this);
-  comments = new Comments(this);
-  upload = new Upload(this);
+  posts: Posts = new Posts(this);
+  comments: Comments = new Comments(this);
+  upload: Upload = new Upload(this);
 
-  user = {
+  user: { posts: UserPosts; comments: UserComments } = {
     posts: new UserPosts(this),
     comments: new UserComments(this),
   };
 
-  page = {
+  page: { posts: PagePosts; comments: PageComments } = {
     posts: new PagePosts(this),
     comments: new PageComments(this),
   };
@@ -136,7 +136,7 @@ export class Facebook extends Login {
    * @param profile Type of profile to use for API methods, takes either "user" or "page".
    * @returns {this} Client instance, used for chaining methods.
    */
-  switch(profile: Profile) {
+  switch(profile: Profile): this {
     this.profile = profile;
     return this;
   }

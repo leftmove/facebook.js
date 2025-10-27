@@ -197,7 +197,7 @@ export class Comment {
    * @param profile - The profile to use for the request.
    * @returns {Post} The parent post of the comment.
    */
-  parent(profile: Profile = this.profile) {
+  parent(profile: Profile = this.profile): Promise<Post> {
     return this.client.posts.get({ id: this.post }, profile);
   }
 
@@ -212,7 +212,7 @@ export class Comment {
   reply(
     config: CommentReply | CommentReplyMedia,
     profile: Profile = this.profile
-  ) {
+  ): Promise<Comment> {
     return this.client.comments.publish(config, profile);
   }
 
@@ -220,7 +220,7 @@ export class Comment {
    * Dumps the post to a JSON string.
    * @returns {string} The JSON string.
    */
-  dump() {
+  dump(): string {
     return stringify(
       [...this._dumpFields].reduce(
         (obj, key) => ({ ...obj, [key]: (this as any)[key] }),
@@ -253,7 +253,7 @@ export class Comments {
     permissions: string[] = profile === "page"
       ? ["pages_manage_engagement", "pages_read_engagement"]
       : []
-  ) {
+  ): Promise<Comment[]> {
     const id = i(profile, this.facebook);
     const token = t(profile, this.facebook);
     interface ResponseComments {
@@ -298,7 +298,7 @@ export class Comments {
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page" ? ["pageToken"] : ["userToken"],
     permissions: string[] = profile === "page" ? [] : []
-  ) {
+  ): Promise<Comment> {
     return this.facebook.refresh(credentials, permissions).then(() => {
       const token = t(profile, this.facebook);
 
@@ -346,7 +346,7 @@ export class Comments {
     profile: Profile = this.facebook.profile,
     credentials: string[] = profile === "page" ? ["pageToken"] : ["userToken"],
     permissions: string[] = profile === "page" ? [] : []
-  ) {
+  ): Promise<Comment> {
     return this.facebook.refresh(credentials, permissions).then(async () => {
       if (config.post === undefined) {
         throw new PostError("Post ID is required.");
@@ -409,7 +409,7 @@ export class UserComments extends Comments {
     super(facebook);
   }
 
-  read(config: Post) {
+  read(config: Post): Promise<Comment[]> {
     return super.read(config, "user");
   }
 }
@@ -425,7 +425,7 @@ export class PageComments extends Comments {
     super(facebook);
   }
 
-  read(config: Post) {
+  read(config: Post): Promise<Comment[]> {
     return super.read(config);
   }
 }

@@ -23,7 +23,7 @@ export interface Credentials {
   scope?: Permissions;
 }
 
-export const DEFAULT_CONFIG_PATH = `${
+export const DEFAULT_CONFIG_PATH: string = `${
   envPaths("facebook").config
 }/credentials.json`;
 export const DEFAULT_FILE_PATH = "./credentials.json";

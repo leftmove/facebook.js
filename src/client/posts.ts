@@ -269,7 +269,7 @@ export class Post {
    * Checks if the post has been published. Useful for scheduled posts.
    * @returns {boolean} Whether the post has been published.
    */
-  ready() {
+  ready(): boolean {
     if (this.created === undefined) {
       return false;
     } else {
@@ -285,7 +285,7 @@ export class Post {
    * @see {@link Posts#remove}
    * @extends {Facebook["remove"]}
    **/
-  remove(config: RemovePostEmbedded, profile: Profile = this.profile) {
+  remove(config: RemovePostEmbedded, profile: Profile = this.profile): Promise<Post> {
     return this.client.posts.remove({ id: this.id, ...config }, profile);
   }
 
@@ -297,7 +297,7 @@ export class Post {
    * @see {@link Posts#edit}
    * @extends {Facebook["edit"]}
    **/
-  edit(config: EditPostEmbedded, profile: Profile = this.profile) {
+  edit(config: EditPostEmbedded, profile: Profile = this.profile): Promise<Post> {
     return this.client.posts.edit({ id: this.id, ...config }, profile);
   }
 
@@ -307,7 +307,7 @@ export class Post {
    * @returns {Comment[]} An array of comment objects.
    * @throws {PostError} If there is an error reading the comments.
    */
-  comments(config: Post) {
+  comments(config: Post): Promise<Comment[]> {
     return this.client.comments.read(config, this.profile);
   }
 
@@ -319,7 +319,7 @@ export class Post {
    * @param config.message - The message of the comment.
    * @param config.media - The path of the media to upload — only accepts a single path, as multiple uploads are not supported.
    */
-  reply(config: CommentRegular | CommentMedia) {
+  reply(config: CommentRegular | CommentMedia): Promise<Comment> {
     return this.client.comments.publish(config, this.profile);
   }
 
@@ -327,7 +327,7 @@ export class Post {
    * Dumps the post to a JSON string.
    * @returns {string} The JSON string.
    */
-  dump() {
+  dump(): string {
     return stringify(
       [...this._dumpFields].reduce(
         (obj, key) => ({ ...obj, [key]: (this as any)[key] }),
@@ -580,7 +580,7 @@ export class UserPosts extends Posts {
    * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
    */
-  async get(config: CreatedPost) {
+  async get(config: CreatedPost): Promise<Post> {
     return super.get(config, "user", ["userId", "userToken"], []);
   }
 
@@ -601,7 +601,7 @@ export class UserPosts extends Posts {
    * @see {@link https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/}
    * @see {@link https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes}
    */
-  async publish() {
+  async publish(): Promise<Post> {
     throw new DeprecatedError(
       "Publishing posts from user profiles is no longer supported. Please post from page profiles instead.\n" +
         "For more information, visit:\n" +
@@ -619,7 +619,7 @@ export class UserPosts extends Posts {
    * @see {@link https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/}
    * @see {@link https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes}
    */
-  async edit() {
+  async edit(): Promise<Post> {
     throw new DeprecatedError(
       "Editing posts from user profiles is no longer supported. Please edit from page profiles instead.\n" +
         "For more information, visit:\n" +
@@ -642,7 +642,7 @@ export class UserPosts extends Posts {
    * @see {@link https://developers.facebook.com/docs/graph-api/changelog/breaking-changes/}
    * @see {@link https://developers.facebook.com/ads/blog/post/v2/2018/04/24/platform-product-changes}
    */
-  async remove() {
+  async remove(): Promise<Post> {
     throw new DeprecatedError(
       "Deleting posts from user profiles is no longer supported. Please delete from page profiles instead.\n" +
         "For more information, visit:\n" +
@@ -669,7 +669,7 @@ export class PagePosts extends Posts {
    * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If there is an error getting the post.
    */
-  async get(config: CreatedPost) {
+  async get(config: CreatedPost): Promise<Post> {
     return super.get(
       config,
       "page",
@@ -702,7 +702,7 @@ export class PagePosts extends Posts {
    * @see {@link Post#ready} if your posting a scheduled post.
    * @throws {PostError} If something goes wrong trying to publish the post.
    */
-  async publish(config: PostPublish) {
+  async publish(config: PostPublish): Promise<Post> {
     return super.publish(
       config,
       "page",
@@ -720,7 +720,7 @@ export class PagePosts extends Posts {
    * @see {@link Post#ready} if your editing a scheduled post.
    * @throws {PostError} If something goes wrong trying to edit the post.
    */
-  async edit(config: EditPost) {
+  async edit(config: EditPost): Promise<Post> {
     return super.edit(
       config,
       "page",
@@ -736,7 +736,7 @@ export class PagePosts extends Posts {
    * @returns {Post} A post object with methods for interacting with the post.
    * @throws {PostError} If something goes wrong trying to delete the post.
    */
-  async remove(config: RemovePost) {
+  async remove(config: RemovePost): Promise<Post> {
     return super.remove(
       config,
       "page",

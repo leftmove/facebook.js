@@ -17,10 +17,10 @@ class Queue {
   enqueue(item: any) {
     this._items.push(item);
   }
-  dequeue() {
+  dequeue(): any {
     return this._items.shift();
   }
-  get size() {
+  get size(): number {
     return this._items.length;
   }
 }
@@ -35,14 +35,14 @@ export default class Client extends Queue {
     this.url = url;
   }
 
-  enqueue(action: Function) {
+  enqueue(action: Function): Promise<any> {
     return new Promise((resolve, reject) => {
       super.enqueue({ action, resolve, reject });
       this.dequeue();
     });
   }
 
-  async dequeue() {
+  async dequeue(): Promise<boolean> {
     if (this._pendingPromise) return false;
 
     let item = super.dequeue();
@@ -66,7 +66,7 @@ export default class Client extends Queue {
     return true;
   }
 
-  wait(ms: number) {
+  wait(ms: number): Promise<any> {
     const helper = () => new Promise((resolve) => setTimeout(resolve, ms));
     return this.enqueue(helper);
   }
@@ -99,7 +99,7 @@ export default class Client extends Queue {
       "Content-Type": "application/json",
     },
     method = "POST"
-  ) {
+  ): any {
     const helper = () =>
       new Promise(async (resolve, reject) => {
         const response = await fetch(`${this.url}/${path}`, {
