@@ -13,4 +13,4 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - run: npx jsr publish
+      - run: bun install && npx jsr publish
