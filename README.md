@@ -21,6 +21,8 @@ The Graph API is Meta's platform for building apps and services that interact wi
 
 Bookface allows you to interact with the Graph API through TypeScript with a more intuitive, organized, and straightforward syntax.
 
+<br />
+
 # Getting Started
 
 To get started with Bookface, you'll first need to install it through your preferred package manager. See the extended [install](#install) section for this.
